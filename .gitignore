@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.cache/
+.mygo/
+*.log
+*.exe
+.env
+.env.*
+!.env.example
+publisher.json
+publisher.*.local.json
+

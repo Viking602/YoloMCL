@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 280" fill="none">
+<defs>
+<linearGradient id="sky" x1="240" y1="0" x2="240" y2="280" gradientUnits="userSpaceOnUse"><stop stop-color="#263d43"/><stop offset=".7" stop-color="#7b8e87"/><stop offset="1" stop-color="#b4b499"/></linearGradient>
+<linearGradient id="water" x1="260" y1="140" x2="260" y2="280" gradientUnits="userSpaceOnUse"><stop stop-color="#9bafa5"/><stop offset="1" stop-color="#375458"/></linearGradient>
+<linearGradient id="front" x1="50" y1="140" x2="100" y2="280" gradientUnits="userSpaceOnUse"><stop stop-color="#405953"/><stop offset="1" stop-color="#213b3b"/></linearGradient>
+</defs>
+<path fill="url(#sky)" d="M0 0h480v280H0z"/>
+<circle cx="326" cy="65" r="24" fill="#e0d4ad" opacity=".85"/>
+<path d="M41 62c20-8 42-5 61 0m258 39c21-6 43-5 64-2M168 43c21-5 42-4 60 0" stroke="#b3c3ba" stroke-width="3" stroke-linecap="round" opacity=".2"/>
+<path d="M-20 176 61 90l28 28 38-52 60 75 37-30 56 47 45-27 52 38 39-55 83 65v101H0Z" fill="#6a8580"/>
+<path d="m62 90 27 28 38-52 24 30-22-9-15 26-20 21Z" fill="#a0b1a3" opacity=".65"/>
+<path d="M0 178c40-34 75-34 121-5 50 32 82-1 130-22 55-25 90 11 130 15 45 5 74-26 99-28v142H0Z" fill="#526e67"/>
+<path d="M223 170c44 5 75-12 100-5 31 9-21 31-67 44-74 22-16 38 76 71H89c66-38 83-49 139-62 67-17 81-28 58-31-25-4-52 1-63-17Z" fill="url(#water)"/>
+<path d="M0 174c63-36 103-19 138 7 36 27 45 36 76 38-35 16-86 38-125 61H0Z" fill="url(#front)"/>
+<path d="M480 154c-52 2-104 33-127 54-31 29-35 45-91 72h218Z" fill="#354f49"/>
+<path d="M0 234c47-9 88 0 122 20l-33 26H0Z" fill="#243d38"/>
+<path d="M480 239c-51-21-93-12-124 9-27 18-46 23-69 32h193Z" fill="#253e39"/>
+<g stroke-linecap="round" stroke-linejoin="round">
+<path d="M60 226V120m-28 48 28-48 30 48H74l23 34H23l22-34Z" fill="#2b4941" stroke="#2b4941" stroke-width="3"/>
+<path d="M112 211v-64m-20 29 20-29 22 30h-12l17 24H85l16-25Z" fill="#37554a" stroke="#37554a" stroke-width="2"/>
+<path d="M405 236V110m-31 55 31-55 32 55h-17l29 41h-89l28-41Z" fill="#29473d" stroke="#29473d" stroke-width="4"/>
+<path d="M449 244V149m-22 40 22-40 22 40h-11l18 30h-59l19-30Z" fill="#203d35" stroke="#203d35" stroke-width="3"/>
+</g>
+<path d="m211 241 29-9m18-30 21-5m-60 65 38 12m53-4 20 5" stroke="#bdd0bd" stroke-width="1.5" stroke-linecap="round" opacity=".3"/>
+</svg>
