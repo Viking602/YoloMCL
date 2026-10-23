@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"testing"
 
-	"mcl/internal/launcher"
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func TestDockHasNoManageButton(t *testing.T) {
@@ -38,7 +38,7 @@ func TestVersionDialogHasNoDirectoryFields(t *testing.T) {
 			t.Errorf("version dialog shows directory item %q", s)
 		}
 	}
-	if !tt.HasText("版本设置标题") || !tt.HasText("MC 标签 1.21.8") || !tt.HasText(tr.RootCfgVerJavaLabel) {
+	if !tt.HasText("版本设置标题") || !tt.HasText("Minecraft 1.21.8") || !tt.HasText(tr.RootCfgVerJavaLabel) {
 		t.Error("version dialog missing its version header or Java field")
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"mcl/internal/distribution"
+	"github.com/Viking602/YoloMCL/internal/distribution"
 )
 
 func TestCurseForgeSearchUsesPublisherKeyAndConsistentPageSize(t *testing.T) {

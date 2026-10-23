@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 // homeTester builds a home page with real-world installer ids plus very long
@@ -82,16 +83,16 @@ func TestHomeTextNeverOverflows(t *testing.T) {
 				if len(boxes) == 0 {
 					t.Fatal("no version tiles rendered")
 				}
-				bar, ok := tt.Find("目录标签栏")
+				bar, ok := tt.Find("目录选择栏")
 				if !ok {
-					t.Fatal("missing directory tab bar")
+					t.Fatal("missing directory picker")
 				}
 				for _, in := range homeFixture {
 					if r, ok := tt.Find("目录 " + in.Name); ok {
 						boxes, names = append(boxes, r), append(names, "目录 "+in.Name)
 					}
 				}
-				for _, n := range []string{"主版本卡", "启动栏"} {
+				for _, n := range []string{"主版本卡", "版本列表"} {
 					r, ok := tt.Find(n)
 					if !ok {
 						t.Fatalf("missing %s", n)
@@ -100,7 +101,7 @@ func TestHomeTextNeverOverflows(t *testing.T) {
 				}
 				for _, txt := range tt.Texts() {
 					r, _ := tt.Find(txt)
-					if r.W <= 0 || strings.HasPrefix(txt, "版本卡片") || strings.HasPrefix(txt, "目录") || txt == "主版本卡" || txt == "启动栏" {
+					if r.W <= 0 || strings.HasPrefix(txt, "版本卡片") || strings.HasPrefix(txt, "目录") || txt == "主版本卡" || txt == "版本列表" {
 						continue
 					}
 					inBar := r.Y >= bar.Y-0.5 && r.Y+r.H <= bar.Y+bar.H+0.5
@@ -123,7 +124,7 @@ func TestHomeTextNeverOverflows(t *testing.T) {
 					}
 				}
 				// loader name as title, MC version as its own tag, no raw id
-				if lang == "zh-CN" && (!tt.HasText("Fabric") || !tt.HasText("MC 标签 1.21.8")) {
+				if lang == "zh-CN" && (!tt.HasText("Fabric") || !tt.HasText("Minecraft 1.21.8")) {
 					t.Error("expected clean display title")
 				}
 				if os.Getenv("MCL_NATIVE_QA_OUTPUT") != "" && lang == "zh-CN" {
@@ -146,27 +147,26 @@ func TestNoClippingTextPattern(t *testing.T) {
 	}
 }
 
-// Launch lives in the bottom bar (no version dropdown); the featured card
-// only highlights the selection, which is not repeated in the list.
+// Launch lives in the instance hero; the selected version stays in the
+// list (highlighted), so the list never reflows on a switch.
 func TestHomeFeaturedCardOwnsLaunch(t *testing.T) {
 	for _, lang := range []string{"zh-CN", "en-US"} {
 		a, tt := homeTester(t, lang)
-		dock, ok := tt.Find("启动栏")
+		hero, ok := tt.Find("主版本卡")
 		launch, ok2 := tt.Find(a.tr().HomeLaunchBtn)
-		if !ok || !ok2 || launch.Y < dock.Y || launch.Y+launch.H > dock.Y+dock.H {
-			t.Errorf("%s: launch must be in bottom bar: %+v %+v", lang, launch, dock)
+		if !ok || !ok2 || launch.Y < hero.Y || launch.Y+launch.H > hero.Y+hero.H || launch.X+launch.W > hero.X+hero.W {
+			t.Errorf("%s: launch must be in the hero: %+v %+v", lang, launch, hero)
 		}
-		if card, ok := tt.Find("主版本卡"); !ok || card.Y >= dock.Y {
-			t.Errorf("%s: featured card missing or below dock", lang)
+		if _, ok := tt.Find("启动栏"); ok {
+			t.Errorf("%s: the floating launch dock should be gone", lang)
 		}
 		if _, ok := tt.Find(a.tr().HomeVersionLabel); ok {
 			t.Errorf("%s: version dropdown should be gone", lang)
 		}
-		if _, ok := tt.Find("版本卡片 quilt-loader-0.20.0-beta.9-1.21.8"); ok {
-			t.Errorf("%s: selected version duplicated in list", lang)
-		}
-		if _, ok := tt.Find("版本卡片 fabric-loader-0.20.1-1.21.8"); !ok {
-			t.Errorf("%s: other versions missing", lang)
+		for _, id := range []string{"quilt-loader-0.20.0-beta.9-1.21.8", "fabric-loader-0.20.1-1.21.8"} {
+			if _, ok := tt.Find("版本卡片 " + id); !ok {
+				t.Errorf("%s: version %s missing from the list", lang, id)
+			}
 		}
 	}
 }
@@ -187,34 +187,19 @@ func TestRootTabsFixedHeightAndVersionsVisible(t *testing.T) {
 	for _, n := range []int{2, 6} {
 		a.snapshot.Instances, a.snapshot.ActiveRoot = manyRoots(n), "r1"
 		tt.Frame()
-		bar, ok := tt.Find("目录标签栏")
+		bar, ok := tt.Find("目录选择栏")
 		if !ok {
-			t.Fatal("tab bar missing")
+			t.Fatal("directory picker missing")
 		}
 		heights = append(heights, bar.H)
-		dock, _ := tt.Find("启动栏")
 		card, ok := tt.Find("主版本卡")
 		tile, ok2 := tt.Find("版本卡片 fabric-loader-0.20.1-1.21.8")
-		if !ok || !ok2 || card.Y+card.H > dock.Y || tile.Y+tile.H > dock.Y {
-			t.Errorf("%d dirs: versions not in first screen: card %+v tile %+v dock %+v", n, card, tile, dock)
-		}
-		// "选择" only means "select this version" now.
-		sel := a.tr().HomeUseInstanceBtn
-		for _, txt := range tt.Texts() {
-			if txt != sel {
-				continue
-			}
-			r, _ := tt.Find(txt)
-			if r.Y < card.Y+card.H {
-				t.Errorf("%d dirs: a %q button outside the version list: %+v", n, sel, r)
-			}
-		}
-		if tt.HasText(a.tr().HomeLogsBtn) {
-			t.Errorf("%d dirs: logs button should live in the manage dialog", n)
+		if !ok || !ok2 || card.Y+card.H > 720 || tile.Y+tile.H > bar.Y {
+			t.Errorf("%d dirs: versions not in first screen: card %+v tile %+v picker %+v", n, card, tile, bar)
 		}
 	}
 	if heights[0] != heights[1] {
-		t.Errorf("tab bar height changed with directory count: %v", heights)
+		t.Errorf("directory picker height must not depend on directory count: %v", heights)
 	}
 }
 

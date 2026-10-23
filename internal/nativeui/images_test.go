@@ -14,7 +14,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func TestNativeResourceImagesUseDiskCacheAndClearFailedLoads(t *testing.T) {
@@ -26,7 +27,7 @@ func TestNativeResourceImagesUseDiskCacheAndClearFailedLoads(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer a.cancel()
+	defer func() { a.cancel(); a.bgWG.Wait() }()
 	raw := "https://cdn.example.test/real-icon.png"
 	sum := sha256.Sum256([]byte(raw))
 	file := filepath.Join(a.snapshot.DataDir, "cache", "resource-icons", hex.EncodeToString(sum[:])+".img")
@@ -85,7 +86,7 @@ func TestLiveModrinthResourceIcons(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer a.cancel()
+	defer func() { a.cancel(); a.bgWG.Wait() }()
 	a.page = "discover"
 	a.resourceType = "模组"
 	a.query = "Sodium"
@@ -102,6 +103,7 @@ func TestLiveModrinthResourceIcons(t *testing.T) {
 			}
 		}
 		if all {
+			tt.Advance(650 * time.Millisecond) // include the completed card/icon entrances
 			snapshotUI(t, tt, "resources")
 			return
 		}

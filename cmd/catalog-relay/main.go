@@ -2,10 +2,11 @@ package main
 
 import (
 	"log"
-	"mcl/internal/catalogrelay"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/Viking602/YoloMCL/internal/catalogrelay"
 )
 
 func main() {

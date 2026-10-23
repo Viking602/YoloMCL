@@ -19,7 +19,7 @@ func javaFixture(t *testing.T, home, version string) string {
 	path := filepath.Join(home, "bin", name)
 	writeTestFile(t, path, []byte("metadata-only test fixture; never execute"))
 	writeTestFile(t, filepath.Join(home, "release"), []byte("JAVA_VERSION=\""+version+"\"\nIMPLEMENTOR=\"Test Runtime\"\nOS_ARCH=\"x86_64\"\n"))
-	return path
+	return canonicalJava(path)
 }
 
 func TestJavaReleaseVersionsWithoutStartingJVM(t *testing.T) {
@@ -39,7 +39,7 @@ func TestJavaReleaseVersionsWithoutStartingJVM(t *testing.T) {
 
 func TestJavaDiscoveryDedupPortableCacheAndRefresh(t *testing.T) {
 	s := testService(t)
-	disk := t.TempDir()
+	disk := s.dir
 	common := filepath.Join(disk, "installed")
 	j8 := javaFixture(t, filepath.Join(common, "jdk8"), "1.8.0_452")
 	j21 := javaFixture(t, filepath.Join(common, "jdk21"), "21+35")
@@ -57,7 +57,7 @@ func TestJavaDiscoveryDedupPortableCacheAndRefresh(t *testing.T) {
 	}
 	var final JavaScanProgress
 	items, e = s.scanJava(context.Background(), explicit, []string{common}, []string{disk}, func(p JavaScanProgress) { final = p })
-	if e != nil || len(items) != 3 || items[0].Path != portable || final.Running || final.Visited == 0 || final.Phase != "正在扫描本机磁盘" {
+	if e != nil || len(items) != 3 || items[0].Path != portable || final.Running || final.Visited == 0 || final.Phase != "正在扫描整合包与启动器运行时" {
 		t.Fatalf("portable scan/progress: %+v / %+v, %v", items, final, e)
 	}
 	if cached := s.CachedJavaList(); len(cached) != 3 || cached[0].Path != portable {
@@ -95,7 +95,7 @@ func TestJavaDiscoveryDedupPortableCacheAndRefresh(t *testing.T) {
 
 func TestJavaScanCancellationPreservesPreviousCache(t *testing.T) {
 	s := testService(t)
-	path := javaFixture(t, t.TempDir(), "21.0.10")
+	path := javaFixture(t, s.runtimeDir(), "21.0.10")
 	if _, e := s.scanJava(context.Background(), []string{path}, nil, nil, nil); e != nil {
 		t.Fatal(e)
 	}

@@ -7,14 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
-	"time"
 )
 
 const manifestURL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
@@ -37,6 +34,7 @@ type gameManifest struct {
 	} `json:"latest"`
 	Versions []MinecraftVersion `json:"versions"`
 }
+
 type artifact struct {
 	ID   string `json:"id,omitempty"`
 	Path string `json:"path"`
@@ -44,6 +42,7 @@ type artifact struct {
 	SHA1 string `json:"sha1"`
 	Size int64  `json:"size"`
 }
+
 type rule struct {
 	Action string `json:"action"`
 	OS     struct {
@@ -53,6 +52,7 @@ type rule struct {
 	} `json:"os"`
 	Features map[string]bool `json:"features"`
 }
+
 type library struct {
 	Name      string `json:"name"`
 	URL       string `json:"url"`
@@ -67,8 +67,10 @@ type library struct {
 	} `json:"extract"`
 	ClientReq *bool `json:"clientreq"`
 }
+
 type gameVersion struct {
 	ID                 string `json:"id"`
+	ClientVersion      string `json:"clientVersion,omitempty"`
 	Type               string `json:"type"`
 	InheritsFrom       string `json:"inheritsFrom"`
 	MainClass          string `json:"mainClass"`
@@ -97,43 +99,7 @@ type gameVersion struct {
 		} `json:"client"`
 	} `json:"logging"`
 }
-type runningGame struct {
-	cmd     *exec.Cmd
-	log     *gameLog
-	started time.Time
-}
-type gameLog struct {
-	mu      sync.Mutex
-	lines   []string
-	secret  string
-	pending string
-}
 
-func (l *gameLog) Write(b []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	text := l.pending + string(b)
-	parts := strings.Split(text, "\n")
-	l.pending = parts[len(parts)-1]
-	if len(l.pending) > 16384 {
-		l.pending = l.pending[len(l.pending)-16384:]
-	}
-	for _, v := range parts[:len(parts)-1] {
-		if l.secret != "" {
-			v = strings.ReplaceAll(v, l.secret, "[REDACTED]")
-		}
-		l.lines = append(l.lines, strings.TrimRight(v, "\r"))
-	}
-	if len(l.lines) > 1200 {
-		l.lines = l.lines[len(l.lines)-1200:]
-	}
-	return len(b), nil
-}
-func (l *gameLog) read() []string {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return append([]string{}, l.lines...)
-}
 func osName() string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -143,6 +109,7 @@ func osName() string {
 	}
 	return "linux"
 }
+
 func rulesAllow(rules []rule) bool {
 	if len(rules) == 0 {
 		return true
@@ -178,6 +145,7 @@ func rulesAllow(rules []rule) bool {
 	}
 	return allow
 }
+
 func mavenPath(name string) (string, error) {
 	parts := strings.Split(name, ":")
 	if len(parts) < 3 || len(parts) > 4 {
@@ -194,6 +162,7 @@ func mavenPath(name string) (string, error) {
 	}
 	return strings.ReplaceAll(parts[0], ".", "/") + "/" + parts[1] + "/" + parts[2] + "/" + filename + "." + extension, nil
 }
+
 func libraryArtifact(l library) (artifact, error) {
 	if l.Downloads.Artifact != nil {
 		return *l.Downloads.Artifact, nil
@@ -208,11 +177,13 @@ func libraryArtifact(l library) (artifact, error) {
 	}
 	return artifact{Path: path, URL: strings.TrimRight(base, "/") + "/" + path}, nil
 }
+
 func (s *Service) Manifest(ctx context.Context) (gameManifest, error) {
 	var m gameManifest
 	e := s.getJSON(ctx, manifestURL, &m)
 	return m, e
 }
+
 func (s *Service) installVanilla(ctx context.Context, root, id string, p progress) (gameVersion, error) {
 	manifest, e := s.Manifest(ctx)
 	if e != nil {
@@ -240,6 +211,7 @@ func (s *Service) installVanilla(ctx context.Context, root, id string, p progres
 	}
 	return gameVersion{}, errors.New("官方版本列表中找不到此 Minecraft 版本")
 }
+
 func readVersion(root, id string) (gameVersion, error) {
 	p, e := findVersionJSON(root, id)
 	if e != nil {
@@ -256,8 +228,12 @@ func readVersion(root, id string) (gameVersion, error) {
 	}
 	return v, e
 }
+
 func mergeVersion(base, child gameVersion) gameVersion {
 	base.ID = child.ID
+	if child.ClientVersion != "" {
+		base.ClientVersion = child.ClientVersion
+	}
 	if child.MainClass != "" {
 		base.MainClass = child.MainClass
 	}
@@ -300,6 +276,7 @@ func mergeVersion(base, child gameVersion) gameVersion {
 	base.Libraries = append(libs, child.Libraries...)
 	return base
 }
+
 func (s *Service) resolveVersion(ctx context.Context, root, id string, p progress) (gameVersion, error) {
 	var resolve func(string, int) (gameVersion, error)
 	seen := map[string]bool{}
@@ -329,6 +306,7 @@ func (s *Service) resolveVersion(ctx context.Context, root, id string, p progres
 	}
 	return resolve(id, 0)
 }
+
 func (s *Service) prepareVersion(ctx context.Context, root string, v gameVersion, p progress) ([]string, string, error) {
 	files := []struct {
 		file DownloadFile
@@ -559,216 +537,4 @@ func (s *Service) prepareVersion(ctx context.Context, root string, v gameVersion
 		}
 	}
 	return cp, nativeDir, nil
-}
-func expandArguments(args []json.RawMessage, vars map[string]string) ([]string, error) {
-	out := []string{}
-	expand := func(v string) (string, error) {
-		for key, value := range vars {
-			v = strings.ReplaceAll(v, "${"+key+"}", value)
-		}
-		if strings.Contains(v, "${") {
-			return "", fmt.Errorf("不支持的启动参数: %s", v)
-		}
-		return v, nil
-	}
-	for _, raw := range args {
-		var simple string
-		if json.Unmarshal(raw, &simple) == nil {
-			v, e := expand(simple)
-			if e != nil {
-				return nil, e
-			}
-			out = append(out, v)
-			continue
-		}
-		var conditional struct {
-			Rules []rule          `json:"rules"`
-			Value json.RawMessage `json:"value"`
-		}
-		if e := json.Unmarshal(raw, &conditional); e != nil {
-			return nil, e
-		}
-		if !rulesAllow(conditional.Rules) {
-			continue
-		}
-		var values []string
-		if json.Unmarshal(conditional.Value, &simple) == nil {
-			values = []string{simple}
-		} else if e := json.Unmarshal(conditional.Value, &values); e != nil {
-			return nil, e
-		}
-		for _, value := range values {
-			v, e := expand(value)
-			if e != nil {
-				return nil, e
-			}
-			out = append(out, v)
-		}
-	}
-	return out, nil
-}
-func (s *Service) Launch(rootID, accountID string) (string, error) {
-	r, e := s.getRoot(rootID)
-	if e != nil {
-		return "", e
-	}
-	a, e := s.getAccount(accountID)
-	if e != nil {
-		return "", e
-	}
-	if r.SelectedVersion == "" {
-		return "", errors.New("请先选择游戏版本")
-	}
-	return s.startJob("启动 "+r.Name, rootID, func(ctx context.Context, p progress) error {
-		if pack := readPack(r.Path); pack != nil && len(pack.Manual) > 0 {
-			return errors.New("整合包还有手动下载文件，请完成后在整合包页面重新检查")
-		}
-		v, e := s.resolveVersion(ctx, r.Path, r.SelectedVersion, p)
-		if e != nil {
-			return e
-		}
-		major := v.JavaVersion.MajorVersion
-		if major == 0 {
-			major = 8
-		}
-		java, e := s.ensureJava(ctx, r, major, p)
-		if e != nil {
-			return e
-		}
-		cp, natives, e := s.prepareVersion(ctx, r.Path, v, p)
-		if e != nil {
-			return e
-		}
-		p("刷新登录状态", 0, 0)
-		t, e := s.accountToken(ctx, a)
-		if e != nil {
-			return e
-		}
-		settings := s.settings()
-		_, memory, customJVM, e := r.ResolveRuntime(r.SelectedVersion, settings)
-		if e == nil && memory <= 0 {
-			memory = s.AutoMemoryFor(r, r.SelectedVersion, java)
-		}
-		if e != nil {
-			return e
-		}
-		gameDir := r.VersionDir()
-		_ = os.MkdirAll(gameDir, 0755)
-		classpath := strings.Join(cp, string(os.PathListSeparator))
-		vars := map[string]string{"auth_player_name": a.Name, "version_name": v.ID, "game_directory": gameDir, "assets_root": filepath.Join(r.Path, "assets"), "assets_index_name": v.AssetIndex.ID, "auth_uuid": a.UUID, "auth_access_token": t.Access, "user_type": "msa", "version_type": v.Type, "natives_directory": natives, "launcher_name": "MCL", "launcher_version": appVersion, "classpath": classpath, "classpath_separator": string(os.PathListSeparator), "library_directory": filepath.Join(r.Path, "libraries"), "user_properties": "{}", "auth_session": "token:" + t.Access + ":" + a.UUID, "game_assets": filepath.Join(r.Path, "assets", "virtual", v.AssetIndex.ID), "resolution_width": "1280", "resolution_height": "720", "clientid": a.ClientID, "auth_xuid": ""}
-		if a.Kind == "yggdrasil" {
-			vars["user_type"] = "mojang"
-		}
-		if a.Kind == "offline" {
-			vars["user_type"] = "legacy"
-		}
-		jvm, e := expandArguments(v.Arguments.JVM, vars)
-		if e != nil {
-			return e
-		}
-		if len(jvm) == 0 {
-			jvm = []string{"-Djava.library.path=" + natives, "-cp", classpath}
-		}
-		args := []string{fmt.Sprintf("-Xmx%dM", memory), "-Dminecraft.launcher.brand=MCL", "-Dminecraft.launcher.version=" + appVersion}
-		args = append(args, customJVM...)
-		args = append(args, jvm...)
-		if v.Logging.Client.Argument != "" {
-			path, e := safeJoin(r.Path, "assets/log_configs/client.xml")
-			if e != nil {
-				return e
-			}
-			args = append(args, strings.ReplaceAll(v.Logging.Client.Argument, "${path}", path))
-		}
-		if a.Kind == "yggdrasil" {
-			injector, e := s.ensureInjector(ctx, p)
-			if e != nil {
-				return e
-			}
-			args = append(args, "-javaagent:"+injector+"="+a.Server)
-		}
-		if v.MainClass == "" {
-			return errors.New("版本元数据缺少主类")
-		}
-		args = append(args, v.MainClass)
-		game, e := expandArguments(v.Arguments.Game, vars)
-		if e != nil {
-			return e
-		}
-		if len(game) == 0 && v.MinecraftArguments != "" {
-			for _, value := range strings.Fields(v.MinecraftArguments) {
-				b, _ := json.Marshal(value)
-				expanded, e := expandArguments([]json.RawMessage{b}, vars)
-				if e != nil {
-					return e
-				}
-				game = append(game, expanded...)
-			}
-		}
-		args = append(args, game...)
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		cmd := exec.Command(java, args...)
-		cmd.Dir = gameDir
-		hideWindow(cmd)
-		secret := t.Access
-		if a.Kind == "offline" {
-			secret = ""
-		}
-		logs := &gameLog{lines: []string{}, secret: secret}
-		cmd.Stdout = logs
-		cmd.Stderr = logs
-		if e = cmd.Start(); e != nil {
-			return fmt.Errorf("启动 Java 失败: %w", e)
-		}
-		s.mu.Lock()
-		s.running[r.ID] = &runningGame{cmd: cmd, log: logs, started: time.Now()}
-		s.mu.Unlock()
-		go func() {
-			e := cmd.Wait()
-			message := "游戏已退出"
-			if e != nil {
-				message = "游戏退出: " + e.Error()
-			}
-			_, _ = logs.Write([]byte(message + "\n"))
-			_ = os.RemoveAll(natives)
-			s.mu.Lock()
-			delete(s.running, r.ID)
-			s.mu.Unlock()
-			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
-		}()
-		p("游戏进程已启动", 1, 1)
-		return nil
-	})
-}
-func (s *Service) Stop(rootID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	game := s.running[rootID]
-	if game == nil {
-		return errors.New("游戏未运行")
-	}
-	return game.cmd.Process.Kill()
-}
-func (s *Service) Logs(rootID string) ([]string, error) {
-	s.mu.Lock()
-	g := s.running[rootID]
-	s.mu.Unlock()
-	if g != nil {
-		return g.log.read(), nil
-	}
-	r, e := s.getRoot(rootID)
-	if e != nil {
-		return nil, e
-	}
-	var lines []string
-	b, e := os.ReadFile(filepath.Join(r.Path, ".mcl", "last-log.json"))
-	if os.IsNotExist(e) {
-		return []string{}, nil
-	}
-	if e != nil {
-		return nil, e
-	}
-	e = json.Unmarshal(b, &lines)
-	return lines, e
 }

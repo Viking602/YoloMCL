@@ -1,23 +1,30 @@
 package distribution
 
 import (
-	"bufio"
 	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Viking602/YoloMCL/internal/dotenv"
 )
 
 // cfKeyObf is injected at build time by scripts/build.ps1 / scripts/build.sh:
 //
-//	-ldflags "-X mcl/internal/distribution.cfKeyObf=<hex>"
+//	-ldflags "-X github.com/Viking602/YoloMCL/internal/distribution.cfKeyObf=<hex>"
 //
 // The value is the CurseForge API key XORed with cfKeyMask and hex-encoded, so
 // the raw key never appears as a plain string in the binary.
 var cfKeyObf string
 
-// cfKeyMask must match the mask in scripts/build.ps1 and scripts/build.sh.
+// cfKeyMask is shared by build-time encoding and runtime decoding.
 const cfKeyMask = "mcl-cf-9f3a7c1e-launcher"
+
+// EncodeCurseForgeKey prepares a build-time linker value. Obfuscation prevents
+// plain-text embedding; it is not encryption and does not make client keys secret.
+func EncodeCurseForgeKey(key string) string {
+	return hex.EncodeToString(xorMask([]byte(strings.TrimSpace(key))))
+}
 
 func xorMask(b []byte) []byte {
 	out := make([]byte, len(b))
@@ -63,15 +70,9 @@ func dotenvValue(path, key string) string {
 		return ""
 	}
 	defer f.Close()
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(strings.TrimPrefix(sc.Text(), "\ufeff"))
-		line = strings.TrimPrefix(line, "export ")
-		k, v, ok := strings.Cut(line, "=")
-		if !ok || strings.TrimSpace(k) != key {
-			continue
-		}
-		return strings.Trim(strings.TrimSpace(v), `"'`)
+	values, err := dotenv.Parse(f, key)
+	if err != nil {
+		return ""
 	}
-	return ""
+	return values[key]
 }

@@ -322,8 +322,19 @@ func TestMaliciousPackNeverEscapesStaging(t *testing.T) {
 		t.Fatal("unsafe pack accepted")
 	}
 	entries, e := os.ReadDir(parent)
-	if e != nil || len(entries) != 0 {
-		t.Fatal("failed pack import left output outside staging")
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, en := range entries {
+		if !strings.HasPrefix(en.Name(), ".mcl-import-") { // the stage is kept for 重试
+			t.Fatalf("failed pack import left %s outside staging", en.Name())
+		}
+	}
+	if e := s.RemoveJob(id); e != nil {
+		t.Fatal(e)
+	}
+	if entries, e = os.ReadDir(parent); e != nil || len(entries) != 0 {
+		t.Fatal("移除 did not clean the import stage")
 	}
 }
 func TestOfflineLaunchWithRealJVM(t *testing.T) {

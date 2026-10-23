@@ -3,7 +3,6 @@ package nativeui
 import (
 	"bytes"
 	"image"
-	"image/color"
 	"image/draw"
 	"image/png"
 	"strconv"
@@ -11,7 +10,8 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 // avatars caches the 8×8 skin head (face + hat layer) per account id.
@@ -57,31 +57,8 @@ func defaultIsAlex(uuid string) bool {
 	return ok && h&1 == 1
 }
 
-// defaultAlexSkin recolours the built-in default as an Alex-style head
-// (ginger hair, lighter skin, green eyes).
-func defaultAlexSkin() image.Image {
-	src := defaultSkin().(*image.NRGBA)
-	out := image.NewNRGBA(src.Bounds())
-	copy(out.Pix, src.Pix)
-	swap := map[color.NRGBA]color.NRGBA{
-		{69, 53, 41, 255}:    {222, 118, 43, 255},
-		{191, 150, 114, 255}: {243, 206, 165, 255},
-		{77, 93, 110, 255}:   {74, 140, 75, 255},
-	}
-	for i := 0; i < len(out.Pix); i += 4 {
-		c := color.NRGBA{out.Pix[i], out.Pix[i+1], out.Pix[i+2], out.Pix[i+3]}
-		if n, ok := swap[c]; ok {
-			out.Pix[i], out.Pix[i+1], out.Pix[i+2] = n.R, n.G, n.B
-		}
-	}
-	return out
-}
-
 func defaultHeadFor(ac launcher.Account) image.Image {
-	if defaultIsAlex(ac.UUID) {
-		return skinHead(defaultAlexSkin())
-	}
-	return skinHead(defaultSkin())
+	return skinHead(builtinSkin(defaultIsAlex(ac.UUID)))
 }
 
 // accountHead returns the cached head bitmap, starting an async load on
@@ -102,6 +79,9 @@ func (a *App) accountHead(ac launcher.Account) *ui.Bitmap {
 		var head image.Image
 		if v, e := a.service.Appearance(a.ctx, ac.ID); e == nil {
 			head = skinHead(imageFromData(v.Skin))
+			if head == nil && ac.Kind == "offline" {
+				head = skinHead(builtinSkin(v.Model == "slim"))
+			}
 		}
 		if head == nil && ac.Kind == "offline" {
 			head = defaultHeadFor(ac)

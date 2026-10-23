@@ -30,11 +30,32 @@ var (
 	motionExit  = ui.Animation{Duration: motionDurExit, Ease: easeInCubic}
 	motionFast  = ui.Animation{Duration: motionDurFast, Ease: easeOutCubic}
 	motionMove  = ui.Animation{Duration: motionDurMove, Ease: easeStandard}
+	motionPack  = ui.Animation{Duration: 260 * time.Millisecond, Ease: ui.CubicBezier(.22, 1, .36, 1)}
 )
+
+// versionSwap crossfades the version text: the new label slides in a few
+// DIPs while the old one fades out under it, taking no room, so nothing
+// jumps. MyGo skips the motion when the desktop asks for reduced motion.
+func versionSwap(s float32) ui.ElementTransition {
+	return ui.ElementTransition{Animation: &motionEnter, Enter: &ui.Motion{Opacity: 0, X: 8 * s}, Exit: &ui.Motion{Opacity: 0, X: -8 * s}}
+}
+
+// The hero always shows the current selection. Keeping outgoing titles around
+// makes rapid switches overlap. Animate only the incoming artwork and text,
+// in fixed slots; the card surface and launch controls stay in place.
+func heroSwap(c *ui.Context) ui.ElementTransition {
+	if c.Preferences().ReduceMotion {
+		return ui.ElementTransition{Colors: true}
+	}
+	return ui.ElementTransition{
+		Animation: &motionPack, Colors: true,
+		Enter: &ui.Motion{Opacity: 0, Y: 14 * uiScale(c)},
+	}
+}
 
 // navOrder is the top navigation order, used to slide pages in the
 // direction of travel.
-var navOrder = []string{"home", "mods", "discover", "wardrobe", "tasks", "settings"}
+var navOrder = []string{"home", "discover", "wardrobe", "tasks", "settings"}
 
 func navIndex(page string) int {
 	for i, p := range navOrder {

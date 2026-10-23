@@ -3,23 +3,45 @@ package nativeui
 import (
 	"embed"
 	"fmt"
-	"github.com/egoist/mygo/ui"
 	"math"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/egoist/mygo/ui"
 )
 
 //go:embed assets/*
 var assets embed.FS
+
 var loadOnce sync.Once
+
+var preloadOnce sync.Once
+
 var assetErr error
+
 var modrinthLogo, curseforgeLogo, microsoftLogo, landscape *ui.SVG
+
 var icons = map[string]*ui.SVG{}
 
 // loaderLogos are the projects' own official logos (see THIRD_PARTY_NOTICES.md),
 // keyed by loader key: vanilla, fabric, forge, neoforge, quilt.
 var loaderLogos = map[string]*ui.Bitmap{}
+
+var brandLogos = map[int]*ui.Bitmap{}
+
+// PreloadAssets overlaps immutable resource preparation with reading the
+// launcher's configuration. New joins loadOnce and reports any error before
+// the first view can use the fonts, images or theme. No window is touched.
+func PreloadAssets() {
+	preloadOnce.Do(func() { go func() { _ = loadAssets() }() })
+}
+
+// BrandIconPNG is the 256 px app icon for the window and taskbar.
+func BrandIconPNG() []byte {
+	b, _ := assets.ReadFile("assets/brand/brand-256.png")
+	return b
+}
 
 // Apple-inspired light palette: aurora canvas, frosted white surfaces, system accents.
 var (
@@ -54,6 +76,8 @@ var (
 
 func loadAssets() error {
 	loadOnce.Do(func() {
+		// Only the settings wordmark uses this face. Bundle its exact glyphs
+		// instead of reading and registering a 5 MB CJK font on every launch.
 		font, e := assets.ReadFile("assets/pixel.otf")
 		if e != nil {
 			assetErr = e
@@ -90,9 +114,9 @@ func loadAssets() error {
 		theme.Success = successInk
 		theme.Warning = warningInk
 		theme.Font = uiFontFamily(titlebarOS())
-		theme.FontSize = 17
-		theme.Radius = 12
-		theme.Spacing = 5
+		theme.FontSize = 14.5
+		theme.Radius = 9
+		theme.Spacing = 16.0 / 3
 		theme.Focus = ui.RGBA(0, 122, 255, .25)
 		// Minecraft-style pixel icons: 16×16 blocks, filled with currentColor
 		// so they follow the text color of wherever they are drawn.
@@ -108,17 +132,28 @@ func loadAssets() error {
 			"account":         `<path d="M6 2h4v1h1v4h-1v1H6V7H5V3h1ZM3 11h10v1h1v2H2v-2h1Z"/>`,
 			"plus":            `<path d="M7 3h2v4h4v2H9v4H7V9H3V7h4Z"/>`,
 			"play":            `<path d="M4 2h2v1h2v1h2v1h2v1h1v4h-1v1h-2v1H8v1H6v1H4Z"/>`,
+			"clock":           `<path fill-rule="evenodd" d="M6 1h4v1h2v1h1v2h1v6h-1v2h-1v1h-2v1H6v-1H4v-1H3v-2H2V5h1V3h1V2h2ZM6 3v1H4v2H3v4h1v2h2v1h4v-1h2v-2h1V6h-1V4h-2V3Z"/><path d="M7 4h2v4h3v2H7Z"/>`,
 			"check":           `<path d="M2 8h2v2h2v2h2v-2h2V8h2V6h2V4h-2v2h-2v2H8v2H6V8H4Z"/>`,
 			"arrow":           `<path d="M2 7h8V5h2v2h2v2h-2v2h-2V9H2Z"/>`,
 			"cross":           `<path d="M3 4h2v1h2v2h2V5h2V4h2v2h-2v1h-2v2h2v2h2v1h-2v-2h-2V9H7v2H5v2H3v-2h2V9h2V7H5V5H3Z"/>`,
 			"chevron":         `<path d="M5 3h2v2h2v2h2v2h-2v2H7v2H5v-2h2V9H5V7h2V5H5Z"/>`,
+			"chevron-left":    `<path d="M11 2H8v2H6v2H4v4h2v2h2v2h3v-2H9v-2H7V6h2V4h2Z"/>`,
+			"chevron-right":   `<path d="M5 2h3v2h2v2h2v4h-2v2H8v2H5v-2h2v-2h2V6H7V4H5Z"/>`,
+			"minus":           `<path d="M3 7h10v2H3Z"/>`,
+			"pause":           `<path d="M4 3h3v10H4Zm5 0h3v10H9Z"/>`,
+			"trash":           `<path d="M6 1h4v1h4v2H2V2h4ZM3 5h10v10H3Zm2 2v6h2V7Zm4 0v6h2V7Z"/>`,
+			"list":            `<path d="M2 3h2v2H2Zm4 0h8v2H6ZM2 7h2v2H2Zm4 0h8v2H6Zm-4 4h2v2H2Zm4 0h8v2H6Z"/>`,
 			"chevron-down":    `<path d="M3 5h2v2h2v2h2V7h2V5h2v2h-2v2h-2v2H7V9H5V7H3Z"/>`,
 			"cube":            `<path d="M7 1h2v1h2v1h2v1h2v2h-2v1h-2v1H9v2h5v2H9v2H7v-2H2v-2h5V8H5V7H3V6H1V4h2V3h2V2h2Z"/>`,
 			"layers":          `<path d="M7 1h2v1h2v1h2v1h2v2H9v1H7V7H1V5h2V4h2V3h2Zm7 6h2v2h-2v1h-2v1H9v1H7v-1H5v-1H3v-1H1V9h2V8h2v1h2v1h2V9h2V8h2Zm0 4h2v2h-2v1h-2v1H9v1H7v-1H5v-1H3v-1H1v-2h2v1h2v1h2v1h2v-1h2v-1h2Z"/>`,
 			"info":            `<path d="M6 1h4v1h2v2h1v2h1v4h-1v2h-2v1H6v-1H4v-2H3V6h1V4h2ZM7 4h2v2H7Zm0 4h2v4H7Z"/>`,
 			"gamepad":         `<path d="M4 5h8v1h2v2h1v4h-2v1h-1v1h-2v-2H8v-1H6v1H4v2H2v-1H1v-4h1V8h1V6h1Zm1 2v1H4v2h1v1h2v-1h1V8H7V7Zm6 1h2v2h-2Z"/>`,
 			"folder-add":      `<path d="M1 3h5v1h2v1h6v2H9v2H7v2H5V9H3V7h2V5H1Zm6 5h2v2h2v2h-2v2H7v-2H5v-2h2Z"/>`,
+			"external":        `<path d="M9 2h5v5h-2V5.4L7.7 9.7 6.3 8.3 10.6 4H9ZM2 4h5v2H4v6h6V9h2v5H2Z"/>`,
 			"globe":           `<path d="M6 1h4v1h1v1h2v1h1v2h1v4h-1v2h-1v1h-2v1H9v1H6v-1H4v-1H2v-2H1V6h1V4h1V3h2V2h2ZM3 6v1h2V6Zm8 0h2v1h-2Zm-6 1h6v1H5Zm-2 2h10v1H3Zm2 2h2v1H5Zm4 0h2v1H9Z"/>`,
+			"download":        `<path d="M7 1h2v5H7ZM3 6h10v1H3ZM4 7h8v1H4ZM5 8h6v1H5ZM6 9h4v1H6ZM7 10h2v1H7ZM2 13h12v2H2Z"/>`,
+			"doc":             `<path d="M3 1h8v2H3ZM3 1h2v14H3ZM3 13h10v2H3ZM11 4h2v11h-2ZM10 2h1v1h1v1h-1ZM7 6h4v1H7ZM7 9h4v1H7Z"/>`,
+			"sun":             `<path d="M6 5h4v1h1v4h-1v1H6v-1H5V6h1ZM7 1h2v2H7ZM7 13h2v2H7ZM1 7h2v2H1ZM13 7h2v2h-2ZM3 3h2v2H3ZM11 3h2v2h-2ZM3 11h2v2H3ZM11 11h2v2h-2Z"/>`,
 			"terminal":        `<path d="M2 3h12v10H2Zm2 2h2v1h1v1h1v2H7v1H5v1H4V9H3V7h1V6h1Zm5 4h3v2H9Z"/>`,
 			"refresh":         `<path d="M6 2h4v1h2v1h1v1h1v2h-2V6h-1V5H9V4H7v1H6v1H5v4h1v1h1v1h2v-1h1V9h2v1h-1v1h-1v1H9v1H6v-1H4v-1H3V9H2V6h1V4h1V3h2Zm6 7h2v1h1v1h1v2h-1v1h-2v-2h1v-1h-1v-1h-1Z"/>`,
 			"loader-vanilla":  `<path d="M6 2h4v1h2v1h2v1h1v6h-1v1h-2v1h-2v1H6v-1H4v-1H2v-1H1V5h1V4h2V3h2Zm1 4H5v1H4v3h1v1h2v1h2V9h1V8h1V5H9V4H7Z"/>`,
@@ -142,6 +177,15 @@ func loadAssets() error {
 			}
 			loaderLogos[key] = bmp
 		}
+		for _, px := range []int{32, 64, 128} {
+			if b, e := assets.ReadFile(fmt.Sprintf("assets/brand/brand-%d.png", px)); e == nil {
+				if bmp, e := ui.DecodeBitmap(b); e == nil {
+					brandLogos[px] = bmp
+				}
+			}
+		}
+		// GitHub's Octicons mark (MIT); retain smooth curves for the brand icon.
+		icons["github"] = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg>`))
 		microsoftLogo = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#f25022" d="M0 0h23v23H0z"/><path fill="#7fba00" d="M25 0h23v23H25z"/><path fill="#00a4ef" d="M0 25h23v23H0z"/><path fill="#ffb900" d="M25 25h23v23H25z"/></svg>`))
 		for file, target := range map[string]**ui.SVG{"modrinth.svg": &modrinthLogo, "curseforge.svg": &curseforgeLogo, "landscape.svg": &landscape} {
 			b, e := assets.ReadFile("assets/" + file)
@@ -162,14 +206,14 @@ func loadAssets() error {
 // Apple Oklab gradient helpers.
 func appleAccentGradient(hovered bool) ui.LinearGradient {
 	if hovered {
-		return ui.LinearGradient{From: ui.Hex("#2b95ff"), To: ui.Hex("#7471f0"), Angle: 120, Oklab: true}
+		return ui.LinearGradient{From: ui.Hex("#2b95ff"), To: ui.Hex("#7471f0"), Angle: 120}
 	}
-	return ui.LinearGradient{From: ui.Hex("#0a84ff"), To: accentIndigo, Angle: 120, Oklab: true}
+	return ui.LinearGradient{From: ui.Hex("#0a84ff"), To: accentIndigo, Angle: 120}
 }
 
 // tintGradient is the two-tone squircle fill of a colored row or header icon.
 func tintGradient(from, to ui.Color) ui.LinearGradient {
-	return ui.LinearGradient{From: from, To: to, Angle: 135, Oklab: true}
+	return ui.LinearGradient{From: from, To: to, Angle: 135}
 }
 
 // glass styles e as a frosted surface: translucent white over the aurora
@@ -182,7 +226,7 @@ func glass(e ui.Element, radius, s float32) ui.Element {
 // popover styles floating layers (dialogs, menus) that sit above content
 // and must stay legible over anything.
 func popover(e ui.Element, radius, s float32) ui.Element {
-	return e.Radius(radius).LinearGradient(ui.LinearGradient{From: ui.RGBA(255, 255, 255, .97), To: ui.RGBA(248, 249, 253, .95), Angle: 180}).
+	return e.Radius(radius).LinearGradient(ui.LinearGradient{From: ui.RGBA(255, 255, 255, 1), To: ui.RGBA(248, 249, 253, 1), Angle: 180}).
 		Border(1, glassEdge).Shadow(0, 24*s, 60*s, -12*s, ui.RGBA(30, 40, 90, .28)).Shadow(0, 0, 0, 1, ui.RGBA(30, 40, 90, .06))
 }
 
@@ -231,10 +275,6 @@ func label(c *ui.Context, s string) ui.Element {
 	return ui.Text(c, s).TextColor(muted).FontSize(typeCallout * uiScale(c))
 }
 
-func title(c *ui.Context, s string) ui.Element {
-	return ui.Text(c, s).FontSize(30 * uiScale(c)).Bold().TextColor(ink).SingleLine()
-}
-
 // Apple Pill Badge with soft gradient fill
 func badge(c *ui.Context, s string, color ui.Color) {
 	scale := uiScale(c)
@@ -254,23 +294,23 @@ func badge(c *ui.Context, s string, color ui.Color) {
 		from, to = ui.Hex("#fff6e5"), ui.Hex("#ffebcc")
 		fg = warningInk
 	}
-	ui.Row(c).Shrink(0).Padding(4*scale, 11*scale).Radius(999).LinearGradient(tintGradient(from, to)).Border(1, ui.RGBA(255, 255, 255, .7)).Children(func() {
-		ui.Text(c, s).FontSize(12 * scale).FontWeight(600).TextColor(fg).NoWrap().Shrink(0)
+	ui.Row(c).Shrink(0).Padding(3*scale, 9*scale).Radius(999).LinearGradient(tintGradient(from, to)).Border(1, ui.RGBA(255, 255, 255, .7)).Children(func() {
+		ui.Text(c, s).FontSize(typeCaption * scale).FontWeight(600).TextColor(fg).NoWrap().Shrink(0)
 	})
 }
 
 func tagChip(c *ui.Context, s string) {
 	scale := uiScale(c)
 	ui.Row(c).Shrink(0).Padding(3*scale, 9*scale).Radius(999).Background(fieldColor).Children(func() {
-		ui.Text(c, s).FontSize(11.5 * scale).FontWeight(500).TextColor(inkSecondary).NoWrap().Shrink(0)
+		ui.Text(c, s).FontSize(typeCaption2 * scale).FontWeight(500).TextColor(inkSecondary).NoWrap().Shrink(0)
 	})
 }
 
 func buttonWidth(c *ui.Context, text, icon string, fontSize float32) float32 {
 	w, _ := c.MeasureText(0, ui.Span{Text: text, Font: theme.Font, Size: fontSize, Weight: 600})
-	w += 48 * uiScale(c)
+	w += 28 * uiScale(c)
 	if icon != "" {
-		w += fontSize + 10*uiScale(c)
+		w += fontSize + 8*uiScale(c)
 	}
 	return float32(math.Ceil(float64(max(w, btnMin*uiScale(c)))))
 }
@@ -289,14 +329,14 @@ func styleButton(b ui.Element, s float32, primary, disabled bool) {
 	}
 	if primary {
 		if pressed {
-			b.LinearGradient(ui.LinearGradient{From: ui.Hex("#0a6fe0"), To: ui.Hex("#4f4dd0"), Angle: 120, Oklab: true}).InsetShadow(0, 1*s, 3*s, 0, ui.RGBA(0, 0, 60, .18)).Shadow(0, 2*s, 6*s, -2*s, ui.RGBA(10, 100, 255, .35))
+			b.LinearGradient(ui.LinearGradient{From: ui.Hex("#0a6fe0"), To: ui.Hex("#4f4dd0"), Angle: 120}).InsetShadow(0, 1*s, 3*s, 0, ui.RGBA(0, 0, 60, .18)).Shadow(0, 2*s, 6*s, -2*s, ui.RGBA(10, 100, 255, .35))
 			return
 		}
-		glow := ui.RGBA(10, 100, 255, .38)
+		glow := ui.RGBA(10, 100, 255, .30)
 		if hovered {
-			glow = ui.RGBA(10, 100, 255, .5)
+			glow = ui.RGBA(10, 100, 255, .42)
 		}
-		b.LinearGradient(appleAccentGradient(hovered)).InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, .28)).Shadow(0, 6*s, 16*s, -4*s, glow)
+		b.LinearGradient(appleAccentGradient(hovered)).InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, .28)).Shadow(0, 4*s, 12*s, -3*s, glow)
 		return
 	}
 	targetBg := ui.RGBA(255, 255, 255, .78)
@@ -316,9 +356,8 @@ func styleButton(b ui.Element, s float32, primary, disabled bool) {
 }
 
 func buttonContent(c *ui.Context, key, text, icon string, fontSize float32, fg ui.Color) {
-	s := uiScale(c)
 	if icon != "" && icons[icon] != nil {
-		ui.Icon(c, icons[icon]).Size(fontSize+1.5*s, fontSize+1.5*s).Shrink(0)
+		ui.Icon(c, icons[icon]).Size(fontSize, fontSize).Shrink(0)
 	}
 	ui.Text(c, text).Label("按钮文字 " + key).FontSize(fontSize).FontWeight(600).TextColor(fg).NoWrap().Shrink(0)
 }
@@ -333,12 +372,12 @@ func buttonForeground(primary, disabled bool) ui.Color {
 	return ink
 }
 
-// button is the standard 40-DIP action button; its width follows the text.
+// button is the compact standard action button; its width follows the text.
 func button(c *ui.Context, key, text, icon string, primary, disabled bool) bool {
 	s := uiScale(c)
 	fg := buttonForeground(primary, disabled)
-	b := ui.ButtonBase(c.Key(key)).Label(text).Size(buttonWidth(c, text, icon, 16*s), 40*s).Shrink(0).Gap(8*s).Padding(0, 16*s).AlignItems(ui.Center).Justify(ui.Center).Radius(radiusControl * s).TextColor(fg)
-	return finishButton(c, b, key, text, icon, 16*s, fg, primary, disabled)
+	b := ui.ButtonBase(c.Key(key)).Label(text).Size(buttonWidth(c, text, icon, typeCallout*s), btnMd*s).Shrink(0).Gap(7*s).Padding(0, 14*s).AlignItems(ui.Center).Justify(ui.Center).Radius(radiusControl * s).TextColor(fg)
+	return finishButton(c, b, key, text, icon, typeCallout*s, fg, primary, disabled)
 }
 
 // fixedButton is a button of at least width × height, so aligned controls
@@ -346,8 +385,8 @@ func button(c *ui.Context, key, text, icon string, primary, disabled bool) bool 
 func fixedButton(c *ui.Context, key, text, icon string, width, height float32, primary, disabled bool) bool {
 	s := uiScale(c)
 	fg := buttonForeground(primary, disabled)
-	font := min(16*s, height*.38)
-	b := ui.ButtonBase(c.Key(key)).Label(text).Size(max(width, buttonWidth(c, text, icon, font)), height).Shrink(0).PaddingX(16 * s).Radius(min(14*s, height*.32)).TextColor(fg).AlignItems(ui.Center).Justify(ui.Center).Gap(8 * s)
+	font := min(typeCallout*s, max(typeCaption*s, height*.43))
+	b := ui.ButtonBase(c.Key(key)).Label(text).Size(max(width, buttonWidth(c, text, icon, font)), height).Shrink(0).PaddingX(14 * s).Radius(min(radiusControl*s, height*.30)).TextColor(fg).AlignItems(ui.Center).Justify(ui.Center).Gap(7 * s)
 	return finishButton(c, b, key, text, icon, font, fg, primary, disabled)
 }
 
@@ -390,7 +429,7 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 	if labelText != "" {
 		sel.Trigger.Label(labelText)
 	}
-	sel.Trigger.Height(40*s).Padding(space2*s, space3*s).Radius(radiusControl * s).Clip().Background(sel.Trigger.AnimateColor("bg", triggerBg, fastAnim)).AlignItems(ui.Center).Gap(8 * s).Children(func() {
+	sel.Trigger.Height(btnMd*s).Padding(6*s, 12*s).Radius(radiusControl * s).Clip().Background(sel.Trigger.AnimateColor("bg", triggerBg, fastAnim)).AlignItems(ui.Center).Gap(8 * s).Children(func() {
 		if drawIcon != nil {
 			drawIcon(*selected)
 		}
@@ -402,7 +441,7 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 				ui.Icon(c, icons[ic]).Size(16*s, 16*s).TextColor(col).Shrink(0)
 			}
 		}
-		ui.Text(c, show(*selected)).FontSize(15 * s).TextColor(ink).Grow(1).Shrink(1).Basis(0).MinWidth(0).SingleLine().Tooltip(*selected)
+		ui.Text(c, show(*selected)).FontSize(typeBody * s).TextColor(ink).Grow(1).Shrink(1).Basis(0).MinWidth(0).SingleLine().Tooltip(*selected)
 		if trailing != nil {
 			trailing(*selected, false)
 		}
@@ -440,7 +479,7 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 								ui.Icon(c, icons[ic]).Size(16*s, 16*s).TextColor(col).Shrink(0)
 							}
 						}
-						ui.Text(c, show(option)).FontSize(14.5 * s).TextColor(fgCol).Grow(1).Basis(0).MinWidth(0).SingleLine()
+						ui.Text(c, show(option)).FontSize(typeCallout * s).TextColor(fgCol).Grow(1).Basis(0).MinWidth(0).SingleLine()
 						if trailing != nil {
 							trailing(option, item.Highlighted())
 						}
@@ -463,7 +502,7 @@ func loaderSelectBox(c *ui.Context, key, labelText string, selected *string, opt
 
 func card(c *ui.Context, key string, fn func()) {
 	s := uiScale(c)
-	glass(ui.Column(c.Key(key)).FillWidth().Clip().Gap(space4*s).Padding(space5*s, space6*s), radiusCard*s, s).Children(fn)
+	glass(ui.Column(c.Key(key)).FillWidth().Clip().Gap(14*s).Padding(18*s, 22*s), radiusCard*s, s).Children(fn)
 }
 
 // loaderLogoKey maps a loader name or icon name to its official logo key,
@@ -497,9 +536,9 @@ func loaderLogo(c *ui.Context, loader string, size float32) bool {
 func iconOnlyButton(c *ui.Context, key, icon, label string, size float32, disabled bool) bool {
 	s := uiScale(c)
 	fg := buttonForeground(false, disabled)
-	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(size, size).Shrink(0).Radius(min(12*s, size*.32)).AlignItems(ui.Center).Justify(ui.Center)
+	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(size, size).Shrink(0).Radius(min(radiusControl*s, size*.30)).AlignItems(ui.Center).Justify(ui.Center)
 	styleButton(b, s, false, disabled)
-	return b.Children(func() { ui.Icon(c, icons[icon]).Size(size*.48, size*.48).TextColor(fg) }).Clicked() && !disabled
+	return b.Children(func() { ui.Icon(c, icons[icon]).Size(0.45*size, 0.45*size).TextColor(fg) }).Clicked() && !disabled
 }
 
 // javaTag is the small tinted pill for a recommended/required Java major.
@@ -509,7 +548,7 @@ func javaTag(c *ui.Context, major int) {
 	}
 	scale := uiScale(c)
 	ui.Row(c).Label(fmt.Sprintf("Java 标签 %d", major)).Shrink(0).Padding(2*scale, 8*scale).Radius(999).Background(accent.Alpha(.10)).Border(1, accent.Alpha(.18)).Children(func() {
-		ui.Text(c, fmt.Sprintf("Java %d", major)).FontSize(11 * scale).FontWeight(600).TextColor(accent).NoWrap().Shrink(0)
+		ui.Text(c, fmt.Sprintf("Java %d", major)).FontSize(typeCaption2 * scale).FontWeight(600).TextColor(accent).NoWrap().Shrink(0)
 	})
 }
 
@@ -570,7 +609,7 @@ func whyHint(c *ui.Context, why string) {
 	s := uiScale(c)
 	ui.Row(c).Label("禁用原因 " + why).Gap(5 * s).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
 		ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(disabledInk).Shrink(0)
-		ui.Text(c, why).FontSize(12.5 * s).TextColor(disabledInk).SingleLine().Shrink(1).MinWidth(0)
+		ui.Text(c, why).FontSize(typeFootnote * s).TextColor(disabledInk).SingleLine().Shrink(1).MinWidth(0)
 	})
 }
 
@@ -598,17 +637,17 @@ func dangerButton(c *ui.Context, key, text string, height float32, disabled bool
 	s := uiScale(c)
 	b := ui.ButtonBase(c.Key(key)).Label(text).Height(height).PaddingX(12 * s).Shrink(0).Radius(min(12*s, height*.32)).AlignItems(ui.Center).Background(danger).AutoFocus()
 	return b.Children(func() {
-		ui.Text(c, text).FontSize(13 * s).FontWeight(600).TextColor(panel).NoWrap()
+		ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(600).TextColor(panel).NoWrap()
 	}).Clicked() && !disabled
 }
 
 // Button size tokens: heights by role, and one horizontal padding.
 const (
-	btnSm  float32 = 32 // row actions (选择, 设为当前)
-	btnMd  float32 = 40 // standard
-	btnLg  float32 = 52 // launch bar
-	btnPad float32 = 16
-	btnMin float32 = 72 // minimum width of a text button
+	btnSm  float32 = 30 // row actions (选择, 设为当前)
+	btnMd  float32 = 35 // standard action button
+	btnLg  float32 = 40 // primary launch CTA
+	btnPad float32 = 12
+	btnMin float32 = 54 // minimum width of a text button
 )
 
 // midEllipsis shortens text to fit maxW by cutting its middle, keeping the
@@ -652,4 +691,12 @@ func uiFontFamily(goos string) string {
 		cjk = "Microsoft YaHei UI, Microsoft YaHei"
 	}
 	return uiMonoFamily + ", " + cjk + ", system-ui"
+}
+
+// textField is the one single-line input: a fixed control height with no
+// vertical padding, so the toolkit centers the line box and mono/CJK text
+// sit on the same middle line in every field; 13-DIP side insets.
+func textField(c *ui.Context, value *string) ui.Element {
+	s := uiScale(c)
+	return ui.TextInput(c, value).Height(btnMd*s).Padding(0, 13*s).FontSize(typeCallout * s)
 }

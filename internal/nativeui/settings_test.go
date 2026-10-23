@@ -6,11 +6,15 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func settingsTester(t *testing.T) (*App, *ui.Tester) {
 	t.Helper()
+	// Each fixture represents a new window, not the previous test's saved
+	// settings scroll position. A taller About footer makes that distinction visible.
+	delete(scrollTracks, "settings-scroll")
 	s, e := launcher.New(t.TempDir())
 	if e != nil {
 		t.Fatal(e)
@@ -20,6 +24,8 @@ func settingsTester(t *testing.T) (*App, *ui.Tester) {
 		t.Fatal(e)
 	}
 	t.Cleanup(a.cancel)
+	a.systemLanguage = LangZH // deterministic system preference for this fixture
+	a.normalizeStateValues()
 	a.page = "settings"
 	a.settings.MemoryMode = "manual" // these tests exercise the manual slider
 	return a, ui.NewTester(a.View, 1536, 1024)
@@ -27,7 +33,7 @@ func settingsTester(t *testing.T) (*App, *ui.Tester) {
 
 func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {
 	_, tt := settingsTester(t)
-	for _, label := range []string{"主导航", "启动环境面板", "游戏版本面板", "关于 MCL 面板", "设置操作栏"} {
+	for _, label := range []string{"主导航", "启动环境面板", "游戏版本面板", "设置操作栏", "跟随系统", "简体中文", "English"} {
 		got, ok := tt.Find(label)
 		minY := float32(42)
 		if label == "主导航" {
@@ -43,7 +49,7 @@ func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {
 	snapshotUI(t, tt, "settings-approved")
 	for _, size := range [][2]int{{1320, 860}, {1060, 720}} {
 		tt.SetSize(size[0], size[1])
-		for _, label := range []string{"最大内存滑块", "最大内存输入", "跟随目录设置开关", "显示快照版本开关", "恢复默认"} {
+		for _, label := range []string{"最大内存滑块", "最大内存输入", "跟随目录设置开关", "显示快照版本开关", "恢复默认", "跟随系统", "简体中文", "English"} {
 			r, ok := tt.Find(label)
 			if !ok || r.W <= 0 || r.H <= 0 || r.X < 0 || r.Y < 42 || r.X+r.W > float32(size[0]) || r.Y+r.H > float32(size[1]) {
 				t.Errorf("%s not fully visible at %v: %+v", label, size, r)
@@ -51,6 +57,12 @@ func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {
 		}
 	}
 	snapshotUI(t, tt, "settings-small")
+	// The About row follows the variable-height installed Java list in a
+	// scrollable body; it must be reachable, not necessarily in the first view.
+	tt.Scroll(700, 400, 0, 10000)
+	if r, ok := tt.Find("关于 YoloMCL 面板"); !ok || r.W <= 0 || r.H <= 0 || r.Y < 42 || r.Y+r.H > 720 {
+		t.Fatalf("About footer is not reachable: %+v", r)
+	}
 }
 
 func TestNativeMemorySliderAndSettingsPersistence(t *testing.T) {
@@ -104,6 +116,37 @@ func TestNativeMemorySliderAndSettingsPersistence(t *testing.T) {
 	}
 }
 
+func TestSettingsSaveKeepsLatestDraft(t *testing.T) {
+	a, tt := settingsTester(t)
+	defer func() { a.cancel(); a.bgWG.Wait() }()
+	// Queue several drafts behind a slow write, then let the workers compete.
+	// Neither persistence order nor a queued completion may undo a later edit.
+	a.settingsMu.Lock()
+	for _, mb := range []int{2048, 4096, 6144} {
+		a.memoryText = strconv.Itoa(mb)
+		a.settings.ShowSnapshots = mb == 6144
+		a.persistSettings("")
+	}
+	a.settingsMu.Unlock()
+	a.bgWG.Wait()
+	if got := a.service.Snapshot().Settings; got.MemoryMB != 6144 || !got.ShowSnapshots {
+		t.Fatalf("older draft overwrote newest settings: %+v", got)
+	}
+	// A completion already in the UI queue belongs to the preceding draft.
+	a.memoryText = "4096"
+	a.settings.UseRootSettings = true
+	a.persistSettings("")
+	tt.Frame()
+	if a.settings.MemoryMB != 4096 || !a.settings.UseRootSettings || !a.settings.ShowSnapshots {
+		t.Fatal("queued settings completion replaced the current draft")
+	}
+	a.bgWG.Wait()
+	tt.Frame()
+	if got := a.service.Snapshot().Settings; got.MemoryMB != 4096 || !got.UseRootSettings || !got.ShowSnapshots {
+		t.Fatalf("latest settings did not persist: %+v", got)
+	}
+}
+
 func TestNativeJavaFilterAndSelection(t *testing.T) {
 	a, tt := settingsTester(t)
 	path := filepath.Join(t.TempDir(), "portable-jdk21", "bin", "java.exe")
@@ -111,7 +154,7 @@ func TestNativeJavaFilterAndSelection(t *testing.T) {
 	a.javaPhase = "找到 2 个 Java"
 	a.openDialog("java")
 	tt.Frame()
-	if !tt.HasText("全盘扫描") || !tt.HasText("Eclipse Adoptium") || !tt.HasText("x86_64") {
+	if !tt.HasText("深入扫描") || !tt.HasText("Eclipse Adoptium") || !tt.HasText("x86_64") {
 		t.Fatal("Java details or full-scan control missing")
 	}
 	typeUI(t, tt, "筛选 Java", "portable-jdk21")

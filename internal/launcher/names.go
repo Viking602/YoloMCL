@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
@@ -28,7 +29,77 @@ func loaderVersion(v gameVersion, loader, mc string) string {
 			return ver
 		}
 	}
+	switch loader {
+	case "neoforge":
+		return versionArgument(v, "--fml.neoForgeVersion", "-Dfml.neoForgeVersion")
+	case "forge":
+		return versionArgument(v, "--fml.forgeVersion", "-Dfml.forgeVersion")
+	}
 	return ""
+}
+
+// Merged launcher profiles can rename id and remove inheritsFrom while the
+// actual Minecraft/loader builds remain in FML arguments. Read both modern
+// argument arrays (including conditional values) and the legacy string.
+func versionArgument(v gameVersion, names ...string) string {
+	args := strings.Fields(v.MinecraftArguments)
+	var appendValue func(json.RawMessage)
+	appendValue = func(raw json.RawMessage) {
+		var text string
+		if json.Unmarshal(raw, &text) == nil {
+			args = append(args, text)
+			return
+		}
+		var values []json.RawMessage
+		if json.Unmarshal(raw, &values) == nil {
+			for _, value := range values {
+				appendValue(value)
+			}
+			return
+		}
+		var conditional struct {
+			Value json.RawMessage `json:"value"`
+		}
+		if json.Unmarshal(raw, &conditional) == nil && len(conditional.Value) > 0 {
+			appendValue(conditional.Value)
+		}
+	}
+	for _, raw := range append(append([]json.RawMessage{}, v.Arguments.Game...), v.Arguments.JVM...) {
+		appendValue(raw)
+	}
+	for i := len(args) - 1; i >= 0; i-- {
+		for _, name := range names {
+			if args[i] == name && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				return args[i+1]
+			}
+			if value, ok := strings.CutPrefix(args[i], name+"="); ok && value != "" {
+				return value
+			}
+		}
+	}
+	return ""
+}
+
+func minecraftVersionOf(v gameVersion) string {
+	if mc := versionArgument(v, "--fml.mcVersion", "--fml.minecraftVersion", "-Dfml.mcVersion"); mc != "" {
+		return mc
+	}
+	if v.ClientVersion != "" {
+		return v.ClientVersion
+	}
+	if v.InheritsFrom != "" {
+		return v.InheritsFrom
+	}
+	for _, lib := range v.Libraries {
+		parts := strings.Split(lib.Name, ":")
+		if len(parts) >= 3 && (parts[0] == "net.minecraft" && parts[1] == "client" || parts[0] == "net.fabricmc" && parts[1] == "intermediary") {
+			return parts[2]
+		}
+	}
+	if v.Jar != "" {
+		return v.Jar
+	}
+	return v.ID
 }
 
 var snapshotRe = regexp.MustCompile(`^\d{2}w\d{2}[a-z]$|-(pre|rc)\d+$| Pre-Release \d+$`)

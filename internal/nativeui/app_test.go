@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func waitUI(t *testing.T, tt *ui.Tester, predicate func() bool) {
@@ -70,7 +71,9 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer a.cancel()
+	defer func() { a.cancel(); a.bgWG.Wait() }()
+	a.systemLanguage = LangZH
+	a.normalizeStateValues()
 	tt := ui.NewTester(a.View, 1320, 860)
 	if !tt.HasText("游戏版本") {
 		t.Fatal(tt.Texts())
@@ -91,11 +94,11 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	}
 	snapshotUI(t, tt, "account")
 	clickUI(t, tt, "添加离线账号")
-	waitUI(t, tt, func() bool { return !a.busy && !a.dialogOpen && len(a.snapshot.Accounts) == 1 })
+	waitUI(t, tt, func() bool { return !(len(a.pendingRequests) > 0) && !a.dialogOpen && len(a.snapshot.Accounts) == 1 })
 	if a.snapshot.Accounts[0].Kind != "offline" {
 		t.Fatal(a.snapshot.Accounts)
 	}
-	clickUI(t, tt, "角色衣橱")
+	clickUI(t, tt, "衣橱")
 	waitUI(t, tt, func() bool { return !a.appearanceLoading && a.appearanceAccount != "" })
 	if !tt.HasText("本机") {
 		t.Fatal("offline appearance scope missing")
@@ -114,22 +117,25 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	if e = os.WriteFile(filepath.Join(mc, "mods", "native-test.jar"), jar.Bytes(), 0644); e != nil {
 		t.Fatal(e)
 	}
-	clickUI(t, tt, "游戏库")
+	clickUI(t, tt, "实例")
 	clickUI(t, tt, "添加目录")
 	typeUI(t, tt, "游戏文件夹输入", game)
 	typeUI(t, tt, "目录名称输入", "生存世界")
 	clickUI(t, tt, "确认添加目录")
-	waitUI(t, tt, func() bool { return !a.busy && !a.dialogOpen && len(a.snapshot.Instances) == 1 })
+	waitUI(t, tt, func() bool { return !(len(a.pendingRequests) > 0) && !a.dialogOpen && len(a.snapshot.Instances) == 1 })
 	if a.snapshot.Instances[0].Path != mc {
 		t.Fatalf("directory must resolve its .minecraft: %q", a.snapshot.Instances[0].Path)
 	}
-	clickUI(t, tt, "模组管理")
+	a.goPage("mods") // 模组 is an instance tab now
+	tt.Frame()
 	waitUI(t, tt, func() bool { return !a.modsLoading && len(a.mods) == 1 })
 	if !tt.HasText("测试模组") || !tt.HasText("1.2.3") {
 		t.Fatal(tt.Texts())
 	}
-	clickUI(t, tt, "启用 测试模组")
-	waitUI(t, tt, func() bool { return !a.busy && !a.modsLoading && len(a.mods) == 1 && !a.mods[0].Enabled })
+	clickUI(t, tt, "切换启用 测试模组")
+	waitUI(t, tt, func() bool {
+		return !(len(a.pendingRequests) > 0) && !a.modsLoading && len(a.mods) == 1 && !a.mods[0].Enabled
+	})
 	if _, e = os.Stat(filepath.Join(mc, "mods", "native-test.jar.disabled")); e != nil {
 		t.Fatal(e)
 	}
@@ -214,10 +220,12 @@ func TestBilingualSwitchingAndCoreWorkflows(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer a.cancel()
+	defer func() { a.cancel(); a.bgWG.Wait() }()
+	a.systemLanguage = LangZH
+	a.normalizeStateValues()
 	tt := ui.NewTester(a.View, 1440, 920)
 	if !tt.HasText("游戏版本") {
-		t.Fatalf("expected default zh-CN home title, got: %v", tt.Texts())
+		t.Fatalf("expected system zh-CN home title, got: %v", tt.Texts())
 	}
 	// Verify zero duplicate action texts on the Home screen
 	for _, uniqueText := range []string{"添加账号", "安装游戏", "添加目录", "导入整合包"} {
@@ -237,21 +245,22 @@ func TestBilingualSwitchingAndCoreWorkflows(t *testing.T) {
 
 	// Verify English dialogs for Modpack Import and Game/Modloader Installation
 	clickUI(t, tt, "Import Modpack")
-	if !tt.HasText("Modpack Archive") || !tt.HasText("Parent Destination Folder") {
+	if !tt.HasText("Modpack Archive") || !tt.HasText("Location") {
 		t.Fatalf("English import modpack dialog incomplete: %v", tt.Texts())
 	}
 	clickUI(t, tt, "Close")
 
 	clickUI(t, tt, "Install Game")
-	if !tt.HasText("Install Minecraft & Mod Loader Wizard") || !tt.HasText("Step 3 · Choose Mod Loader & Version") {
+	if !tt.HasText("Install Minecraft & Mod Loader Wizard") || !tt.HasText("Step 3: Choose Mod Loader & Version") {
 		t.Fatalf("English install dialog incomplete: %v", tt.Texts())
 	}
 	clickUI(t, tt, "Close")
 
 	// Verify English navigation across pages
-	clickUI(t, tt, "Mods")
-	if !tt.HasText("Mod Manager") {
-		t.Fatalf("English Mods page title missing: %v", tt.Texts())
+	a.goPage("mods") // no directory yet: mods redirect to the Instances view
+	tt.Frame()
+	if a.page != "home" || a.instTab != "mods" || !tt.HasText("Instances") {
+		t.Fatalf("mods should open the Instances view: %v", tt.Texts())
 	}
 	clickUI(t, tt, "Wardrobe")
 	if !tt.HasText("Character Wardrobe") {
@@ -264,8 +273,8 @@ func TestBilingualSwitchingAndCoreWorkflows(t *testing.T) {
 	// Settings now sit next to the launch button in the bottom bar.
 	a.goPage("home")
 	tt.Advance(400 * time.Millisecond)
-	if _, ok := tt.Find("按钮文字 dock-settings"); !ok {
-		t.Fatalf("dock settings button missing: %v", tt.Texts())
+	if _, ok := tt.Find("按钮文字 dock-settings"); ok {
+		t.Fatalf("the launch dock should be gone: %v", tt.Texts())
 	}
 	clickUI(t, tt, "Settings")
 	if !tt.HasText("Settings") || !tt.HasText("Runtime Environment") {
@@ -323,13 +332,16 @@ func TestPerVersionConfigAndResourceShaderPacksFlow(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer a.cancel()
+	defer func() { a.cancel(); a.bgWG.Wait() }()
+	a.systemLanguage = LangZH
+	a.normalizeStateValues()
 	tt := ui.NewTester(a.View, 1440, 920)
 	if !tt.HasText("恶咒") {
 		t.Fatalf("expected version '恶咒' from versions/ to be visible on Home: %v", tt.Texts())
 	}
 	// Configure per-version Memory & G1GC JVM arguments
-	clickUI(t, tt, "设置")
+	a.setInstTab("settings") // 设置 is the instance tab in the split view
+	tt.Frame()
 	if !a.form.VerMemAuto || !tt.HasText("自动内存值") && !strings.Contains(strings.Join(tt.Texts(), " "), "自动（约") {
 		t.Fatalf("new versions should default to automatic memory: %v", tt.Texts())
 	}
@@ -337,20 +349,23 @@ func TestPerVersionConfigAndResourceShaderPacksFlow(t *testing.T) {
 	clickUI(t, tt, "4 GB")
 	clickUI(t, tt, "G1GC 均衡 (推荐)")
 	clickUI(t, tt, "保存")
-	waitUI(t, tt, func() bool { return !a.busy && !a.dialogOpen })
+	waitUI(t, tt, func() bool {
+		return !(len(a.pendingRequests) > 0) && !a.dialogOpen && a.root().VersionConfigs["恶咒"].MemoryMB == 4096
+	})
 	vc := a.root().VersionConfigs["恶咒"]
 	if vc.MemoryMB != 4096 || !strings.Contains(vc.JVMArgs, "-XX:+UseG1GC") {
 		t.Fatalf("per-version config was not saved: %+v", vc)
 	}
 
 	// Switch to Mods & Addons page and test Resource Packs & Shaders tabs
-	clickUI(t, tt, "模组管理")
-	clickUI(t, tt, "材质包 (Resource Packs)")
+	a.goPage("mods") // 模组 is an instance tab now
+	tt.Frame()
+	clickUI(t, tt, "资源包")
 	waitUI(t, tt, func() bool { return !a.modsLoading && len(a.assetPacks) == 1 })
 	if !tt.HasText("faith-hd") || !tt.HasText("High-Res Faith Pack") {
 		t.Fatalf("resource pack metadata not rendered: %v", tt.Texts())
 	}
-	clickUI(t, tt, "光影包 (Shaders)")
+	clickUI(t, tt, "光影")
 	waitUI(t, tt, func() bool { return !a.modsLoading && len(a.assetPacks) == 1 })
 	if !tt.HasText("ComplementaryReimagined") {
 		t.Fatalf("shader pack not rendered: %v", tt.Texts())

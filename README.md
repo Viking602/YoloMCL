@@ -1,59 +1,84 @@
+<p align="center"><img src="docs/logo.png" width="128" alt="YoloMCL"></p>
+
 # YoloMCL
 
-YoloMCL（应用内简称 MCL）是一个用 Go 编写的 Minecraft: Java 版启动器。界面基于 [MyGo](https://github.com/egoist/mygo) 的原生 UI（`mygo/ui`），没有 HTML、WebView 或本地网页服务，支持 Windows、macOS 和 Linux。
+A native Minecraft: Java Edition launcher written in Go, powered by [MyGo](https://github.com/egoist/mygo). No WebView, HTML frontend, or local web server.
 
-## 功能
+[Download](https://github.com/Viking602/YoloMCL/releases/latest) · [中文介绍](README.zh-CN.md) · [Contributing](CONTRIBUTING.md) · [Release guide](docs/releases.md)
 
-- **跨平台原生界面**：标题栏按平台适配（macOS 使用系统红绿灯，位于左侧；Windows/Linux 标题栏与顶部导航合并）；任意窗口尺寸与 DPI 下不失真缩放；自然的页面动效与悬浮滚动条；中英双语（`zh-CN` / `en-US`）切换。
-- **内置字体**：附带 JetBrains Mono，中文按系统回退到对应 CJK 字体。
-- **游戏目录**：按平台自动识别默认 `.minecraft` 目录，可添加、切换、改名多个目录，每个目录可单独设置 Java 与内存。
-- **版本安装**：从 Mojang 获取完整版本清单（正式版、快照/预发布、历史 Beta/Alpha），按官方哈希校验；支持 Fabric、Quilt 以及 Forge / NeoForge 官方安装器。默认版本名包含版本号与加载器版本，导入的整合包使用整合包自身名称；版本名右上角以小标签显示 MC 版本与加载器。
-- **Java**：检测 PATH、JAVA_HOME 及常见安装位置的 Java，可全盘扫描便携版，并可下载 Temurin 运行时。
-- **内存**：读取系统物理内存，支持自动分配内存，也可手动设置。
-- **资源与整合包**：在 Modrinth / CurseForge 搜索、下载模组与整合包并处理必需依赖；导入 `.mrpack` 与 CurseForge `.zip` 整合包，支持拖放导入。
-- **整合包更新**：检测新版本并展示改动列表；更新时保留玩家自己添加的模组和存档，整合包自带的配置文件始终覆盖为新版本，被覆盖的文件会先备份。
-- **模组管理**：导入 JAR、启用/停用、移除前备份。
-- **账号**：离线账号；Microsoft 正版登录（设备代码流程，Xbox / XSTS / Minecraft 档案，令牌刷新）；第三方 Yggdrasil / authlib-injector 认证服务器。
-- **角色外观**：皮肤预览，上传皮肤与切换披风。
+## Features
 
-## 构建
+- Manage vanilla, Fabric, Quilt, Forge, and NeoForge instances and modpacks.
+- Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks.
+- Import `.mrpack` and CurseForge `.zip` files, including drag and drop. Review pack updates and keep backups of overwritten files.
+- Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
+- Detect installed Java in the background after the first frame. Cache detection across instance switches and allocate memory based on pack size and available RAM.
+- Use offline accounts, Microsoft sign-in, or Yggdrasil/authlib-injector services, subject to the platform limits below.
+- Preview skins and capes. English and Simplified Chinese follow the system language by default.
+- Check for launcher updates through GitHub Releases. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
-需要 Go 1.27.1（见 `go.mod`），无需前端工具链。
+Minecraft content scans stay within registered Minecraft directories and launcher configuration. Java detection separately checks system Java installations, environment paths, registered locations, and known runtimes; it does not traverse entire disks.
+
+## Downloads and updates
+
+Release versions come from Git tags, starting with **v1.0.0**. Settings shows the version, source commit, and repository links.
+
+| Platform | Architecture | Download |
+| --- | --- | --- |
+| Windows | x64 / ARM64 | `YoloMCL-<version>-windows-<arch>.zip` |
+| macOS | Intel / Apple Silicon | `YoloMCL-<version>-darwin-<arch>.tar.gz` containing `YoloMCL.app` |
+| Linux | x64 / ARM64 | `YoloMCL-<version>-linux-<arch>.tar.gz` |
+
+Extract the complete archive before launching. Keep the `YoloMCL.exe` / `YoloMCL` filename and install in a directory you can write to. On macOS, move the entire `.app` bundle to a writable Applications directory. Linux requires GTK 3, Pango, Cairo, and Fontconfig; install a CJK font for Chinese text.
+
+In **Settings**, use **Check for updates → Download update → Restart launcher**. The automatic check runs once after the first frame and follows stable releases. Development builds, renamed executables, and read-only installations provide a GitHub download link instead of in-place updates. Update signing is separate from operating-system trust: Windows packages currently have no Authenticode certificate, and macOS bundles are ad-hoc signed, not notarized.
+
+### Current platform limits
+
+All six targets are built by the release workflow. Some existing features are not yet equivalent across platforms:
+
+- Automatic Temurin downloads currently support Windows x64; other platforms can select a system Java installation.
+- Secure account-token storage currently uses Windows DPAPI. Microsoft and third-party account persistence on macOS/Linux is not yet supported; tokens are not stored in plaintext as a fallback.
+
+## Build from source
+
+Use the Go version in [go.mod](go.mod), currently **Go 1.27.3**. No frontend toolchain is required.
 
 ```sh
-go run .          # 开发运行
-go test ./...
-go vet ./...
-./scripts/build.sh            # macOS / Linux（支持 GOOS/GOARCH 交叉编译）
+go run .                       # development build
+go run ./cmd/check             # formatting, dependency boundaries, vet, staticcheck, tests
+go run ./cmd/check -cross       # also vet/build all six OS/architecture targets
+go run ./cmd/build -output build/YoloMCL
 ```
 
-```powershell
-.\scripts\build.ps1           # Windows
+On Windows, use `-output build/YoloMCL.exe`. The wrappers `scripts/build.ps1` and `scripts/build.sh` call the same Go build command. Use `-goos` and `-goarch` for cross-compilation. `-release` removes the MyGo inspector and requires publisher configuration; a modified or untagged checkout still identifies itself as `dev`.
+
+Publisher configuration is read from the environment or a local, ignored `.env`:
+
+```dotenv
+CURSEFORGE_API_KEY=
+MS_CLIENT_ID=
 ```
 
-### 发布用密钥
+Use your own CurseForge API key and Microsoft application client ID for forks. Never commit `.env` or publisher JSON. Actions receives these values through repository Secrets, not workflow literals. A Microsoft client ID is public application identity; an API key embedded in a distributed client can still be extracted. For a server-held CurseForge key, use the optional [catalog relay](cmd/catalog-relay).
 
-CurseForge API Key（以及即将接入的 Microsoft Client ID）**在编译时注入**，不写在源码里。构建脚本从环境变量或项目根目录的本地 `.env` 读取：
+## Tagged releases
 
-```sh
-cp .env.example .env   # 填入 CURSEFORGE_API_KEY= 与 MS_CLIENT_ID=
-```
+[Release](.github/workflows/release.yml) runs on `v*` tags. It checks the code on Windows, macOS, and Linux, builds amd64/arm64 packages, signs platform update archives, verifies all six sets, and publishes a complete GitHub Release. Failed checks or builds leave the release unpublished. The tag must be a valid version such as `v1.0.0` and point to a clean commit.
 
-- `.env` 已在 `.gitignore` 中，**绝对不要提交**；仓库里只有空模板 `.env.example`。
-- 运行时如果设置了 `CURSEFORGE_API_KEY` 环境变量或 `.env`，优先使用它。
-- 没有 key 也能编译，但 CurseForge 功能不可用。
-- **Fork 本项目请使用你自己的 CurseForge API Key 和 Azure 应用 Client ID**，不要复用官方构建的凭据。
+See [docs/releases.md](docs/releases.md) for secret setup, signing-key backup, and publishing. The updater uses MyGo's public API; no MyGo source files are patched.
 
-## 第三方声明
+## Project layout
 
-所用第三方组件与字体的许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- `main.go`: native application entry point and startup coordination.
+- `internal/nativeui`: UI, interaction, and view state.
+- `internal/launcher`: Minecraft services, files, accounts, and background jobs.
+- `internal/buildinfo`: version, commit, repository, and update verification key.
+- `cmd/build`, `cmd/release`, `cmd/check`: shared build, release, and validation tools.
+- `plugins/startup`: repository-owned MyGo startup integration.
 
-## 许可证
+See [architecture](docs/architecture.md) for package boundaries. Formatting and import ordering are enforced by `gofmt`/`goimports` and `.editorconfig`, suitable for GoLand and other Go editors.
 
-[MIT](LICENSE) © 2026 Viking602
+## License
 
----
-
-## English
-
-YoloMCL (shown as MCL in the app) is a cross-platform (Windows / macOS / Linux) Minecraft: Java Edition launcher written in Go with the native MyGo UI and a platform-aware title bar. It installs vanilla, Fabric, Quilt, Forge and NeoForge versions; imports Modrinth / CurseForge modpacks (including drag-and-drop) and updates them while keeping user mods and saves (pack configs are overwritten, with a backup); supports offline, Microsoft and Yggdrasil/authlib-injector accounts; auto-allocates memory; and bundles JetBrains Mono. Build with Go 1.27.1 via `scripts/build.sh` or `scripts/build.ps1`. The CurseForge API key (and Microsoft client ID) are injected at build time from the environment or a local `.env` that must never be committed — see `.env.example`. Forks must use their own CurseForge key and Azure client ID. Licensed under MIT.
+[MIT](LICENSE) © 2026 Viking602. Dependency and asset licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). YoloMCL is not affiliated with Mojang or Microsoft.

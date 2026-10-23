@@ -1,6 +1,6 @@
 node_modules/
 dist/
-build/
+/build/
 .cache/
 .mygo/
 *.log
@@ -10,4 +10,15 @@ build/
 !.env.example
 publisher.json
 publisher.*.local.json
+*private-key*
+
+# Local IDE state and accidental command/test outputs.
+.idea/
+*.iml
+*.test
+*.test.exe
+coverage.out
+/mcl
+/YoloMCL
+/internal/nativeui/mcl
 

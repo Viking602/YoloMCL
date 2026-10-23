@@ -2,8 +2,9 @@ package nativeui
 
 import (
 	"fmt"
-	"github.com/egoist/mygo/ui"
 	"time"
+
+	"github.com/egoist/mygo/ui"
 )
 
 // noticeTone is a notice type's colours, icon and spoken name: the type is
@@ -29,9 +30,9 @@ func (a *App) noticeBody(c *ui.Context, kind, msg, detail string, actions func()
 			ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(panel)
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
-			ui.Text(c, msg).FontSize(14 * s).FontWeight(600).TextColor(ink).Wrap()
+			ui.Text(c, msg).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).Wrap()
 			if detail != "" && detail != msg {
-				ui.Text(c, detail).FontSize(12.5 * s).TextColor(muted).Wrap()
+				ui.Text(c, detail).FontSize(typeFootnote * s).TextColor(muted).Wrap()
 			}
 		})
 		if actions != nil {
@@ -64,7 +65,11 @@ func (a *App) toast(c *ui.Context) {
 	if a.noticeFor != a.message {
 		a.noticeRetry, a.noticeFor = nil, ""
 	}
-	host := ui.Box(c.Key("toast-host")).Label("页面通知").Absolute().Left(pageGutter * s).Right(pageGutter * s).Bottom(space3 * s)
+	bottom := space3 * s
+	if a.launchDockVisible() {
+		bottom += (launchDockHeight + launchDockBottom) * s
+	}
+	host := ui.Box(c.Key("toast-host")).Label("页面通知").Absolute().Left(pageGutter * s).Right(pageGutter * s).Bottom(bottom)
 	target, anim := float32(0), motionExit
 	if a.message != "" && a.dialog == "" {
 		target, anim = 1, motionEnter
@@ -101,7 +106,7 @@ func (a *App) toast(c *ui.Context) {
 		ui.Column(c).FillWidth().MaxWidth(860 * s).AlignSelf(ui.Center).Children(func() {
 			elevate2(a.noticeBody(c, kind, msg, "", func() {
 				if kind == "error" {
-					if a.noticeRetry != nil && buttonWhy(c, "notice-retry", t.NoticeRetry, "refresh", false, whyOf(a.busy, t.WhyBusy), false) {
+					if a.noticeRetry != nil && button(c, "notice-retry", t.NoticeRetry, "refresh", false, false) {
 						retry := a.noticeRetry
 						a.message, a.noticeRetry = "", nil
 						retry()

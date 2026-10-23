@@ -468,3 +468,42 @@ func TestCurseForgeManualKeepsOldFile(t *testing.T) {
 		t.Fatalf("manual flag not cleared: %+v", l.Manual)
 	}
 }
+
+// Cancelling while the update is being applied restores the pack exactly.
+func TestPackUpdateCancelRestores(t *testing.T) {
+	f := newUpdFixture(t)
+	before := treeSnapshot(t, f.root.Path)
+	plan, e := f.s.PlanPackUpdate(context.Background(), f.root.ID, f.v2, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	idc := make(chan string, 1)
+	applyFaultHook = func(n int) error {
+		if n == 1 {
+			id := <-idc
+			_ = f.s.cancelJob(id)
+		}
+		return nil
+	}
+	defer func() { applyFaultHook = nil }()
+	id, e := f.s.ApplyPackUpdate(plan.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	idc <- id
+	if j := waitJob(t, f.s, id); j.State != "cancelled" {
+		t.Fatalf("want cancelled: %+v", j)
+	}
+	got := treeSnapshot(t, f.root.Path)
+	for k, v := range before {
+		if got[k] != v {
+			t.Fatalf("%s = %q want %q after cancel", k, got[k], v)
+		}
+	}
+	if len(got) != len(before) {
+		t.Fatalf("tree differs after cancel restore")
+	}
+	if _, e := os.Stat(filepath.Join(f.root.Path, ".mcl", "update-staging")); !os.IsNotExist(e) {
+		t.Fatal("staging left after cancel")
+	}
+}
