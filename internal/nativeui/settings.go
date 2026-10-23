@@ -563,10 +563,15 @@ func (a *App) memoryRow(c *ui.Context) {
 				hi = lo + 1
 			}
 			position := math.Max(lo, math.Min(hi, math.Log2(max(a.memory, 512))))
-			slider := ui.SliderBase(c.Key("memory-slider"), &position, lo, hi).Label(t.SettingsMemorySliderAria).Grow(1).MinWidth(0).Height(btnMd * s).PaddingX(10 * s).Step(.025)
+			// Divide the full logarithmic range so both ends are reachable,
+			// including physical memory limits that are not powers of two.
+			slider := ui.SliderBase(c.Key("memory-slider"), &position, lo, hi).Label(t.SettingsMemorySliderAria).Grow(1).MinWidth(0).Height(btnMd * s).PaddingX(10 * s).Step((hi - lo) / 128)
 			if slider.Changed() {
 				value := math.Pow(2, position)
 				a.memory = math.Max(minMB, math.Min(maxMB, math.Round(value/128)*128))
+				if position >= hi-1e-9 {
+					a.memory = maxMB
+				}
 				a.memoryText = fmt.Sprint(int(a.memory))
 				a.persistSettings("")
 			}
