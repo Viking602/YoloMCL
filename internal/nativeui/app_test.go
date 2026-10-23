@@ -123,7 +123,9 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	typeUI(t, tt, "目录名称输入", "生存世界")
 	clickUI(t, tt, "确认添加目录")
 	waitUI(t, tt, func() bool { return !(len(a.pendingRequests) > 0) && !a.dialogOpen && len(a.snapshot.Instances) == 1 })
-	if a.snapshot.Instances[0].Path != mc {
+	wantInfo, wantErr := os.Stat(mc)
+	gotInfo, gotErr := os.Stat(a.snapshot.Instances[0].Path)
+	if wantErr != nil || gotErr != nil || !os.SameFile(wantInfo, gotInfo) {
 		t.Fatalf("directory must resolve its .minecraft: %q", a.snapshot.Instances[0].Path)
 	}
 	a.goPage("mods") // 模组 is an instance tab now

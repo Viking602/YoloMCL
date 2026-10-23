@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
@@ -28,6 +29,23 @@ func TestDecodeLineGBK(t *testing.T) {
 	}
 	if got := DecodeLine([]byte{'o', 'k', 0xff, 0xfe, 0x80}); strings.ContainsRune(got, '\uFFFD') || !strings.HasPrefix(got, "ok") {
 		t.Fatalf("garbage bytes must not show U+FFFD: %q", got)
+	}
+}
+
+func TestChineseLogsOnWesternWindowsKeepLatinAccents(t *testing.T) {
+	for _, text := range []string{"正在保存世界", "退出游戏", "[INFO] 保存中"} {
+		if got := decodeLegacyLine(gbk(t, text), charmap.Windows1252); got != text {
+			t.Fatalf("imported Chinese log decoded using Western ANSI: %q", got)
+		}
+	}
+	for _, text := range []string{"München", "café déjà vu", "€ 10", "naïve"} {
+		data, err := charmap.Windows1252.NewEncoder().Bytes([]byte(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := decodeLegacyLine(data, charmap.Windows1252); got != text {
+			t.Fatalf("Western log changed: %q != %q", got, text)
+		}
 	}
 }
 
