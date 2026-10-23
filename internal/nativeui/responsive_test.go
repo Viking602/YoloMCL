@@ -80,7 +80,7 @@ func TestOfficialVersionPickerIncludesHistoricalAndFutureCategories(t *testing.T
 		t.Fatalf("historical Beta not searchable: %q", a.form.Minecraft)
 	}
 	snapshotUI(t, tt, "official-version-picker")
-	tt.Key(ui.Ctrl, ui.KeyA)
+	tt.Key(ui.Cmd, ui.KeyA)
 	tt.Type("no-matching-version")
 	if a.form.Minecraft != "" || !tt.HasText("没有匹配的版本") {
 		t.Fatal("empty search retained an unrelated Minecraft version")

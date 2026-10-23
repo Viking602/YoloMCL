@@ -137,7 +137,11 @@ func TestLogFolderActionsKeepTheFileListOpen(t *testing.T) {
 			t.Fatal("folder action did not open a URL")
 		}
 		u, err := url.Parse(opened[i])
-		if err != nil || strings.TrimPrefix(u.Path, "/") != filepath.ToSlash(filepath.Dir(f.Path)) || a.logView.file != "" {
+		wantPath := filepath.ToSlash(filepath.Dir(f.Path))
+		if !strings.HasPrefix(wantPath, "/") { // file:///C:/... on Windows
+			wantPath = "/" + wantPath
+		}
+		if err != nil || u.Scheme != "file" || u.Path != wantPath || a.logView.file != "" {
 			t.Fatalf("wrong folder or row also opened the log: %v, %s", opened, a.logView.file)
 		}
 	}

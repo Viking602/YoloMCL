@@ -53,9 +53,12 @@ func TestDiscoverIconRoundsActualImage(t *testing.T) {
 				w, h := float32(dims[0])*scale, float32(dims[1])*scale
 				x, y := box.X+(box.W-w)/2, box.Y+(box.H-h)/2
 				// Check the image's four corners, not only the surrounding tile.
+				// Fractional fitted bounds produce different edge antialiasing
+				// on each renderer. Allow up to 25% source coverage; an unclipped
+				// square corner still has the solid source color (20, 100, 210).
 				for _, pt := range [][2]float32{{x + 1, y + 1}, {x + w - 2, y + 1}, {x + 1, y + h - 2}, {x + w - 2, y + h - 2}} {
 					c := tt.Image().RGBAAt(int(math.Round(float64(pt[0]))), int(math.Round(float64(pt[1]))))
-					if c.R < 240 || c.G < 240 || c.B < 240 {
+					if c.R < 196 || c.G < 216 || c.B < 243 {
 						t.Fatalf("square image corner remains at %v: %v", pt, c)
 					}
 				}

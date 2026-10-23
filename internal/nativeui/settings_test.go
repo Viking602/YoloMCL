@@ -87,7 +87,7 @@ func TestNativeMemorySliderAndSettingsPersistence(t *testing.T) {
 	}
 	wantMB := min(8192, maxMB)
 	clickUI(t, tt, "最大内存输入")
-	tt.Key(ui.Ctrl, ui.KeyA)
+	tt.Key(ui.Cmd, ui.KeyA)
 	tt.Type(strconv.Itoa(wantMB))
 	if a.memory != float64(wantMB) {
 		t.Fatalf("numeric input did not update the slider: %v", a.memory)

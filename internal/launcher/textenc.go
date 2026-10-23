@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"sync"
+	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/text/encoding"
@@ -37,9 +38,10 @@ func ansiDecoder(cp uint32) encoding.Encoding {
 }
 
 // DecodeLine turns one raw log line into readable text: valid UTF-8 stays
-// as is; anything else is decoded per line with the system ANSI code page,
-// then GB18030; bytes that still do not decode are dropped, so the UI never
-// shows replacement characters.
+// as is; legacy text uses the system ANSI code page or GB18030. Recognizable
+// GBK Chinese takes precedence over permissive Western single-byte decoders,
+// so imported logs remain readable on English Windows. Invalid bytes are
+// dropped, so the UI never shows replacement characters.
 //
 // The common case (ASCII or UTF-8) costs one scan plus the string copy;
 // decoders are pooled per encoding instead of being built for every line.
@@ -50,7 +52,39 @@ func DecodeLine(b []byte) string {
 		}
 		return string(b)
 	}
-	if s, ok := decodeWith(ansiEncoding(), b); ok {
+	return decodeLegacyLine(b, ansiEncoding())
+}
+
+func decodeLegacyLine(b []byte, system encoding.Encoding) string {
+	// A single-byte code page accepts nearly every byte, including GBK. Do
+	// not let that successful-but-garbled decode hide a run of Chinese text.
+	// Require consecutive non-ASCII bytes, so isolated Western accents (for
+	// example café or München) retain their system encoding.
+	if system == charmap.Windows1250 || system == charmap.Windows1252 {
+		run := 0
+		for _, value := range b {
+			if value >= 0x80 {
+				run++
+			} else {
+				run = 0
+			}
+			if run >= 4 {
+				if text, ok := decodeWith(simplifiedchinese.GB18030, b); ok {
+					han := 0
+					for _, r := range text {
+						if unicode.Is(unicode.Han, r) {
+							han++
+						}
+					}
+					if han >= 2 {
+						return text
+					}
+				}
+				break
+			}
+		}
+	}
+	if s, ok := decodeWith(system, b); ok {
 		return s
 	}
 	if s, ok := decodeWith(simplifiedchinese.GB18030, b); ok {

@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -64,7 +65,9 @@ func TestPerVersionRuntimePrecedenceAndJVMArgs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Path != game {
+	wantInfo, wantErr := os.Stat(game)
+	gotInfo, gotErr := os.Stat(r.Path)
+	if wantErr != nil || gotErr != nil || !os.SameFile(wantInfo, gotInfo) {
 		t.Fatalf("expected direct versions root %q, got %q", game, r.Path)
 	}
 	if err = s.UpdateVersionConfig(r.ID, "1.21.1-Fabric", "C:/jdk21/bin/javaw.exe", 4096, `-XX:+UseG1GC -Dcustom.name="My World"`); err != nil {
