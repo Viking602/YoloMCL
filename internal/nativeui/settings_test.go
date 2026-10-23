@@ -67,7 +67,8 @@ func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {
 
 func TestNativeMemorySliderAndSettingsPersistence(t *testing.T) {
 	a, tt := settingsTester(t)
-	maxMB := min(16384, a.memoryInfo.MaxMB)
+	// A non-power-of-two upper bound exposes logarithmic step rounding.
+	maxMB := min(14336, a.memoryInfo.MaxMB)
 	if maxMB < 2048 {
 		t.Skip("insufficient physical memory for slider interaction fixture")
 	}
