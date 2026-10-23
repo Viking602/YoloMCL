@@ -32,7 +32,7 @@ func cryptBlob(b []byte, decrypt bool) ([]byte, error) {
 	r, _, err := proc.Call(uintptr(unsafe.Pointer(&in)), 0, 0, 0, 0, 1, uintptr(unsafe.Pointer(&out)))
 	runtime.KeepAlive(b)
 	if r == 0 {
-		return nil, fmt.Errorf("Windows DPAPI 凭据操作失败: %w", err)
+		return nil, fmt.Errorf("调用 Windows DPAPI 凭据操作失败: %w", err)
 	}
 	defer localFree.Call(uintptr(unsafe.Pointer(out.Data)))
 	return append([]byte(nil), unsafe.Slice(out.Data, int(out.Size))...), nil

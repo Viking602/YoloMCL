@@ -2,10 +2,12 @@ package launcher
 
 import (
 	"context"
-	"mcl/internal/distribution"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/Viking602/YoloMCL/internal/distribution"
 )
 
 const appVersion = "0.2.0"
@@ -20,9 +22,13 @@ type VersionConfig struct {
 	DisplayName string `json:"displayName,omitempty"`
 }
 type Settings struct {
-	Language string `json:"language,omitempty"`
-	JavaPath string `json:"javaPath"`
-	MemoryMB int    `json:"memoryMB"`
+	// Empty follows the system. Keep it explicit so a saved automatic choice
+	// overrides MCL_LANG's default when the configuration is read again.
+	Language string `json:"language"`
+	// InstanceLoaderFilter is the instance list's loader chip ("" = all).
+	InstanceLoaderFilter string `json:"instanceLoaderFilter,omitempty"`
+	JavaPath             string `json:"javaPath"`
+	MemoryMB             int    `json:"memoryMB"`
 	// MemoryMode is "manual" to use MemoryMB; otherwise ("" / "auto") the
 	// heap is computed automatically.
 	MemoryMode      string `json:"memoryMode,omitempty"`
@@ -96,7 +102,9 @@ type Instance struct {
 	ModCount  int              `json:"modCount"`
 	Available bool             `json:"available"`
 	Pack      *PackLock        `json:"pack,omitempty"`
-	Running   bool             `json:"running"`
+	Running   bool             `json:"running"` // any version in the folder
+	// RunningVersions are the version IDs with a live game.
+	RunningVersions []string `json:"runningVersions,omitempty"`
 	// PackUpdate is the cached result of the last online update check.
 	PackUpdate  *PackUpdateInfo `json:"packUpdate,omitempty"`
 	PackBackups []PackBackup    `json:"packBackups,omitempty"`
@@ -117,26 +125,60 @@ type ServiceAvailability struct {
 	CurseForge bool `json:"curseForge"`
 }
 type Job struct {
-	ID      string    `json:"id"`
-	Title   string    `json:"title"`
-	State   string    `json:"state"`
-	Message string    `json:"message"`
-	Items   []string  `json:"items,omitempty"`
-	Done    int       `json:"done"`
-	Total   int       `json:"total"`
-	Started time.Time `json:"started"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// Target identifies the instance being changed, independently of ResultRoot
+	// (which is populated only by jobs that create an instance).
+	TargetRootID  string `json:"targetRootId,omitempty"`
+	TargetVersion string `json:"targetVersion,omitempty"`
+	// TitleKey/TitleArg render the title in the UI language at display time.
+	TitleKey string   `json:"titleKey,omitempty"`
+	TitleArg string   `json:"titleArg,omitempty"`
+	State    string   `json:"state"`
+	Message  string   `json:"message"`
+	Items    []string `json:"items,omitempty"`
+	// Steps is per-item state for multi-item jobs: key -> running | done |
+	// failed: reason.
+	Steps   map[string]string `json:"steps,omitempty"`
+	Done    int               `json:"done"`
+	Total   int               `json:"total"`
+	Started time.Time         `json:"started"`
 	// ResultRoot is the directory a finished import/install created.
 	ResultRoot string `json:"resultRoot,omitempty"`
 	// ResultRef identifies an artefact of the job, e.g. a pack update backup.
-	ResultRef string     `json:"resultRef,omitempty"`
-	Finished  *time.Time `json:"finished,omitempty"`
+	ResultRef string `json:"resultRef,omitempty"`
+	// Live download figures: bytes/s smoothed over ~2.5 s, and sizes.
+	Speed      int64 `json:"speed,omitempty"`
+	BytesDone  int64 `json:"bytesDone,omitempty"`
+	BytesTotal int64 `json:"bytesTotal,omitempty"`
+	// Attempt counts in-place retries (0 = first run).
+	Attempt  int        `json:"attempt,omitempty"`
+	Finished *time.Time `json:"finished,omitempty"`
 }
 type jobState struct {
 	Job
 	cancel context.CancelFunc
+	// bytes counts downloaded bytes for the live speed; totalFixed means a
+	// task set its whole size up front, so single files do not add to it.
+	bytes, bytesTotal atomic.Int64
+	totalFixed        atomic.Bool
+	lastBytes         int64
+	lastAt            time.Time
+	speed             float64
+	// created are paths this task made (never ones that existed before);
+	// undo runs on cancel or removal, newest first.
+	created   []string
+	undo      []func()
+	cleaned   bool
+	dropOnEnd bool
+	fn        func(context.Context, progress) error // kept for in-place retry
+	rootID    string
+	holdDone  int
 }
 type Service struct {
 	mu           sync.Mutex
+	inventoryMu  sync.Mutex
+	inventories  map[string]*inventoryEntry
 	authMu       sync.Mutex
 	cfg          config
 	distribution distribution.Config
@@ -144,6 +186,7 @@ type Service struct {
 	http         *http.Client
 	jobs         map[string]*jobState
 	running      map[string]*runningGame
+	sessions     []*gameSession
 	rootLocks    map[string]bool
 	devices      map[string]*deviceSession
 }
@@ -162,6 +205,10 @@ type Mod struct {
 	VersionID   string          `json:"versionId"`
 	Latest      *ProjectVersion `json:"latest,omitempty"`
 	Status      string          `json:"status"`
+	Description string          `json:"description,omitempty"` // from the jar
+	Provides    []string        `json:"provides,omitempty"`    // extra mod ids the jar answers to
+	Requires    []string        `json:"requires,omitempty"`    // mod ids the jar declares as required
+	Pending     bool            `json:"pending,omitempty"`     // still being read (streamed list)
 }
 type AssetPack struct {
 	File        string `json:"file"`
@@ -180,6 +227,7 @@ type PackPreview struct {
 	Loader        string `json:"loader"`
 	LoaderVersion string `json:"loaderVersion"`
 	FileCount     int    `json:"fileCount"`
+	ModCount      int    `json:"modCount,omitempty"`
 	// DownloadMB estimates the import download (pack files + game).
 	DownloadMB int `json:"downloadMB,omitempty"`
 	// Unavailable explains why this pack cannot be imported here.
@@ -196,6 +244,7 @@ type Project struct {
 	Author      string   `json:"author"`
 	Categories  []string `json:"categories"`
 	URL         string   `json:"url"`
+	Updated     string   `json:"updated,omitempty"` // RFC 3339, when known
 }
 type Dependency struct {
 	ProjectID string `json:"projectId"`

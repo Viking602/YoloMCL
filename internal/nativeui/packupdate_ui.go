@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 // packHasUpdate reports whether the cached online check found a newer
@@ -40,12 +41,12 @@ func (a *App) packSection(c *ui.Context, r launcher.Instance) {
 				}
 			})
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
-				ui.Text(c, t.PackSecTitle+" · "+p.Name).FontSize(16 * s).Bold().TextColor(ink).SingleLine().FillWidth().MinWidth(0)
-				label(c, t.PackSecCurrent+" "+p.Version+"  ·  Minecraft "+p.Minecraft).FontSize(12.5 * s).SingleLine()
+				ui.Text(c, t.PackSecTitle+"   "+p.Name).FontSize(typeSubhead * s).Bold().TextColor(ink).SingleLine().FillWidth().MinWidth(0)
+				label(c, t.PackSecCurrent+" "+p.Version+"   "+p.Minecraft).FontSize(typeFootnote * s).SingleLine()
 			})
 			switch {
 			case packHasUpdate(r, ""):
-				badge(c, t.PackUpdateBadge+" · "+r.PackUpdate.Latest.Number, warning)
+				badge(c, t.PackUpdateBadge+"   "+r.PackUpdate.Latest.Number, warning)
 			case r.PackUpdate != nil && r.PackUpdate.Latest != nil:
 				badge(c, t.PackSecUpToDate, success)
 			case p.ProjectID == "":
@@ -58,7 +59,7 @@ func (a *App) packSection(c *ui.Context, r launcher.Instance) {
 			label(c, t.PackSecRunning).TextColor(danger)
 		}
 		ui.Row(c).FillWidth().Wrap().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-			blocked := a.busy || r.Running
+			blocked := a.instancePending("checkPackUpdate", "planPackUpdate", "rollbackPack") || r.Running
 			if p.ProjectID != "" && (p.Source == "modrinth" || p.Source == "curseforge") && button(c, "pack-check", t.PackCheckBtn, "refresh", false, blocked) {
 				a.execute("checkPackUpdate", map[string]string{"rootId": r.ID}, func(b json.RawMessage) {
 					info := decode[launcher.PackUpdateInfo](b)
@@ -69,7 +70,7 @@ func (a *App) packSection(c *ui.Context, r launcher.Instance) {
 					}
 				})
 			}
-			if packHasUpdate(r, "") && button(c, "pack-update", t.PackUpdateToPrefix+r.PackUpdate.Latest.Number, "tasks", true, blocked) {
+			if packHasUpdate(r, "") && button(c, "pack-update", t.PackUpdateToPrefix+r.PackUpdate.Latest.Number, "download", true, blocked) {
 				a.planPackUpdate(r.ID, "", r.PackUpdate.Latest.ID)
 			}
 			if (p.Source == "modrinth" || p.Source == "curseforge") && button(c, "pack-from-file", t.PackFromFileBtn, "folder", false, blocked) {
@@ -132,7 +133,7 @@ func (a *App) packDropDialog(c *ui.Context) {
 	if p := a.packPreview; p != nil {
 		ui.Row(c).FillWidth().Padding(12*s, 14*s).Radius(12*s).Background(accentSoft).Border(1, blue).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 			ui.Image(c, packLogo(p.Source)).Size(22*s, 22*s).Fit(ui.Contain)
-			ui.Text(c, p.Name).FontSize(15.5 * s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+			ui.Text(c, p.Name).FontSize(typeBody * s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
 			badge(c, r.Pack.Version, muted)
 			ui.Icon(c, icons["arrow"]).Size(14*s, 14*s).TextColor(muted)
 			badge(c, p.Version, accent)
@@ -142,10 +143,10 @@ func (a *App) packDropDialog(c *ui.Context) {
 		label(c, t.PackSecRunning).TextColor(danger)
 	}
 	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		if buttonWhy(c, "pack-drop-update", t.PackDropUpdateBtn, "tasks", true, whyOf(a.busy, t.WhyBusy, r.Running, t.WhyRunning), true) {
+		if buttonWhy(c, "pack-drop-update", t.PackDropUpdateBtn, "download", true, whyOf(a.instancePending("planPackUpdate"), t.WhyBusy, r.Running, t.WhyRunning), true) {
 			a.planPackUpdate(r.ID, a.packDropPath, "")
 		}
-		if button(c, "pack-drop-import", t.PackDropImportBtn, "plus", false, a.busy) {
+		if button(c, "pack-drop-import", t.PackDropImportBtn, "plus", false, false) {
 			path := a.packDropPath
 			a.openDialog("import")
 			a.inspectPackFile(path)
@@ -167,7 +168,7 @@ func plainChangelog(s string) string {
 		l = strings.TrimSpace(strings.TrimLeft(l, "#"))
 		l = strings.ReplaceAll(strings.ReplaceAll(l, "**", ""), "__", "")
 		if strings.HasPrefix(l, "- ") || strings.HasPrefix(l, "* ") {
-			l = "• " + l[2:]
+			l = "- " + l[2:]
 		}
 		lines = append(lines, l)
 	}
@@ -190,11 +191,11 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 			ui.Image(c, packLogo(a.packPlanSource())).Size(24*s, 24*s).Fit(ui.Contain)
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
-			ui.Text(c, p.Name).FontSize(16.5 * s).Bold().TextColor(ink).SingleLine()
+			ui.Text(c, p.Name).FontSize(typeSubhead * s).Bold().TextColor(ink).SingleLine()
 			if p.GameChanged {
-				label(c, t.PackGameChange+p.OldGame+" → "+p.NewGame).FontSize(12.5 * s).TextColor(warningInk).SingleLine()
+				label(c, a.gameChangeText(p.OldGame, p.NewGame)).FontSize(typeFootnote * s).TextColor(warningInk).SingleLine()
 			} else {
-				label(c, p.NewGame).FontSize(12.5 * s).SingleLine()
+				label(c, prettyGame(p.NewGame)).FontSize(typeFootnote * s).SingleLine()
 			}
 		})
 		badge(c, p.OldVersion, muted)
@@ -204,7 +205,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 	if p.GameChanged && !a.packPlanReport {
 		ui.Row(c.Key("pack-game-warn")).Label("游戏版本变更提示").FillWidth().Padding(12*s, 14*s).Gap(12*s).Radius(12*s).Background(amberSoft).Border(1, amberLine).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(18*s, 18*s).TextColor(warningInk).Shrink(0)
-			ui.Text(c, fmt.Sprintf(t.PackGameWarn, p.NewGame, p.OldGame)).Grow(1).Basis(0).MinWidth(0).FontSize(12.5 * s).TextColor(warningInk)
+			ui.Text(c, fmt.Sprintf(t.PackGameWarn, prettyGame(p.NewGame), prettyGame(p.OldGame))).Grow(1).Basis(0).MinWidth(0).FontSize(typeFootnote * s).TextColor(warningInk)
 			if button(c, "pack-open-dir", t.PackOpenDirBtn, "folder", false, false) {
 				a.openFolder(p.RootID)
 			}
@@ -228,7 +229,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 			if text == "" {
 				text = t.PackNoChangelog
 			}
-			ui.Text(c, text).FillWidth().FontSize(13 * s).TextColor(inkSecondary)
+			ui.Text(c, text).FillWidth().FontSize(typeCallout * s).TextColor(inkSecondary)
 		})
 	}
 	if len(p.Added)+len(p.Updated)+len(p.Removed)+len(p.Overwritten) == 0 {
@@ -239,7 +240,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 		return
 	}
 	ui.Row(c).FillWidth().Padding(10*s, 14*s).Radius(12 * s).Background(fieldColor).Children(func() {
-		ui.Text(c, t.PackBackupNote).FillWidth().FontSize(12.5 * s).TextColor(inkSecondary)
+		ui.Text(c, t.PackBackupNote).FillWidth().FontSize(typeFootnote * s).TextColor(inkSecondary)
 	})
 }
 
@@ -247,7 +248,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 func (a *App) packJobButtons(c *ui.Context, j launcher.Job) {
 	t := a.tr()
 	r := a.rootByID(j.ResultRoot)
-	if button(c, "job-changes-"+j.ID, t.TaskChangesBtn, "layers", false, a.busy) {
+	if button(c, "job-changes-"+j.ID, t.TaskChangesBtn, "layers", false, a.pendingAt("packUpdateReport", "id", j.ResultRef)) {
 		a.execute("packUpdateReport", map[string]string{"rootId": j.ResultRoot, "id": j.ResultRef}, func(b json.RawMessage) {
 			plan := decode[launcher.PackUpdatePlan](b)
 			a.openPackPlan(&plan, true)
@@ -255,12 +256,12 @@ func (a *App) packJobButtons(c *ui.Context, j launcher.Job) {
 	}
 	for _, b := range r.PackBackups {
 		if b.ID == j.ResultRef {
-			if button(c, "job-rollback-"+j.ID, t.TaskRollbackBtn, "refresh", false, a.busy || r.Running) {
+			if button(c, "job-rollback-"+j.ID, t.TaskRollbackBtn, "refresh", false, a.pendingAt("rollbackPack", "rootId", r.ID) || r.Running) {
 				a.execute("rollbackPack", map[string]string{"rootId": j.ResultRoot, "id": j.ResultRef}, a.taskAdded)
 			}
 		}
 	}
-	if button(c, "job-launch-"+j.ID, t.TaskLaunchBtn, "play", true, a.busy) {
+	if button(c, "job-launch-"+j.ID, t.TaskLaunchBtn, "play", true, a.pendingAt("launch", "rootId", j.ResultRoot)) {
 		a.launchRoot(j.ResultRoot)
 	}
 }
@@ -281,12 +282,14 @@ func (a *App) packUpdateFooter(c *ui.Context) {
 		label(c, t.PackSecRunning).TextColor(danger)
 	}
 	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		if buttonWhy(c, "pack-apply", t.PackApplyBtn, "tasks", true, whyOf(a.busy, t.WhyBusy, running, t.WhyRunning), true) {
-			a.execute("applyPackUpdate", map[string]string{"id": p.ID}, a.taskAdded)
-		}
-		if button(c, "pack-cancel", t.PackCancelBtn, "cross", false, a.busy) {
+		ui.Icon(c, icons["refresh"]).Size(12*s, 12*s).TextColor(muted).Shrink(0)
+		ui.Text(c, a.L("更新前自动备份，可随时回滚", "Backed up first; you can roll back")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
+		if button(c, "pack-cancel", t.PackCancelBtn, "", false, a.pendingOp("applyPackUpdate")) {
 			go a.service.DiscardPackUpdate(p.ID)
 			a.closeDialog()
+		}
+		if buttonWhy(c, "pack-apply", t.PackApplyBtn, "download", true, whyOf(a.pendingOp("applyPackUpdate"), t.WhyBusy, running, t.WhyRunning), true) {
+			a.execute("applyPackUpdate", map[string]string{"id": p.ID}, a.taskAdded)
 		}
 	})
 }
@@ -305,4 +308,24 @@ func (a *App) packPlanSource() string {
 		}
 	}
 	return "modrinth"
+}
+
+// prettyGame turns "1.21.1   fabric 0.19.3" into "1.21.1  Fabric 0.19.3".
+func prettyGame(g string) string {
+	f := strings.Fields(g)
+	for i, w := range f {
+		if l := loaderLabel(w); l != "" {
+			f[i] = l
+		}
+	}
+	return strings.Join(f, "  ")
+}
+
+// gameChangeText names only what changes: the loader when Minecraft stays.
+func (a *App) gameChangeText(old, new string) string {
+	of, nf := strings.Fields(old), strings.Fields(new)
+	if len(of) == 3 && len(nf) == 3 && of[0] == nf[0] && of[1] == nf[1] {
+		return fmt.Sprintf(a.L("加载器将变更：%s %s → %s", "Loader changes: %s %s → %s"), loaderLabel(nf[1]), of[2], nf[2])
+	}
+	return a.L("游戏版本将变更：", "Game changes: ") + prettyGame(old) + " → " + prettyGame(new)
 }

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,7 +36,7 @@ func (s *Service) request(ctx context.Context, method, raw string, body io.Reade
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "MCL/"+appVersion+" (Minecraft desktop launcher)")
+	req.Header.Set("User-Agent", "YoloMCL/"+appVersion+" (Minecraft desktop launcher)")
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
@@ -166,49 +167,99 @@ func (s *Service) download(ctx context.Context, f DownloadFile, dest string) err
 	}
 	return last
 }
+
+// downloadOnce fetches f into dest through dest+".mcl-part". A part left
+// by an earlier attempt is resumed with an HTTP Range request when the
+// file has a checksum to prove the joined result; otherwise, or if the
+// server ignores the range, it starts over. A bad result drops the part.
 func (s *Service) downloadOnce(ctx context.Context, f DownloadFile, dest string) error {
-	res, err := s.request(ctx, "GET", f.URL, nil, nil)
+	part := dest + ".mcl-part"
+	s.trackCreated(ctx, part)
+	var have int64
+	if st, e := os.Stat(part); e == nil && (f.SHA1 != "" || f.SHA512 != "" || f.SHA256 != "") && (f.Size == 0 || st.Size() < f.Size) {
+		have = st.Size()
+	}
+	var hdr map[string]string
+	if have > 0 {
+		hdr = map[string]string{"Range": fmt.Sprintf("bytes=%d-", have)}
+	}
+	res, err := s.request(ctx, "GET", f.URL, nil, hdr)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
-	tmp, err := os.CreateTemp(filepath.Dir(dest), ".mcl-download-*")
+	a, b, c := sha1.New(), sha512.New(), sha256.New()
+	flag := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	if have > 0 && res.StatusCode == http.StatusPartialContent {
+		old, e := os.Open(part) // hash what is already there, then append
+		if e != nil {
+			return e
+		}
+		_, e = io.Copy(io.MultiWriter(a, b, c), old)
+		old.Close()
+		if e != nil {
+			return e
+		}
+		flag = os.O_WRONLY | os.O_APPEND
+	} else {
+		have = 0
+	}
+	out, err := os.OpenFile(part, flag, 0o644)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp.Name())
-	a, b, c := sha1.New(), sha512.New(), sha256.New()
-	n, err := io.Copy(io.MultiWriter(tmp, a, b, c), io.LimitReader(res.Body, (4<<30)+1))
+	fail := func(e error) error {
+		out.Close()
+		if !errors.Is(e, context.Canceled) && !isNetErr(e) {
+			_ = os.Remove(part) // corrupt, not just interrupted
+		}
+		return e
+	}
+	addJobFileTotal(ctx, f.Size-have)
+	n, err := io.Copy(io.MultiWriter(out, a, b, c, jobMeter{ctx}), io.LimitReader(res.Body, (4<<30)+1))
+	n += have
 	if err != nil {
-		tmp.Close()
-		return err
+		if ctx.Err() != nil {
+			return fail(ctx.Err())
+		}
+		return fail(err)
 	}
 	if n > 4<<30 {
-		tmp.Close()
-		return errors.New("下载文件超过 4 GiB 限制")
+		return fail(errors.New("下载文件超过 4 GiB 限制"))
 	}
+	bad := func(msg string) error { return fail(fmt.Errorf("%s: %s", msg, f.Name)) }
 	if f.Size > 0 && n != f.Size {
-		tmp.Close()
-		return fmt.Errorf("文件大小不匹配: %s", f.Name)
+		return bad("文件大小不匹配")
 	}
 	if f.SHA1 != "" && !strings.EqualFold(f.SHA1, hex.EncodeToString(a.Sum(nil))) {
-		tmp.Close()
-		return fmt.Errorf("SHA-1 校验失败: %s", f.Name)
+		return bad("SHA-1 校验失败")
 	}
 	if f.SHA512 != "" && !strings.EqualFold(f.SHA512, hex.EncodeToString(b.Sum(nil))) {
-		tmp.Close()
-		return fmt.Errorf("SHA-512 校验失败: %s", f.Name)
+		return bad("SHA-512 校验失败")
 	}
 	if f.SHA256 != "" && !strings.EqualFold(f.SHA256, hex.EncodeToString(c.Sum(nil))) {
-		tmp.Close()
-		return fmt.Errorf("SHA-256 校验失败: %s", f.Name)
+		return bad("SHA-256 校验失败")
 	}
-	if err = tmp.Sync(); err != nil {
-		tmp.Close()
+	if err = out.Sync(); err != nil {
+		return fail(err)
+	}
+	if err = out.Close(); err != nil {
 		return err
 	}
-	if err = tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), dest)
+	s.trackCreated(ctx, dest)
+	return os.Rename(part, dest)
+}
+
+// isNetErr is an interrupted transfer, worth resuming rather than redoing.
+func isNetErr(e error) bool {
+	var ne net.Error
+	return errors.As(e, &ne) || errors.Is(e, io.ErrUnexpectedEOF) || strings.Contains(e.Error(), "connection")
+}
+
+// jobMeter counts a download's bytes toward its task's live speed.
+type jobMeter struct{ ctx context.Context }
+
+func (m jobMeter) Write(p []byte) (int, error) {
+	addJobBytes(m.ctx, int64(len(p)))
+	return len(p), nil
 }

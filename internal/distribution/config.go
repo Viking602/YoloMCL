@@ -47,9 +47,16 @@ func Load() (Config, error) {
 	if c.CurseForgeProxyURL == "" {
 		if v := overrideCurseForgeKey(); v != "" {
 			c.CurseForgeAPIKey = v
+			keySource = "env"
 		} else if v := embeddedCurseForgeKey(); v != "" {
 			c.CurseForgeAPIKey = v
+			keySource = "embedded"
+		} else if c.CurseForgeAPIKey != "" {
+			keySource = "publisher"
 		}
+	}
+	if c.MicrosoftClientID == "" {
+		c.MicrosoftClientID = embeddedMicrosoftClientID()
 	}
 	if os.Getenv("MCL_DEVELOPMENT") == "1" {
 		if v := os.Getenv("MCL_MICROSOFT_CLIENT_ID"); v != "" {
@@ -62,7 +69,8 @@ func Load() (Config, error) {
 			c.CurseForgeAPIKey = v
 		}
 	}
-	return c, c.Validate()
+	err := c.Validate()
+	return c, err
 }
 func (c *Config) Validate() error {
 	c.MicrosoftClientID = strings.TrimSpace(c.MicrosoftClientID)
@@ -80,3 +88,9 @@ func (c *Config) Validate() error {
 }
 func (c Config) HasMicrosoft() bool  { return c.MicrosoftClientID != "" }
 func (c Config) HasCurseForge() bool { return c.CurseForgeProxyURL != "" || c.CurseForgeAPIKey != "" }
+
+var keySource = "none"
+
+// CurseForgeKeySource says where the CurseForge key came from (env,
+// embedded, publisher or none). Never the value.
+func CurseForgeKeySource() string { return keySource }

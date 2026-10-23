@@ -39,7 +39,7 @@ func (s *Service) ResourceImage(ctx context.Context, raw string) ([]byte, error)
 		if e != nil {
 			return nil, e
 		}
-		req.Header.Set("User-Agent", "MCL/"+appVersion)
+		req.Header.Set("User-Agent", "YoloMCL/"+appVersion)
 		req.Header.Set("Accept", "image/webp,image/svg+xml,image/*;q=0.9,*/*;q=0.5")
 		res, e := client.Do(req)
 		if e == nil {

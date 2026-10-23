@@ -75,7 +75,7 @@ func TestEmbeddedCurseForgeKeyAndOverride(t *testing.T) {
 	t.Setenv("MCL_DEVELOPMENT", "")
 	t.Chdir(t.TempDir())
 	t.Setenv("CURSEFORGE_API_KEY", "")
-	cfKeyObf = hexOf(xorMask([]byte("embedded-test-key")))
+	cfKeyObf = EncodeCurseForgeKey(" embedded-test-key ")
 	c, e := Load()
 	if e != nil || c.CurseForgeAPIKey != "embedded-test-key" {
 		t.Fatalf("embedded key not decoded: %v", e)
@@ -85,13 +85,4 @@ func TestEmbeddedCurseForgeKeyAndOverride(t *testing.T) {
 	if c.CurseForgeAPIKey != "env-wins" {
 		t.Fatal("env must override embedded key")
 	}
-}
-
-func hexOf(b []byte) string {
-	const h = "0123456789abcdef"
-	out := make([]byte, 0, len(b)*2)
-	for _, x := range b {
-		out = append(out, h[x>>4], h[x&15])
-	}
-	return string(out)
 }

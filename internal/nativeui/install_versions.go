@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func minecraftKindKey(kind string) string {
@@ -70,11 +71,20 @@ func (a *App) applyMinecraftFilter() {
 }
 
 func (a *App) loadManifest() {
+	if a.manifestLoading || a.service == nil {
+		return
+	}
 	a.manifestRevision++
 	revision := a.manifestRevision
 	a.manifestLoading = true
 	a.manifestError = ""
+	ready := a.firstFrame
+	a.bgWG.Add(1)
 	go func() {
+		defer a.bgWG.Done()
+		if !waitForFirstFrame(a.ctx, ready) {
+			return
+		}
 		ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 		defer cancel()
 		manifest, e := a.service.Manifest(ctx)
@@ -84,7 +94,7 @@ func (a *App) loadManifest() {
 			}
 			a.manifestLoading = false
 			if e != nil {
-				a.manifestError = e.Error()
+				a.manifestError = a.friendlyErr(e)
 				return
 			}
 			a.minecraftVersions = manifest.Versions
@@ -121,7 +131,7 @@ func (a *App) loadLoaderVersions() {
 			}
 			a.loaderLoading = false
 			if e != nil {
-				a.loaderError = e.Error()
+				a.loaderError = a.friendlyErr(e)
 				return
 			}
 			a.loaders = items
@@ -137,7 +147,7 @@ func (a *App) minecraftVersionPicker(c *ui.Context) {
 	t := a.tr()
 	ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, t.InstallMCLabel).FontWeight(600).TextColor(ink).NoWrap().Shrink(0)
-		label(c, a.formatVersionTotal(len(a.minecraftVersions))).FontSize(13 * s).Grow(1).NoWrap()
+		label(c, a.formatVersionTotal(len(a.minecraftVersions))).FontSize(typeCallout * s).Grow(1).NoWrap()
 		if button(c, "refresh-minecraft", t.InstallRefreshBtn, "refresh", false, a.manifestLoading) {
 			a.loadManifest()
 		}
@@ -146,7 +156,7 @@ func (a *App) minecraftVersionPicker(c *ui.Context) {
 		if selectBox(c, "minecraft-kind", t.InstallKindAria, &a.versionKind, a.versionKindOptions()).Width(170 * s).Shrink(0).Changed() {
 			a.applyMinecraftFilter()
 		}
-		if ui.TextInput(c.Key("minecraft-query"), &a.versionQuery).Label(t.InstallQueryAria).Placeholder(t.InstallQueryHint).Grow(1).MinWidth(0).Changed() {
+		if textField(c.Key("minecraft-query"), &a.versionQuery).Label(t.InstallQueryAria).Placeholder(t.InstallQueryHint).Grow(1).MinWidth(0).Changed() {
 			a.applyMinecraftFilter()
 		}
 	})
@@ -155,7 +165,9 @@ func (a *App) minecraftVersionPicker(c *ui.Context) {
 	case a.manifestLoading && len(a.minecraftVersions) == 0:
 		statusLine(c, t.InstallFetchingManifest, muted, true)
 	case a.manifestError != "":
-		statusLine(c, a.manifestError, danger, false)
+		if a.loadFailed(c, "manifest-failed", failInline, a.manifestLoading) {
+			a.loadManifest()
+		}
 	case len(items) == 0:
 		statusLine(c, t.InstallNoMatch, muted, false)
 	default:
@@ -170,9 +182,9 @@ func (a *App) minecraftVersionPicker(c *ui.Context) {
 			if v.ID == a.form.Minecraft {
 				detail := a.versionKindLabel(minecraftKindKey(v.Type))
 				if len(v.ReleaseTime) >= 10 {
-					detail += " · " + v.ReleaseTime[:10]
+					detail += "   " + v.ReleaseTime[:10]
 				}
-				label(c, a.formatFilteredVersionSummary(detail, len(items))).FontSize(13 * s).NoWrap()
+				label(c, a.formatFilteredVersionSummary(detail, len(items))).FontSize(typeCallout * s).NoWrap()
 				break
 			}
 		}

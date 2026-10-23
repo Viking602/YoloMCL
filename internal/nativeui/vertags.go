@@ -3,10 +3,12 @@ package nativeui
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 // verTag is a small superscript badge hung at the top right of a version
@@ -20,9 +22,9 @@ func (a *App) versionTags(r launcher.Instance, v launcher.VersionSummary, featur
 	t := a.tr()
 	var tags []verTag
 	if a.nameOf(r, v).MCTag {
-		tags = append(tags, verTag{v.Minecraft, "MC 标签 " + v.Minecraft, tagNeutral})
+		tags = append(tags, verTag{v.Minecraft, "Minecraft " + v.Minecraft, tagNeutral})
 	}
-	if featured && r.Running {
+	if featured && slices.Contains(r.RunningVersions, v.ID) {
 		tags = append(tags, verTag{t.HomeHeroBadgeRunning, "", successInk})
 	}
 	if j := javaFor(r, v); j > 0 {
@@ -44,7 +46,7 @@ func microTag(c *ui.Context, tg verTag, tip string) {
 		lbl = "版本标签 " + tg.text
 	}
 	e := ui.Row(c).Label(lbl).Shrink(0).Padding(1.5*s, 5.5*s).Radius(5*s).Background(tg.color.Alpha(.10)).Border(1, tg.color.Alpha(.20)).Children(func() {
-		ui.Text(c, tg.text).FontSize(11 * s).FontWeight(600).TextColor(tg.color).SingleLine().MaxWidth(tagMaxWidth * s)
+		ui.Text(c, midEllipsis(c, tg.text, tagMaxWidth*s, typeCaption2*s, 600)).FontSize(typeCaption2 * s).FontWeight(600).TextColor(tg.color).NoWrap()
 	})
 	if tip != "" {
 		e.Tooltip(tip)
@@ -74,7 +76,7 @@ func titleWithTags(c *ui.Context, title, tip string, size float32, weight int, t
 				for i, r := range rest {
 					names[i] = r.text
 				}
-				microTag(c, verTag{fmt.Sprintf("+%d", len(rest)), "版本标签更多", tagNeutral}, strings.Join(names, " · "))
+				microTag(c, verTag{fmt.Sprintf("+%d", len(rest)), "版本标签更多", tagNeutral}, strings.Join(names, "   "))
 			}
 		})
 	})
@@ -161,17 +163,17 @@ func (a *App) nameOf(r launcher.Instance, v launcher.VersionSummary) versionName
 		}
 		sub := lv
 		if pv != "" {
-			sub = pv + " · " + lv
+			sub = pv + "   " + lv
 		}
 		return versionName{Title: r.Pack.Name, Sub: sub, MCTag: v.Minecraft != ""}
 	case !isAutoID(v):
 		return versionName{Title: v.ID, Sub: loader, MCTag: v.Minecraft != ""}
-	case loaderKey(v.Loader) == "vanilla" || v.ID == v.Minecraft:
+	case loaderKey(v.Loader) == "vanilla":
 		word := t.LoaderVanilla
 		if v.Snapshot {
 			word = t.VersionSnapshotWord
 		}
-		return versionName{Title: word + " " + v.Minecraft, Sub: "Minecraft", Default: true}
+		return versionName{Title: word + " " + v.Minecraft, Default: true}
 	}
 	lv := v.LoaderVersion
 	if lv == "" {
@@ -212,7 +214,7 @@ func (a *App) versionLine(r launcher.Instance, id string) string {
 	return id
 }
 
-// joinDistinct joins non-empty parts with " · ", dropping repeats.
+// joinDistinct joins non-empty parts with wide spacing, dropping repeats.
 func joinDistinct(parts ...string) string {
 	var out []string
 	seen := map[string]bool{}
@@ -223,7 +225,7 @@ func joinDistinct(parts ...string) string {
 		seen[p] = true
 		out = append(out, p)
 	}
-	return strings.Join(out, "  ·  ")
+	return strings.Join(out, "   ")
 }
 
 // tagNeutral is the grey of neutral tags: about 7:1 on its tint at 10.5px.

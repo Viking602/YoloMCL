@@ -1,7 +1,6 @@
 package launcher
 
 import (
-	"archive/zip"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -61,7 +59,7 @@ func (s *Service) ensureJava(ctx context.Context, r Root, major int, p progress)
 	if explicit != "" {
 		v, e := inspectJava(ctx, explicit)
 		if e != nil {
-			return "", fmt.Errorf("Java 路径无效: %w", e)
+			return "", fmt.Errorf("所选 Java 路径无效: %w", e)
 		}
 		if v.Major < major {
 			return "", fmt.Errorf("此游戏需要 Java %d，所选版本为 Java %d", major, v.Major)
@@ -73,74 +71,8 @@ func (s *Service) ensureJava(ctx context.Context, r Root, major int, p progress)
 			return v.Path, nil
 		}
 	}
-	if runtime.GOOS != "windows" || runtime.GOARCH != "amd64" {
-		return "", fmt.Errorf("请在设置中指定 Java %d 路径", major)
-	}
-	p(fmt.Sprintf("正在获取 Java %d 运行环境", major), 0, 0)
-	var releases []struct {
-		Binary struct {
-			Package struct {
-				Link     string `json:"link"`
-				Checksum string `json:"checksum"`
-				Size     int64  `json:"size"`
-				Name     string `json:"name"`
-			} `json:"package"`
-		} `json:"binary"`
-	}
-	endpoint := fmt.Sprintf("https://api.adoptium.net/v3/assets/latest/%d/hotspot?architecture=x64&image_type=jre&os=windows&vendor=eclipse", major)
-	if e := s.getJSON(ctx, endpoint, &releases); e != nil {
-		return "", e
-	}
-	if len(releases) == 0 {
-		return "", fmt.Errorf("找不到 Java %d，请在设置中手动指定", major)
-	}
-	pkg := releases[0].Binary.Package
-	archive := filepath.Join(s.dir, "cache", pkg.Name)
-	if filepath.Base(pkg.Name) != pkg.Name || pkg.Checksum == "" {
-		return "", errors.New("Java 下载元数据无效")
-	}
-	if e := s.download(ctx, DownloadFile{Name: pkg.Name, URL: pkg.Link, SHA256: pkg.Checksum, Size: pkg.Size}, archive); e != nil {
-		return "", e
-	}
-	stage := filepath.Join(s.dir, "runtimes", ".install-"+newID())
-	if e := os.MkdirAll(stage, 0755); e != nil {
-		return "", e
-	}
-	defer os.RemoveAll(stage)
-	z, e := zip.OpenReader(archive)
-	if e != nil {
-		return "", e
-	}
-	defer z.Close()
-	var total uint64
-	for _, f := range z.File {
-		total += f.UncompressedSize64
-		if total > 3<<30 {
-			return "", errors.New("Java 压缩包过大")
-		}
-		dest, e := safeJoin(stage, f.Name)
-		if e != nil {
-			return "", e
-		}
-		if e = extractZipEntry(f, dest); e != nil {
-			return "", e
-		}
-	}
-	matches, _ := filepath.Glob(filepath.Join(stage, "*", "bin", "java.exe"))
-	if len(matches) != 1 {
-		return "", errors.New("Java 运行环境结构不受支持")
-	}
-	base := filepath.Dir(filepath.Dir(matches[0]))
-	dest := filepath.Join(s.dir, "runtimes", fmt.Sprintf("java-%d-%s", major, newID()[:6]))
-	if e = os.Rename(base, dest); e != nil {
-		return "", e
-	}
-	path := filepath.Join(dest, "bin", "java.exe")
-	v, e := inspectJava(ctx, path)
-	if e != nil || v.Major != major {
-		return "", errors.New("Java 安装后校验失败")
-	}
-	return path, nil
+	// Nothing fits: the UI offers a one-click install and then relaunches.
+	return "", &NeedJavaError{Major: major}
 }
 func (s *Service) ensureInjector(ctx context.Context, p progress) (string, error) {
 	var meta struct {
@@ -304,11 +236,18 @@ func (s *Service) InstallGame(rootID, parent, name, mc, loader, loaderVersion st
 		}
 	}
 	return s.startJob("安装 Minecraft "+mc, rootID, func(ctx context.Context, p progress) error {
-		if rootID == "" {
+		if rootID == "" && r.ID == "" { // a retry keeps the folder it made
 			r, e = s.createEmptyRoot(parent, name)
 			if e != nil {
 				return e
 			}
+			dir, id := filepath.Dir(r.Path), r.ID
+			if filepath.Base(r.Path) != ".minecraft" {
+				dir = r.Path
+			}
+			s.onUndo(ctx, func() { _ = s.RemoveRoot(id); removeWithRetry(dir) })
+		}
+		if rootID == "" {
 			s.mu.Lock()
 			s.rootLocks[r.ID] = true
 			s.mu.Unlock()

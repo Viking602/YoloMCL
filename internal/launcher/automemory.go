@@ -26,7 +26,8 @@ const (
 
 // AutoMemoryMB computes -Xmx:
 //
-//	want    = base(MC version) + modded bump (+1 GiB, +40 MiB per mod, ≤ +8 GiB)
+//	want    = vanilla baseline, or 4 / 6 / 8 / 10 / 12 / 14 / 16 GiB
+//	          for <=30 / 80 / 150 / 250 / 400 / 600 / more enabled mods
 //	ceiling = min(total − max(2.5 GiB, 25 % of total), available − 1 GiB, if known)
 //	result  = clamp(min(want, ceiling), 1 GiB, 16 GiB), ≤ 1 GiB for 32-bit Java,
 //	          rounded down to 256 MiB.
@@ -41,14 +42,19 @@ func AutoMemoryMB(in AutoMemoryInput) int {
 	}
 	switch strings.ToLower(in.Loader) {
 	case "forge", "neoforge", "fabric", "quilt":
-		want += 1024 + min(8192, max(0, in.Mods)*40)
+		want = 4096
+		for _, threshold := range []int{30, 80, 150, 250, 400, 600} {
+			if in.Mods > threshold {
+				want += 2048
+			}
+		}
 	}
 	ceiling := autoMemMax
 	if in.TotalMB > 0 {
 		ceiling = min(ceiling, in.TotalMB-max(2560, in.TotalMB/4))
 		if in.AvailableMB > 0 {
 			// do not plan far beyond what is free now (allow reclaiming cache)
-			ceiling = min(ceiling, max(in.AvailableMB-1024, in.TotalMB/4))
+			ceiling = min(ceiling, max(in.AvailableMB-1024, min(4096, in.TotalMB/4)))
 		}
 	}
 	v := max(autoMemMin, min(want, ceiling, autoMemMax))
@@ -95,10 +101,13 @@ func (r Root) MemoryPlan(versionID string, settings Settings) (bool, int) {
 }
 
 func countJars(dir string) int {
+	if info, err := os.Lstat(dir); err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return 0
+	}
 	entries, _ := os.ReadDir(dir)
 	n := 0
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".jar") {
+		if e.Type().IsRegular() && strings.HasSuffix(strings.ToLower(e.Name()), ".jar") {
 			n++
 		}
 	}

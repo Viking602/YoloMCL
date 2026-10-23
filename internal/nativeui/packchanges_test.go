@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func changePlanFixture() *launcher.PackUpdatePlan {
-	p := &launcher.PackUpdatePlan{ID: "p", RootID: "r1", Name: "Fabulously Optimized", OldVersion: "6.2.3", NewVersion: "6.5.0", OldGame: "Minecraft 1.21.1 · fabric 0.16.9", NewGame: "Minecraft 1.21.1 · fabric 0.19.3", GameChanged: true, Unchanged: 34, DownloadBytes: 38 << 20, Changelog: "6.5.0\n- Added Crash Assistant\n- Updated Sodium"}
+	p := &launcher.PackUpdatePlan{ID: "p", RootID: "r1", Name: "Fabulously Optimized", OldVersion: "6.2.3", NewVersion: "6.5.0", OldGame: "1.21.1   fabric 0.16.9", NewGame: "1.21.1   fabric 0.19.3", GameChanged: true, Unchanged: 34, DownloadBytes: 38 << 20, Changelog: "6.5.0\n- Added Crash Assistant\n- Updated Sodium"}
 	p.Overwritten = []launcher.PackChange{{Path: "config/extra.txt", Reason: "user"}, {Path: "config/yosbr/config/some/really/deep/nested/folder/structure/that/never/ends/pack-info.txt", Reason: "modified"}}
 	p.Updated = []launcher.PackChange{{Path: "mods/sodium-fabric-0.8.13+mc1.21.1.jar", Reason: "renamed", From: "mods/sodium-fabric-0.8.13-beta.2+mc1.21.1.jar", Disabled: true}, {Path: "config/sodium-options.json"}}
 	for i := 0; i < 14; i++ {

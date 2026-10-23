@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func TestNamingTable(t *testing.T) {
@@ -21,16 +22,18 @@ func TestNamingTable(t *testing.T) {
 		sub   string
 		mcTag bool
 	}{
-		{"vanilla", launcher.Instance{}, launcher.VersionSummary{ID: "1.21.1", Minecraft: "1.21.1", Loader: "vanilla"}, "原版 1.21.1", "Minecraft", false},
-		{"snapshot", launcher.Instance{}, launcher.VersionSummary{ID: "24w14a", Minecraft: "24w14a", Loader: "vanilla", Snapshot: true}, "快照 24w14a", "Minecraft", false},
+		{"vanilla", launcher.Instance{}, launcher.VersionSummary{ID: "1.21.1", Minecraft: "1.21.1", Loader: "vanilla"}, "原版 1.21.1", "", false},
+		{"snapshot", launcher.Instance{}, launcher.VersionSummary{ID: "24w14a", Minecraft: "24w14a", Loader: "vanilla", Snapshot: true}, "快照 24w14a", "", false},
 		{"fabric", launcher.Instance{}, launcher.VersionSummary{ID: "fabric-loader-0.16.14-1.21.1", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14"}, "Fabric 0.16.14", "", true},
 		{"fabric id only", launcher.Instance{}, launcher.VersionSummary{ID: "fabric-loader-0.16.14-1.21.1", Minecraft: "1.21.1", Loader: "fabric"}, "Fabric 0.16.14", "", true},
 		{"quilt", launcher.Instance{}, launcher.VersionSummary{ID: "quilt-loader-0.29.2-1.21.1", Minecraft: "1.21.1", Loader: "quilt", LoaderVersion: "0.29.2"}, "Quilt 0.29.2", "", true},
 		{"quilt beta", launcher.Instance{}, launcher.VersionSummary{ID: "quilt-loader-0.20.0-beta.9-1.21.8", Minecraft: "1.21.8", Loader: "quilt", LoaderVersion: "0.20.0-beta.9"}, "Quilt 0.20.0-beta.9", "", true},
 		{"forge", launcher.Instance{}, launcher.VersionSummary{ID: "1.20.1-forge-47.3.0", Minecraft: "1.20.1", Loader: "forge", LoaderVersion: "47.3.0"}, "Forge 47.3.0", "", true},
 		{"neoforge", launcher.Instance{}, launcher.VersionSummary{ID: "neoforge-21.1.77", Minecraft: "1.21.1", Loader: "neoforge", LoaderVersion: "21.1.77"}, "NeoForge 21.1.77", "", true},
+		{"renamed NeoForge", launcher.Instance{}, launcher.VersionSummary{ID: "project02", Minecraft: "26.1.2", Loader: "neoforge", LoaderVersion: "26.1.2.114"}, "project02", "NeoForge 26.1.2.114", true},
+		{"unknown base cannot turn loader into vanilla", launcher.Instance{}, launcher.VersionSummary{ID: "project02", Minecraft: "project02", Loader: "neoforge", LoaderVersion: "26.1.2.114"}, "NeoForge 26.1.2.114", "", true},
 		{"other launcher id", launcher.Instance{}, launcher.VersionSummary{ID: "1.21.1-Fabric 0.16.14", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14"}, "Fabric 0.16.14", "", true},
-		{"modpack", pack, launcher.VersionSummary{ID: "fabric-loader-0.16.14-1.21.1", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14"}, "Fabulously Optimized", "v6.5.0 · Fabric 0.16.14", true},
+		{"modpack", pack, launcher.VersionSummary{ID: "fabric-loader-0.16.14-1.21.1", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14"}, "Fabulously Optimized", "v6.5.0   Fabric 0.16.14", true},
 		{"custom id", launcher.Instance{}, launcher.VersionSummary{ID: "我的生存服", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14"}, "我的生存服", "Fabric 0.16.14", true},
 		{"custom vanilla id", launcher.Instance{}, launcher.VersionSummary{ID: "pvp-1.8.9", Minecraft: "1.8.9", Loader: "vanilla"}, "pvp-1.8.9", "原版", true},
 		{"user name wins", pack, launcher.VersionSummary{ID: "fabric-loader-0.16.14-1.21.1", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14", DisplayName: "周末联机"}, "周末联机", "Fabric 0.16.14", true},
@@ -97,7 +100,7 @@ func TestNamesLongStringsFit(t *testing.T) {
 				if !ok {
 					continue
 				}
-				for _, lbl := range []string{"MC 标签 " + v.Minecraft} {
+				for _, lbl := range []string{"Minecraft " + v.Minecraft} {
 					if r, ok := tt.Find(lbl); ok && r.Y > card.Y && r.Y < card.Y+card.H && r.X+r.W > card.X+card.W+1 {
 						t.Errorf("%s %s: tag overflows card %s", lang, c.n, v.ID)
 					}

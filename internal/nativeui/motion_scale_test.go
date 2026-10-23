@@ -73,21 +73,18 @@ func TestScalingKeepsProportions(t *testing.T) {
 				a.closeDialog()
 				tt.SetScale(dpi)
 				tt.Advance(400 * time.Millisecond)
-				set, ok1 := tt.Find("按钮文字 dock-settings")
+				set, ok1 := tt.Find("打开文件夹")
 				launch, ok2 := tt.Find("按钮文字 launch")
 				if !ok1 || !ok2 || set.X+set.W > launch.X || launch.X+launch.W > float32(size[0]) || math.Abs(float64(set.Y+set.H/2-(launch.Y+launch.H/2))) > 2 {
-					t.Errorf("settings must sit just before launch: %+v %+v", set, launch)
+					t.Errorf("folder must sit just before launch: %+v %+v", set, launch)
 				}
 				for _, name := range []string{"quilt logo", "头像 Steve"} {
 					if r, ok := tt.Find(name); ok && math.Abs(float64(r.W-r.H)) > .5 {
 						t.Errorf("%s distorted: %+v", name, r)
 					}
 				}
-				if r, ok := tt.Find("启动栏"); ok {
-					s := max(.65, min(float32(1), float32(size[0])/1536, float32(size[1]-42)/982))
-					if r.W > 1220*s+1 || math.Abs(float64(r.X+r.W/2-float32(size[0])/2)) > 2 {
-						t.Errorf("launch bar should be capped and centred: %+v", r)
-					}
+				if r, ok := tt.Find("主版本卡"); !ok || r.X+r.W > float32(size[0])+.5 {
+					t.Errorf("hero should fit the window: %+v", r)
 				}
 			})
 		}

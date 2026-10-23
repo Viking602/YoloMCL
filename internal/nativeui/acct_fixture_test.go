@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 var acctFixture = []launcher.Account{
@@ -81,7 +82,7 @@ func TestAccountListNoOverflow(t *testing.T) {
 			if found < 2 {
 				t.Errorf("%s %v: account rows not rendered (%d)", lang, size, found)
 			}
-			if !tt.HasText(a.tr().AccTagThird + " · LittleSkin") {
+			if !tt.HasText(a.tr().AccTagThird + "   LittleSkin") {
 				t.Errorf("%s: third-party tag should include the saved server name", lang)
 			}
 			if tt.HasText(a.tr().AccMSDesc) || tt.HasText(a.tr().AccOfflineDesc) {

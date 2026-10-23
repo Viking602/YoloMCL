@@ -58,7 +58,7 @@ func (s *Service) oauthForm(ctx context.Context, path string, form url.Values, o
 		return e
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "MCL/"+appVersion)
+	req.Header.Set("User-Agent", "YoloMCL/"+appVersion)
 	r, e := s.http.Do(req)
 	if e != nil {
 		return fmt.Errorf("微软登录网络请求失败: %w", e)
@@ -173,19 +173,19 @@ func (s *Service) minecraftToken(ctx context.Context, t oauthToken) (Account, to
 		} `json:"DisplayClaims"`
 	}
 	if t.Access == "" {
-		return Account{}, tokenSecret{}, errors.New("Microsoft 未返回 access token")
+		return Account{}, tokenSecret{}, errors.New("未收到 Microsoft 的 access token")
 	}
 	if e := s.jsonRequest(ctx, "POST", "https://user.auth.xboxlive.com/user/authenticate", map[string]any{"Properties": map[string]any{"AuthMethod": "RPS", "SiteName": "user.auth.xboxlive.com", "RpsTicket": "d=" + t.Access}, "RelyingParty": "http://auth.xboxlive.com", "TokenType": "JWT"}, nil, &xbox); e != nil {
-		return Account{}, tokenSecret{}, fmt.Errorf("Xbox 登录失败: %w", e)
+		return Account{}, tokenSecret{}, fmt.Errorf("登录 Xbox 失败: %w", e)
 	}
 	if xbox.Token == "" || len(xbox.DisplayClaims.XUI) == 0 {
-		return Account{}, tokenSecret{}, errors.New("Xbox 返回了无效的身份信息")
+		return Account{}, tokenSecret{}, errors.New("收到无效的 Xbox 身份信息")
 	}
 	var xsts struct {
 		Token string `json:"Token"`
 	}
 	if e := s.jsonRequest(ctx, "POST", "https://xsts.auth.xboxlive.com/xsts/authorize", map[string]any{"Properties": map[string]any{"SandboxId": "RETAIL", "UserTokens": []string{xbox.Token}}, "RelyingParty": "rp://api.minecraftservices.com/", "TokenType": "JWT"}, nil, &xsts); e != nil {
-		return Account{}, tokenSecret{}, fmt.Errorf("Xbox 授权失败，请确认已创建 Xbox 档案且满足家庭账号授权要求: %w", e)
+		return Account{}, tokenSecret{}, fmt.Errorf("无法取得 Xbox 授权，请确认已创建 Xbox 档案且满足家庭账号授权要求: %w", e)
 	}
 	var mc struct {
 		Access  string `json:"access_token"`

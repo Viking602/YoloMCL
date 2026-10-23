@@ -7,12 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mcl/internal/distribution"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Viking602/YoloMCL/internal/distribution"
 )
 
 func New(dataDir string) (*Service, error) {
@@ -25,10 +26,18 @@ func New(dataDir string) (*Service, error) {
 		if err != nil {
 			return nil, err
 		}
-		dataDir = filepath.Join(base, "MCL")
+		dataDir = filepath.Join(base, "YoloMCL")
+		MigrateDataRoot(filepath.Join(base, "MCL"), dataDir)
+	}
+	dataDir, e = filepath.Abs(dataDir)
+	if e != nil {
+		return nil, e
 	}
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, err
+	}
+	if resolved, err := filepath.EvalSymlinks(dataDir); err == nil {
+		dataDir = resolved
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	// Some networks terminate HTTP/2 connections to Minecraft CDNs. HTTP/1.1
@@ -39,7 +48,7 @@ func New(dataDir string) (*Service, error) {
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}
 	transport.MaxIdleConnsPerHost = 8
 	transport.ResponseHeaderTimeout = 30 * time.Second
-	s := &Service{dir: dataDir, http: &http.Client{Transport: transport, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	s := &Service{dir: dataDir, http: &http.Client{Transport: WithNetFault(transport), CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) > 8 {
 			return errors.New("重定向次数过多")
 		}
@@ -167,16 +176,6 @@ func (s *Service) getSecret(key string, v any) error {
 		return err
 	}
 	return json.Unmarshal(b, v)
-}
-func NormalizeLanguage(lang string) string {
-	v := strings.ToLower(strings.TrimSpace(lang))
-	if v == "" {
-		return ""
-	}
-	if strings.HasPrefix(v, "en") {
-		return "en-US"
-	}
-	return "zh-CN"
 }
 func (s *Service) SaveSettings(v Settings) error {
 	v.Language = NormalizeLanguage(v.Language)

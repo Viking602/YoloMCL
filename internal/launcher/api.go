@@ -11,6 +11,7 @@ type command struct {
 	AccountID     string   `json:"accountId"`
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
+	DisplayName   *string  `json:"displayName"`
 	Path          string   `json:"path"`
 	Parent        string   `json:"parent"`
 	Paths         []string `json:"paths"`
@@ -50,7 +51,14 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 	var value any
 	var err error
 	switch method {
+	case "backupWorld":
+		value, err = s.BackupWorld(c.RootID, c.Version, c.Name)
+	case "restoreWorld":
+		value, err = s.RestoreWorld(c.RootID, c.Version, c.Name, c.Path)
+	case "deleteWorldBackup":
+		err = s.DeleteWorldBackup(c.RootID, c.Version, c.Name, c.Path)
 	case "snapshot":
+		s.RefreshInventories(ctx)
 		value = s.Snapshot()
 	case "addRoot":
 		value, err = s.AddRoot(c.Path, c.Name)
@@ -60,6 +68,9 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		err = s.UpdateRoot(c.RootID, c.Name, c.JavaPath, c.MemoryMB, c.JVMArgs)
 	case "updateVersion":
 		err = s.UpdateVersionConfig(c.RootID, c.Version, c.JavaPath, c.MemoryMB, c.JVMArgs)
+		if err == nil && c.DisplayName != nil {
+			err = s.SetVersionDisplayName(c.RootID, c.Version, *c.DisplayName)
+		}
 	case "setVersionName":
 		err = s.SetVersionDisplayName(c.RootID, c.Version, c.Name)
 	case "select":
@@ -76,6 +87,15 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		err = s.AddLocalMods(c.RootID, c.Paths)
 	case "checkMods":
 		value, err = s.CheckMods(c.RootID)
+	case "installPlanned":
+		var req struct {
+			Items  []PlanInstall `json:"items"`
+			Enable []string      `json:"enable"`
+			Skip   []string      `json:"skip"`
+		}
+		if err = json.Unmarshal([]byte(c.Data), &req); err == nil {
+			value, err = s.InstallPlanned(c.RootID, req.Items, req.Enable, req.Skip)
+		}
 	case "installMod":
 		value, err = s.InstallMod(c.RootID, c.Source, c.ProjectID, c.VersionID, c.Replace)
 	case "assetPacks":
@@ -88,6 +108,11 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		err = s.AddLocalAssetPacks(c.RootID, c.Kind, c.Paths)
 	case "installAssetPack":
 		value, err = s.InstallAssetPack(c.RootID, c.Kind, c.Source, c.ProjectID, c.VersionID)
+	case "categories":
+		var q struct{ Source, Type string }
+		if err = json.Unmarshal([]byte(payload), &q); err == nil {
+			value, err = s.Categories(ctx, q.Source, q.Type)
+		}
 	case "search":
 		var q SearchQuery
 		if err = json.Unmarshal([]byte(payload), &q); err == nil {
@@ -95,6 +120,8 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		}
 	case "versions":
 		value, err = s.Versions(ctx, c.Source, c.ProjectID, c.Minecraft, c.Loader)
+	case "previewRemotePack":
+		value, err = s.PreviewRemotePack(ctx, c.Source, c.ProjectID, c.VersionID)
 	case "inspectPack":
 		value, err = s.InspectPack(c.Path)
 	case "importPack":
@@ -128,10 +155,16 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		value, err = SystemMemory()
 	case "launch":
 		value, err = s.Launch(c.RootID, c.AccountID)
+	case "launchAgain":
+		value, err = s.LaunchAgain(c.RootID, c.AccountID)
 	case "stop":
 		err = s.Stop(c.RootID)
 	case "logs":
 		value, err = s.Logs(c.RootID)
+	case "retryJob":
+		err = s.RetryJob(c.ID)
+	case "removeJob":
+		err = s.RemoveJob(c.ID)
 	case "cancelJob":
 		err = s.cancelJob(c.ID)
 	case "offlineLogin":

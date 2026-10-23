@@ -28,9 +28,7 @@ type JavaScanProgress struct {
 var javaReleaseVersion = regexp.MustCompile(`^[0-9][0-9._+a-zA-Z-]*$`)
 
 func javaMajor(version string) int {
-	if strings.HasPrefix(version, "1.") {
-		version = strings.TrimPrefix(version, "1.")
-	}
+	version = strings.TrimPrefix(version, "1.")
 	end := 0
 	for end < len(version) && version[end] >= '0' && version[end] <= '9' {
 		end++
@@ -109,8 +107,20 @@ func (s *Service) CachedJavaList() []JavaInfo {
 		return nil
 	}
 	out := []JavaInfo{}
+	seen := map[string]bool{}
 	for _, j := range items {
+		// These are exact executables already recorded by this launcher, not
+		// directories to traverse. Java installations are independent of the
+		// Minecraft content scan boundary.
+		if !filepath.IsAbs(j.Path) {
+			continue
+		}
 		if path := canonicalJava(j.Path); path != "" {
+			key := javaPathKey(path)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
 			j.Path = path
 			out = append(out, j)
 		}
@@ -118,103 +128,75 @@ func (s *Service) CachedJavaList() []JavaInfo {
 	return out
 }
 
-func (s *Service) javaHints() ([]string, []string) {
-	name := "java"
-	if runtime.GOOS == "windows" {
-		name = "java.exe"
-	}
-	explicit := []string{}
-	roots := []string{}
-	addHome := func(home string) {
-		if home != "" {
-			explicit = append(explicit, filepath.Join(home, "bin", name))
-			roots = append(roots, home)
-		}
-	}
-	for _, key := range []string{"JAVA_HOME", "JDK_HOME", "JRE_HOME"} {
-		addHome(os.Getenv(key))
-	}
-	for _, p := range filepath.SplitList(os.Getenv("PATH")) {
-		if p != "" {
-			explicit = append(explicit, filepath.Join(p, name))
-		}
-	}
+func (s *Service) javaConfigPaths() (explicit, allowed []string) {
 	s.mu.Lock()
-	cfg := s.cfg
-	cfg.Roots = append([]Root(nil), s.cfg.Roots...)
-	s.mu.Unlock()
-	if cfg.Settings.JavaPath != "" {
-		explicit = append(explicit, cfg.Settings.JavaPath)
+	defer s.mu.Unlock()
+	explicit = append(explicit, s.cfg.Settings.JavaPath)
+	allowed = append(allowed, s.dir)
+	for _, r := range s.cfg.Roots {
+		allowed = append(allowed, r.Path)
+		explicit = append(explicit, r.JavaPath)
+		for _, v := range r.VersionConfigs {
+			explicit = append(explicit, v.JavaPath)
+		}
 	}
-	// Portable runtimes found by a full scan remain candidates for every quick
-	// scan. Refresh their metadata so upgrades at the same path are picked up.
+	return
+}
+
+// javaScope describes the recursively searched Minecraft/launcher runtime
+// directories. System installations are discovered separately as exact Java
+// candidates; they never become recursive directory scan roots.
+func (s *Service) javaScope() (explicit, roots, allowed []string) {
+	explicit, allowed = s.javaConfigPaths()
+	roots = append(roots, s.runtimeDir())
+	for _, path := range allowed[1:] {
+		bases := []string{path}
+		if dir, err := safeJoin(path, "versions"); err == nil {
+			entries, _ := os.ReadDir(dir)
+			for _, en := range entries {
+				if en.IsDir() && en.Type()&os.ModeSymlink == 0 {
+					if base, err := safeJoin(path, "versions/"+en.Name()); err == nil {
+						bases = append(bases, base)
+					}
+				}
+			}
+		}
+		for _, base := range bases {
+			for _, folder := range []string{"runtime", "runtimes", "java", "jre", ".jdks"} {
+				if path, err := safeJoin(base, folder); err == nil {
+					roots = append(roots, path)
+				}
+			}
+		}
+	}
+	return
+}
+
+func (s *Service) javaHints() ([]string, []string) {
+	explicit, roots, _ := s.javaScope()
 	for _, j := range s.CachedJavaList() {
 		explicit = append(explicit, j.Path)
 	}
-	for _, r := range cfg.Roots {
-		explicit = append(explicit, r.JavaPath)
-		for _, base := range []string{r.Path, filepath.Dir(r.Path)} {
-			for _, folder := range []string{"runtime", "runtimes", "java", "jre", ".jdks"} {
-				roots = append(roots, filepath.Join(base, folder))
-			}
-			for _, pattern := range []string{"jdk*", "jre*", "java-*"} {
-				matches, _ := filepath.Glob(filepath.Join(base, pattern))
-				roots = append(roots, matches...)
-			}
-		}
-	}
-	home, _ := os.UserHomeDir()
-	for _, base := range []string{filepath.Join(home, ".jdks"), filepath.Join(home, ".gradle", "jdks"), filepath.Join(home, ".minecraft", "runtime"), filepath.Join(s.dir, "runtimes")} {
-		roots = append(roots, base)
-	}
-	if appData := os.Getenv("APPDATA"); appData != "" {
-		roots = append(roots, filepath.Join(appData, ".minecraft", "runtime"))
-	}
-	for _, base := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), os.Getenv("ProgramW6432")} {
-		if base == "" {
-			continue
-		}
-		for _, vendor := range []string{"Java", "Zulu", "Eclipse Adoptium", "AdoptOpenJDK", "Amazon Corretto", "BellSoft", "Semeru", "GraalVM", "SAP", "RedHat"} {
-			roots = append(roots, filepath.Join(base, vendor))
-		}
-		for _, pattern := range []string{"Microsoft/jdk*", "JetBrains/*/jbr", "JetBrains/*/jre", "Android/Android Studio/jbr", "Minecraft Launcher/runtime"} {
-			matches, _ := filepath.Glob(filepath.Join(base, filepath.FromSlash(pattern)))
-			roots = append(roots, matches...)
-		}
-	}
-	for _, base := range []string{filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs"), filepath.Join(os.Getenv("LOCALAPPDATA"), "JetBrains", "Toolbox", "apps")} {
-		if !filepath.IsAbs(base) {
-			continue
-		}
-		for _, pattern := range []string{"*/jbr", "*/jre", "*/runtime", "*/*/jbr", "*/*/jre", "*/*/*/jbr"} {
-			matches, _ := filepath.Glob(filepath.Join(base, filepath.FromSlash(pattern)))
-			roots = append(roots, matches...)
-		}
-	}
-	registryHints := platformJavaHomes()
-	for _, p := range registryHints {
-		if strings.EqualFold(filepath.Ext(p), ".exe") {
-			explicit = append(explicit, p)
-		} else {
-			addHome(p)
-		}
-	}
-	roots = append(roots, platformJavaRoots(runtime.GOOS, homeDir())...)
 	return explicit, roots
 }
 
-// ScanJava returns quick discoveries first. A requested full scan then checks all
-// local disks, reporting batches so the native UI stays responsive and cancellable.
+// Both modes detect registered system Java installations and inspect the
+// known runtime folders. Deeper mode adds nesting only inside Minecraft and
+// launcher runtime folders; neither mode enumerates local disks.
 func (s *Service) ScanJava(ctx context.Context, deep bool, notify func(JavaScanProgress)) ([]JavaInfo, error) {
 	explicit, roots := s.javaHints()
-	var disks []string
-	if deep {
-		disks = platformJavaDisks()
-	}
-	return s.scanJava(ctx, explicit, roots, disks, notify)
+	explicit = append(explicit, systemJavaPaths(ctx)...)
+	return s.scanJavaHints(ctx, deep, explicit, roots, notify)
 }
 
-func (s *Service) scanJava(ctx context.Context, explicit, roots, disks []string, notify func(JavaScanProgress)) ([]JavaInfo, error) {
+func (s *Service) scanJavaHints(ctx context.Context, deep bool, explicit, roots []string, notify func(JavaScanProgress)) ([]JavaInfo, error) {
+	if deep {
+		return s.scanJava(ctx, explicit, nil, roots, notify)
+	}
+	return s.scanJava(ctx, explicit, roots, nil, notify)
+}
+
+func (s *Service) scanJava(ctx context.Context, explicit, roots, deepRoots []string, notify func(JavaScanProgress)) ([]JavaInfo, error) {
 	started := time.Now()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -268,7 +250,7 @@ func (s *Service) scanJava(ctx context.Context, explicit, roots, disks []string,
 		}
 		walk := func(base string, maxDepth int) {
 			base = filepath.Clean(base)
-			if info, e := os.Stat(base); e != nil || !info.IsDir() {
+			if info, e := os.Lstat(base); e != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 				return
 			}
 			_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, e error) error {
@@ -327,9 +309,9 @@ func (s *Service) scanJava(ctx context.Context, explicit, roots, disks []string,
 			group.Wait()
 		}
 		walkRoots(roots, 6)
-		if len(disks) > 0 && ctx.Err() == nil {
-			phase.Store("正在扫描本机磁盘")
-			walkRoots(disks, -1)
+		if len(deepRoots) > 0 && ctx.Err() == nil {
+			phase.Store("正在扫描整合包与启动器运行时")
+			walkRoots(deepRoots, 10)
 		}
 	}()
 	go func() { workers.Wait(); close(found) }()

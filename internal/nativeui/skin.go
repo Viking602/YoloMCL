@@ -16,6 +16,7 @@ type skinPreview struct {
 	slim, dirty, spin bool
 	yaw, pitch, zoom  float64
 	last              time.Time
+	target            *float64 // eased yaw goal (front / back / cape turn)
 	bitmap            *ui.Bitmap
 }
 type point3 struct{ x, y, z float64 }
@@ -28,84 +29,16 @@ type skinFace struct {
 }
 
 func newSkinPreview() *skinPreview {
-	return &skinPreview{skin: defaultSkin(), yaw: -.35, pitch: -.1, zoom: 1, dirty: true}
+	return &skinPreview{skin: builtinSkin(false), yaw: -.35, pitch: -.1, zoom: 1, dirty: true}
 }
 func (p *skinPreview) set(skin, cape image.Image, slim bool) {
 	if skin == nil {
-		skin = defaultSkin()
+		skin = builtinSkin(slim)
 	}
 	p.skin = skin
 	p.cape = cape
 	p.slim = slim
 	p.dirty = true
-}
-func (p *skinPreview) view(c *ui.Context, t *Copy) {
-	now := c.Now()
-	if p.spin && !p.last.IsZero() {
-		p.yaw += math.Min(now.Sub(p.last).Seconds(), .1) * .6
-		p.dirty = true
-	}
-	p.last = now
-	if p.dirty || p.bitmap == nil {
-		img := p.render(320, 360)
-		if p.bitmap == nil {
-			p.bitmap = ui.NewBitmap(img).Pixelated()
-		} else {
-			p.bitmap.Update(img)
-		}
-		p.dirty = false
-	}
-	s := uiScale(c)
-	e := ui.ButtonBase(c.Key("skin-orbit")).Label(t.WardrobeOrbitAria).FillWidth().Height(360*s).Radius(12*s).Background(bg).Border(1, line).Children(func() { ui.Image(c, p.bitmap).Size(320*s, 360*s).Fit(ui.Contain) })
-	if dx, dy, ok := e.Dragged(); ok {
-		p.yaw += float64(dx) * .014
-		p.pitch = math.Max(-.65, math.Min(.55, p.pitch+float64(dy)*.009))
-		p.dirty = true
-	}
-	ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
-		label(c, t.WardrobeZoomLabel).NoWrap().Shrink(0)
-		if ui.Slider(c, &p.zoom, .65, 1.35).Label(t.WardrobeZoomAria).Grow(1).Changed() {
-			p.dirty = true
-		}
-	})
-	if p.spin {
-		c.After(33 * time.Millisecond)
-	}
-}
-func defaultSkin() image.Image {
-	im := image.NewNRGBA(image.Rect(0, 0, 64, 64))
-	fill := func(x, y, w, h int, c color.NRGBA) {
-		for yy := y; yy < y+h; yy++ {
-			for xx := x; xx < x+w; xx++ {
-				im.SetNRGBA(xx, yy, c)
-			}
-		}
-	}
-	skin := color.NRGBA{191, 150, 114, 255}
-	hair := color.NRGBA{69, 53, 41, 255}
-	shirt := color.NRGBA{81, 121, 130, 255}
-	pants := color.NRGBA{73, 79, 101, 255}
-	shoe := color.NRGBA{55, 58, 60, 255}
-	fill(0, 0, 32, 16, skin)
-	fill(0, 0, 32, 8, hair)
-	fill(0, 8, 8, 4, hair)
-	fill(24, 8, 8, 8, hair)
-	fill(8, 8, 8, 2, hair)
-	fill(9, 12, 2, 1, color.NRGBA{224, 224, 210, 255})
-	fill(13, 12, 2, 1, color.NRGBA{224, 224, 210, 255})
-	fill(10, 12, 1, 1, color.NRGBA{77, 93, 110, 255})
-	fill(13, 12, 1, 1, color.NRGBA{77, 93, 110, 255})
-	fill(11, 15, 2, 1, color.NRGBA{112, 78, 58, 255})
-	fill(16, 16, 24, 16, shirt)
-	fill(40, 16, 16, 16, skin)
-	fill(40, 16, 16, 8, shirt)
-	fill(32, 48, 16, 16, skin)
-	fill(32, 48, 16, 8, shirt)
-	fill(0, 16, 16, 16, pants)
-	fill(16, 48, 16, 16, pants)
-	fill(0, 30, 16, 2, shoe)
-	fill(16, 62, 16, 2, shoe)
-	return im
 }
 func (p *skinPreview) faces() []skinFace {
 	var faces []skinFace

@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require a version tag
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          if [[ ! "$RELEASE_REF" =~ ^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo 'Run this workflow on an existing v-prefixed SemVer tag.' >&2
+            exit 1
+          fi
+
+  checks:
+    needs: validate
+    uses: ./.github/workflows/check.yml
+
+  build:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            os: windows
+            arch: amd64
+          - runner: windows-latest
+            os: windows
+            arch: arm64
+          - runner: macos-latest
+            os: darwin
+            arch: amd64
+          - runner: macos-latest
+            os: darwin
+            arch: arm64
+          - runner: ubuntu-24.04
+            os: linux
+            arch: amd64
+          - runner: ubuntu-24.04
+            os: linux
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Build and sign release assets
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go run ./cmd/release -tag "$RELEASE_TAG" -goos "$TARGET_OS" -goarch "$TARGET_ARCH"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/release/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    needs: [checks, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          path: build/release
+          merge-multiple: true
+      - name: Verify every platform before publication
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: go run ./cmd/release -verify -tag "$RELEASE_TAG"
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/release.json" 2>/dev/null; then
+            test "$(jq -r .isDraft "$RUNNER_TEMP/release.json")" = true || { echo 'Release is already published; create a new tag.' >&2; exit 1; }
+          else
+            notes=(--generate-notes)
+            if [[ -f "docs/release-notes/$RELEASE_TAG.md" ]]; then
+              notes=(--notes-file "docs/release-notes/$RELEASE_TAG.md")
+            fi
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "YoloMCL $RELEASE_TAG" "${notes[@]}"
+          fi
+          gh release upload "$RELEASE_TAG" build/release/* --clobber
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false
+          else
+            gh release edit "$RELEASE_TAG" --draft=false --latest
+          fi

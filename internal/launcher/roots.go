@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -78,7 +79,7 @@ func (s *Service) AddRoot(path, name string) (Root, error) {
 func (s *Service) RemoveRoot(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.rootLocks[id] || s.running[id] != nil {
+	if s.rootLocks[id] || s.rootRunningLocked(id) {
 		return errors.New("此目录还有运行中的任务")
 	}
 	for i, r := range s.cfg.Roots {
@@ -340,15 +341,32 @@ func findVersionJSON(root, dirName string) (string, error) {
 	return "", os.ErrNotExist
 }
 func scanVersions(root string) []VersionSummary {
+	versions, _ := scanVersionsWithFiles(root)
+	return versions
+}
+
+// Return the exact metadata paths with the result so the inventory can watch
+// them without enumerating the same version directories a second time.
+func scanVersionsWithFiles(root string) ([]VersionSummary, []string) {
+	var files []string
 	out := []VersionSummary{}
-	entries, _ := os.ReadDir(filepath.Join(root, "versions"))
+	metadata := map[string]gameVersion{}
+	versionsDir, err := safeJoin(root, "versions")
+	if err != nil {
+		return out, files
+	}
+	entries, _ := os.ReadDir(versionsDir)
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
+		files = append(files, filepath.Join("versions", entry.Name()))
 		p, e := findVersionJSON(root, entry.Name())
 		if e != nil {
 			continue
+		}
+		if rel, err := filepath.Rel(root, p); err == nil {
+			files = append(files, rel)
 		}
 		b, e := os.ReadFile(p)
 		if e != nil {
@@ -358,18 +376,36 @@ func scanVersions(root string) []VersionSummary {
 		if json.Unmarshal(b, &v) != nil {
 			continue
 		}
-		loader := detectLoader(v)
-		mc := v.ID
-		if v.InheritsFrom != "" {
-			mc = v.InheritsFrom
+		metadata[entry.Name()] = v
+	}
+	// Resolve only local parents: scanning a folder must never fetch or change
+	// its version files. Bounds and a per-chain set handle missing/cyclic parents.
+	var resolve func(string, map[string]bool) gameVersion
+	resolve = func(id string, seen map[string]bool) gameVersion {
+		v := metadata[id]
+		seen[id] = true
+		if parent := v.InheritsFrom; parent != "" && !seen[parent] && len(seen) < 12 {
+			if _, present := metadata[parent]; present {
+				v = mergeVersion(resolve(parent, seen), v)
+			}
 		}
-		out = append(out, VersionSummary{ID: entry.Name(), Minecraft: mc, Loader: loader, LoaderVersion: loaderVersion(v, loader, mc), Snapshot: isSnapshotID(mc), JavaVersion: v.JavaVersion.MajorVersion})
+		v.ClientVersion = minecraftVersionOf(v)
+		return v
+	}
+	for id := range metadata {
+		v := resolve(id, map[string]bool{})
+		loader, mc := detectLoader(v), minecraftVersionOf(v)
+		out = append(out, VersionSummary{ID: id, Minecraft: mc, Loader: loader, LoaderVersion: loaderVersion(v, loader, mc), Snapshot: isSnapshotID(mc), JavaVersion: v.JavaVersion.MajorVersion})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
-	return out
+	return out, files
 }
 func readPack(root string) *PackLock {
-	b, e := os.ReadFile(filepath.Join(root, ".mcl", "pack-lock.json"))
+	path, e := safeJoin(root, ".mcl/pack-lock.json")
+	if e != nil {
+		return nil
+	}
+	b, e := os.ReadFile(path)
 	if e != nil {
 		return nil
 	}
@@ -399,22 +435,21 @@ func (s *Service) Snapshot() Snapshot {
 	sysMem, _ := SystemMemory()
 	jobs := s.jobListLocked()
 	running := map[string]bool{}
-	for id := range s.running {
+	runVers := map[string][]string{}
+	for k := range s.running {
+		id, ver, _ := strings.Cut(k, "|")
+		ver, _, _ = strings.Cut(ver, "#") // a second copy of the same version
 		running[id] = true
+		if !slices.Contains(runVers[id], ver) {
+			runVers[id] = append(runVers[id], ver)
+		}
 	}
 	s.mu.Unlock()
 	out := Snapshot{Settings: cfg.Settings, Instances: []Instance{}, Accounts: cfg.Accounts, ActiveRoot: cfg.ActiveRoot, ActiveAccount: cfg.ActiveAccount, Jobs: jobs, AuthServers: authServers, DataDir: s.dir}
 	out.Services = ServiceAvailability{Microsoft: s.distribution.HasMicrosoft(), CurseForge: s.distribution.HasCurseForge()}
 	for _, r := range cfg.Roots {
-		st, e := os.Stat(r.Path)
-		count := 0
-		mods, _ := os.ReadDir(filepath.Join(r.VersionDir(), "mods"))
-		for _, m := range mods {
-			if !m.IsDir() && (strings.HasSuffix(m.Name(), ".jar") || strings.HasSuffix(m.Name(), ".jar.disabled")) {
-				count++
-			}
-		}
-		versions := scanVersions(r.Path)
+		index := s.rootInventory(r)
+		versions := index.versions()
 		for i := range versions {
 			if vc, ok := r.VersionConfigs[versions[i].ID]; ok {
 				versions[i].JavaPath = vc.JavaPath
@@ -424,12 +459,10 @@ func (s *Service) Snapshot() Snapshot {
 				versions[i].DisplayName = vc.DisplayName
 			}
 			versions[i].MemoryAuto, _ = r.MemoryPlan(versions[i].ID, cfg.Settings)
-			rr := r
-			rr.SelectedVersion = versions[i].ID
 			versions[i].AutoMemoryMB = AutoMemoryMB(AutoMemoryInput{TotalMB: sysMem.TotalMB, AvailableMB: sysMem.AvailableMB,
-				Minecraft: versions[i].Minecraft, Loader: versions[i].Loader, Mods: countJars(filepath.Join(rr.VersionDir(), "mods"))})
+				Minecraft: versions[i].Minecraft, Loader: versions[i].Loader, Mods: index.modCount(versions[i].ID).Enabled})
 		}
-		out.Instances = append(out.Instances, Instance{Root: r, Available: e == nil && st.IsDir(), Versions: versions, ModCount: count, Pack: readPack(r.Path), Running: running[r.ID], PackUpdate: readPackUpdate(r.Path), PackBackups: listPackBackups(r.Path)})
+		out.Instances = append(out.Instances, Instance{Root: r, Available: index.Available, Versions: versions, ModCount: index.modCount(r.SelectedVersion).Total, Pack: index.Pack, Running: running[r.ID], RunningVersions: runVers[r.ID], PackUpdate: index.PackUpdate, PackBackups: slices.Clone(index.PackBackups)})
 	}
 	return out
 }
@@ -456,7 +489,10 @@ func detectLoader(v gameVersion) string {
 			return l
 		}
 	}
-	low := strings.ToLower(v.ID)
+	if strings.HasPrefix(v.MainClass, "net.neoforged.") || versionArgument(v, "--fml.neoForgeVersion", "-Dfml.neoForgeVersion") != "" {
+		return "neoforge"
+	}
+	low := strings.ToLower(v.ID + " " + v.InheritsFrom)
 	for _, l := range []string{"neoforge", "forge", "fabric", "quilt"} {
 		if strings.Contains(low, l) {
 			return l

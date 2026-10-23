@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"mcl/internal/launcher"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 // Exercise the exact account-dialog/wardrobe combination in the reported
@@ -25,16 +26,16 @@ func TestSingleLineControlsAcrossResizeAndDPI(t *testing.T) {
 				tt.SetSize(size[0], size[1])
 				tt.SetScale(dpi)
 				tt.Advance(400 * time.Millisecond) // let the dialog finish easing in
-				s := max(.65, min(float32(1), float32(size[0])/1536, float32(size[1]-42)/982))
-				for _, name := range []string{"按钮文字 refresh-skin", "按钮文字 close-dialog"} {
+				s := max(.65, min(float32(1), float32(size[0])/1536, float32(size[1]-42)/982)) * uiDensity
+				for _, name := range []string{"按钮文字 close-dialog"} {
 					r, ok := tt.Find(name)
-					if !ok || r.W < 30*s || r.H > 29*s || r.X < 0 || r.Y < 42 || r.X+r.W > float32(size[0]) || r.Y+r.H > float32(size[1]) {
+					if !ok || r.W < 22*s || r.H > 26*s || r.X < 0 || r.Y < 42 || r.X+r.W > float32(size[0]) || r.Y+r.H > float32(size[1]) {
 						t.Errorf("text wrapped or escaped window: %s = %+v", name, r)
 					}
 				}
-				for _, name := range []string{"刷新", "关闭"} {
+				for _, name := range []string{"关闭"} {
 					r, ok := tt.Find(name)
-					if !ok || math.Abs(float64(r.H-40*s)) > 1 {
+					if !ok || math.Abs(float64(r.H-btnMd*s)) > 1 {
 						t.Errorf("button height changed with wrapped text: %s = %+v", name, r)
 					}
 				}

@@ -22,6 +22,9 @@ type SearchQuery struct {
 	Offset    int    `json:"offset"`
 	Limit     int    `json:"limit"`
 	Sort      string `json:"sort"`
+	// Categories narrows results: Modrinth category slugs, or CurseForge
+	// category ids. All must match on Modrinth; CurseForge matches any.
+	Categories []string `json:"categories,omitempty"`
 }
 type SearchResult struct {
 	Projects []Project `json:"projects"`
@@ -106,8 +109,9 @@ func (v cfFile) version() ProjectVersion {
 	}
 	out.Files = []DownloadFile{f}
 	for _, d := range v.Dependencies {
-		if d.RelationType == 3 {
-			out.Dependencies = append(out.Dependencies, Dependency{ProjectID: strconv.Itoa(d.ModID), Kind: "required"})
+		kind := map[int]string{2: "optional", 3: "required", 5: "incompatible"}[d.RelationType]
+		if kind != "" {
+			out.Dependencies = append(out.Dependencies, Dependency{ProjectID: strconv.Itoa(d.ModID), Kind: kind})
 		}
 	}
 	return out
@@ -191,6 +195,20 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 		if q.Minecraft != "" {
 			v.Set("gameVersion", q.Minecraft)
 		}
+		if len(q.Categories) > 0 {
+			ids := []int{}
+			for _, c := range q.Categories {
+				if n, e := strconv.Atoi(c); e == nil && len(ids) < 10 {
+					ids = append(ids, n)
+				}
+			}
+			if len(ids) == 1 {
+				v.Set("categoryId", strconv.Itoa(ids[0]))
+			} else if len(ids) > 1 {
+				b, _ := json.Marshal(ids)
+				v.Set("categoryIds", string(b))
+			}
+		}
 		if q.Type == "mod" || q.Type == "modpack" {
 			if l := loaderType(q.Loader); l != "" {
 				v.Set("modLoaderType", l)
@@ -202,6 +220,7 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 				Name          string  `json:"name"`
 				Summary       string  `json:"summary"`
 				DownloadCount float64 `json:"downloadCount"`
+				DateModified  string  `json:"dateModified"`
 				Logo          struct {
 					URL string `json:"url"`
 				} `json:"logo"`
@@ -232,7 +251,7 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 			for _, cat := range p.Categories {
 				c = append(c, cat.Name)
 			}
-			out.Projects = append(out.Projects, Project{ID: strconv.Itoa(p.ID), Source: q.Source, Type: q.Type, Title: p.Name, Description: p.Summary, Icon: p.Logo.URL, Downloads: int64(p.DownloadCount), Author: a, Categories: c, URL: p.Links.WebsiteURL})
+			out.Projects = append(out.Projects, Project{ID: strconv.Itoa(p.ID), Source: q.Source, Type: q.Type, Title: p.Name, Description: p.Summary, Icon: p.Logo.URL, Downloads: int64(p.DownloadCount), Author: a, Categories: c, URL: p.Links.WebsiteURL, Updated: p.DateModified})
 		}
 		return out, nil
 	}
@@ -242,6 +261,11 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 	}
 	if (q.Type == "mod" || q.Type == "modpack") && q.Loader != "" && q.Loader != "vanilla" {
 		facets = append(facets, []string{"categories:" + q.Loader})
+	}
+	for _, c := range q.Categories {
+		if c != "" {
+			facets = append(facets, []string{"categories:" + c})
+		}
 	}
 	fb, _ := json.Marshal(facets)
 	sort := "relevance"
@@ -262,6 +286,7 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 			Downloads   int64    `json:"downloads"`
 			Author      string   `json:"author"`
 			Categories  []string `json:"categories"`
+			Modified    string   `json:"date_modified"`
 		} `json:"hits"`
 		Total int `json:"total_hits"`
 	}
@@ -270,7 +295,7 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 	}
 	out.Total = r.Total
 	for _, p := range r.Hits {
-		out.Projects = append(out.Projects, Project{ID: p.ID, Source: "modrinth", Type: q.Type, Title: p.Title, Description: p.Description, Icon: p.Icon, Downloads: p.Downloads, Author: p.Author, Categories: p.Categories, URL: "https://modrinth.com/" + q.Type + "/" + p.Slug})
+		out.Projects = append(out.Projects, Project{ID: p.ID, Source: "modrinth", Type: q.Type, Title: p.Title, Description: p.Description, Icon: p.Icon, Downloads: p.Downloads, Author: p.Author, Categories: p.Categories, URL: "https://modrinth.com/" + q.Type + "/" + p.Slug, Updated: p.Modified})
 	}
 	return out, nil
 }

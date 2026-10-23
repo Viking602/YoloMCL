@@ -1,10 +1,21 @@
 # Third-party assets
 
 - MyGo Native UI: [egoist/mygo](https://github.com/egoist/mygo), MIT. See module license.
-- Fusion Pixel Font 12px, simplified Chinese: [TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font), 2026.10.16 release. SIL Open Font License 1.1 and incorporated font notices are included in `internal/nativeui/assets/OFL.txt` and `internal/nativeui/assets/LICENSES/`.
+- GitHub mark: [Primer Octicons](https://github.com/primer/octicons/blob/main/icons/mark-github-16.svg), Copyright (c) 2026 GitHub Inc., MIT. Full license embedded at `internal/nativeui/assets/LICENSES/octicons/LICENSE.txt`. The mark identifies the source repository link.
+- Startup plugin shader assets: the unmodified Direct3D vertex/pixel bytecode from MyGo v0.5.5, bundled in `plugins/startup/assets/mygo-0.5.5/` to warm the Windows driver independently. Copyright (c) 2026 MyGo contributors; MIT license included beside the assets. MyGo source and module namespace are unchanged.
+- Fusion Pixel Font 12px, simplified Chinese: [TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font), 2026.10.16 release. The bundled `pixel.otf` is a modified subset named **MCL Pixel Brand**, containing only the `YoloMCL` wordmark and space; glyph outlines and advances are unchanged. Rebuild it with `scripts/subset-brand-font.py` and the upstream OTF. It remains under SIL Open Font License 1.1; the license and incorporated font notices are included in `internal/nativeui/assets/OFL.txt` and `internal/nativeui/assets/LICENSES/`. User text uses the separate UI fonts, not this subset.
 - Modrinth official logomark: original SVG from [Modrinth's source](https://github.com/modrinth/code/blob/main/apps/frontend/src/assets/images/logo.svg). Its brand color variable is resolved to Modrinth green for native rendering. Logo and trademark rights remain with their owner.
 - CurseForge official anvil logomark: unmodified brand SVG from [Modrinth's external brand assets](https://github.com/modrinth/code/blob/main/apps/frontend/src/assets/images/external/curseforge.svg). Logo and trademark rights remain with their owner.
-- Navigation outline icons, landscape illustration and default wardrobe preview texture are drawn directly by this application.
+- Navigation outline icons and landscape illustration are drawn directly by this application.
+
+## Default player skins
+
+`internal/launcher/assets/skins/steve.png` and `alex.png` are unmodified Minecraft 26.1.2 textures, extracted from the installed official client. They are embedded for offline wardrobe previews and default account avatars. © Mojang AB / Microsoft; all rights remain with their owners. MCL is not affiliated with or endorsed by Mojang or Microsoft.
+
+| Asset | Original client entry | SHA-256 |
+| --- | --- | --- |
+| `steve.png` | `assets/minecraft/textures/entity/player/wide/steve.png` | `06628f9cef88520da742ab280a01677ce17c99717f964ed89ed791673121094c` |
+| `alex.png` | `assets/minecraft/textures/entity/player/slim/alex.png` | `99391ed9dff9581ec88daf23b9b028adc9ac91f52889edcff1c982d0923c0cff` |
 
 MCL is an independent project. Minecraft, Microsoft, Modrinth and CurseForge names and logos identify their respective integrations and remain the property of their owners.
 
