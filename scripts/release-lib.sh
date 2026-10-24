@@ -49,8 +49,9 @@ package_release() {
   mkdir -p "$output"
   output="$(cd "$output" && pwd)"
   # GNU tar needs explicit modes when cross-packaging Unix targets on Windows.
+  # Native Windows paths must not be interpreted as remote host:path archives.
   if tar --version | head -n 1 | grep -q GNU; then
-    tar_options+=(--owner=0 --group=0 --numeric-owner "--mtime=$date")
+    tar_options+=(--force-local --owner=0 --group=0 --numeric-owner "--mtime=$date")
     exe_options=(--mode=755)
     data_options=(--mode=644)
   fi
