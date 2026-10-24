@@ -26,10 +26,10 @@ Secrets are scoped to the build/sign step. Pull-request checks have no publisher
 ```sh
 make check CHECK_ARGS="--cross"
 git add <reviewed-files>
-git commit -m "Prepare release"
-git tag -a v1.0.0 -m "YoloMCL v1.0.0"
+git commit -m "chore(release): prepare v1.0.1"
+git tag -a v1.0.1 -m "YoloMCL v1.0.1"
 git push origin main
-git push origin v1.0.0
+git push origin v1.0.1
 ```
 
 The [Release workflow](../.github/workflows/release.yml) performs checks on all three operating systems and builds their amd64 and arm64 packages. After all jobs pass, the publish job verifies every signature/checksum and uploads every asset to a draft release before publishing it. It refuses to overwrite an already published release. A failed run can be rerun on the same tag; manual dispatch must also select that tag.
@@ -56,8 +56,8 @@ The updater verifies the archive before extraction. HTTPS protects manifest tran
 On a clean checkout at the release tag, provide the same publisher variables and `MYGO_UPDATER_PRIVATE_KEY` through the process environment, then run:
 
 ```sh
-make release TAG=v1.0.0 RELEASE_ARGS="--goos windows --goarch amd64"
-make verify TAG=v1.0.0  # after collecting all six target outputs
+make release TAG=v1.0.1 RELEASE_ARGS="--goos windows --goarch amd64"
+make verify TAG=v1.0.1  # after collecting all six target outputs
 ```
 
 Make delegates to `scripts/release.sh`; it calls `scripts/build.sh`, then prepares archives and manifests using Shell and standard archive tools. OpenSSL 3 performs Ed25519 signing. Existing 64-byte private-key backups and the embedded public key remain compatible. macOS release packaging requires a macOS host for `codesign`; no MyGo module-cache files are edited.
