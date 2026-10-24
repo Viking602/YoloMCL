@@ -48,7 +48,7 @@ func TestNumberRollKeepsUnitsAndUnchangedDigitsStill(t *testing.T) {
 	if !tt.HasText(value) {
 		t.Fatal("number roll did not settle on its target")
 	}
-	if now, _ := tt.Find("数字单位 capacity1"); now != unit {
+	if now, _ := tt.Find("数字单位 capacity1"); !sameNumberBounds(now, unit) {
 		t.Fatal("number unit moved")
 	}
 	snapshotUI(t, tt, "number-roll-complete")
@@ -56,7 +56,7 @@ func TestNumberRollKeepsUnitsAndUnchangedDigitsStill(t *testing.T) {
 	value = "3.4 GB"
 	tt.Frame()
 	tt.Advance(400 * time.Millisecond)
-	if now, _ := tt.Find("数字单位 capacity1"); now != unit {
+	if now, _ := tt.Find("数字单位 capacity1"); !sameNumberBounds(now, unit) {
 		t.Fatal("shorter value shifted the unit")
 	}
 }
@@ -180,8 +180,8 @@ func TestNumberRollCarryPrecisionAndInterruption(t *testing.T) {
 	units, _ := tt.Find("数字位 count-0-0")
 	value = "100"
 	tt.Frame()
-	if now, _ := tt.Find("数字位 count-0-0"); now != units {
-		t.Fatal("carry moved the anchored units column")
+	if now, _ := tt.Find("数字位 count-0-0"); !sameNumberBounds(now, units) {
+		t.Fatalf("carry moved the anchored units column: before=%+v after=%+v", units, now)
 	}
 	tt.Advance(110 * time.Millisecond)
 	tt.Frame() // sample at the exact time of the incoming request
@@ -204,14 +204,14 @@ func TestNumberRollCarryPrecisionAndInterruption(t *testing.T) {
 	value = "3.45 GB"
 	tt.Frame()
 	tt.Advance(100 * time.Millisecond)
-	if now, _ := tt.Find("小数点 count-0"); now != point || integer.position != 3 {
+	if now, _ := tt.Find("小数点 count-0"); !sameNumberBounds(now, point) || integer.position != 3 {
 		t.Fatal("fractional update moved the point or rolled the unchanged integer")
 	}
 	tt.Advance(500 * time.Millisecond)
 	value = "3.4 GB"
 	tt.Frame()
 	tt.Advance(500 * time.Millisecond)
-	if now, _ := tt.Find("小数点 count-0"); now != point || integer.position != 3 {
+	if now, _ := tt.Find("小数点 count-0"); !sameNumberBounds(now, point) || integer.position != 3 {
 		t.Fatal("shrinking precision moved the point or rolled the unchanged integer")
 	}
 	for _, next := range []string{"—", "371", "999999999999999", "0"} {
@@ -236,6 +236,43 @@ func TestNumberRollCarryPrecisionAndInterruption(t *testing.T) {
 	if !tt.HasText(value) {
 		t.Fatal("reduced motion did not stop an active stagger")
 	}
+}
+
+func TestNumberRollKeepsRightAnchorAcrossFontSizes(t *testing.T) {
+	if err := loadAssets(); err != nil {
+		t.Fatal(err)
+	}
+	for _, size := range []float32{13.7, 24, 30, 30.25, 36} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			a := &App{}
+			value := "99"
+			tt := ui.NewTester(func(c *ui.Context) {
+				ui.Column(c).Fill().Padding(20).Children(func() {
+					a.rollNumber(c, "count", value, size, 700, ink, true).Width(250)
+				})
+			}, 300, 100)
+			units, found := tt.Find("数字位 count-0-0")
+			if !found {
+				t.Fatal("units column is missing")
+			}
+			for _, next := range []string{"100", "999", "1000", "9"} {
+				value = next
+				tt.Frame()
+				if now, found := tt.Find("数字位 count-0-0"); !found || !sameNumberBounds(now, units) {
+					t.Fatalf("%s moved units: before=%+v after=%+v", next, units, now)
+				}
+				tt.Advance(600 * time.Millisecond)
+			}
+		})
+	}
+}
+
+func sameNumberBounds(a, b ui.Rect) bool {
+	// Fractional platform font metrics can accumulate float32 rounding error.
+	// Keep the tolerance far below a visible pixel or a column's width.
+	const epsilon = .001
+	return math.Abs(float64(a.X-b.X)) <= epsilon && math.Abs(float64(a.Y-b.Y)) <= epsilon &&
+		math.Abs(float64(a.W-b.W)) <= epsilon && math.Abs(float64(a.H-b.H)) <= epsilon
 }
 
 func TestNumberDirectionKeepsDecimalPrecision(t *testing.T) {

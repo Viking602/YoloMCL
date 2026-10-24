@@ -59,7 +59,7 @@ for os_name in windows darwin linux; do
     [[ "$production" == false ]] || flags=(--release)
     PATH="$mcl_work/bin:$PATH" MS_CLIENT_ID=12345678-1234-1234-1234-123456789abc \
       CURSEFORGE_API_KEY=private-test-key GOFLAGS=-tags=fixture \
-      bash scripts/build.sh --goos "$os_name" --goarch arm64 --output "$mcl_work/launcher" "${flags[@]}" >/dev/null
+      bash scripts/build.sh --goos "$os_name" --goarch arm64 --output "$mcl_work/launcher" ${flags[@]+"${flags[@]}"} >/dev/null
     if grep -q private-test-key "$MCL_TEST_ARGS"; then fail 'Raw API key leaked into compiler arguments.'; fi
     expected_config=$(printf '{"microsoftClientId":"12345678-1234-1234-1234-123456789abc"}' | base64_line)
     grep -Fq -- "-X github.com/Viking602/YoloMCL/internal/config.encoded=$expected_config" "$MCL_TEST_ARGS" || fail 'Publisher configuration linker target is incorrect.'

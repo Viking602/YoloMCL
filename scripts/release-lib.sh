@@ -65,8 +65,9 @@ package_release() {
     done
     chmod 755 "$stage/$exe"
     chmod 644 "$stage/LICENSE" "$stage/THIRD_PARTY_NOTICES.md"
-    tar "${tar_options[@]}" "${exe_options[@]}" -cf "$work/contents.tar" -C "$stage" "$exe"
-    tar "${tar_options[@]}" "${data_options[@]}" -rf "$work/contents.tar" -C "$stage" LICENSE THIRD_PARTY_NOTICES.md
+    # Bash 3.2 treats empty arrays as unset with nounset enabled.
+    tar "${tar_options[@]}" ${exe_options[@]+"${exe_options[@]}"} -cf "$work/contents.tar" -C "$stage" "$exe"
+    tar "${tar_options[@]}" ${data_options[@]+"${data_options[@]}"} -rf "$work/contents.tar" -C "$stage" LICENSE THIRD_PARTY_NOTICES.md
   fi
   gzip -n -c "$work/contents.tar" > "$output/$base.tar.gz"
   ossl dgst -sha256 -binary "$output/$base.tar.gz" > "$work/digest"
