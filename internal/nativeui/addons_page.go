@@ -154,7 +154,7 @@ func (a *App) modPage(c *ui.Context) {
 	if a.addonTab != "mods" {
 		if len(a.assetPacks) == 0 && !a.modsLoading {
 			if a.addonTab == "shader" {
-				emptyState(c, "empty-shaders", "cube", t.ModsEmptyShaderTitle, t.ModsEmptyShaderDesc, a.exploreAction(c))
+				emptyState(c, "empty-shaders", "sun", t.ModsEmptyShaderTitle, t.ModsEmptyShaderDesc, a.exploreAction(c))
 			} else {
 				emptyState(c, "empty-rp", "layers", t.ModsEmptyRPTitle, t.ModsEmptyRPDesc, a.exploreAction(c))
 			}

@@ -28,7 +28,7 @@ func TestStopKillsWholeProcessTree(t *testing.T) {
 	}
 	g := &runningGame{cmd: cmd, tree: tree}
 	time.Sleep(700 * time.Millisecond) // let the child spawn
-	if !tree.alive() {
+	if !tree.Alive() {
 		t.Fatal("tree should be alive")
 	}
 	if e := g.killTree(); e != nil {
@@ -62,17 +62,17 @@ func TestTreeAliveWhileChildRuns(t *testing.T) {
 	time.Sleep(700 * time.Millisecond)
 	_ = cmd.Process.Kill()
 	time.Sleep(500 * time.Millisecond)
-	if !tree.alive() {
+	if !tree.Alive() {
 		t.Fatal("child should still run after killing only the leader")
 	}
-	_ = tree.kill()
+	_ = tree.Kill()
 	go func() { _ = cmd.Wait() }()
 	deadline := time.Now().Add(10 * time.Second)
-	for tree.alive() && time.Now().Before(deadline) {
+	for tree.Alive() && time.Now().Before(deadline) {
 		time.Sleep(100 * time.Millisecond)
 	}
-	if tree.alive() {
+	if tree.Alive() {
 		t.Fatal("tree kill left processes")
 	}
-	tree.close()
+	tree.Close()
 }

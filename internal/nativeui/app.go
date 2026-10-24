@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -13,188 +11,6 @@ import (
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
-
-// App owns the native window's state and marshals background results onto the
-// UI thread. Use New to initialize its services, queues and cancellation scope.
-type App struct {
-	advancedOpen                                          bool
-	service                                               *launcher.Service
-	win                                                   *mygo.Window
-	winMu                                                 sync.RWMutex
-	ctx                                                   context.Context
-	cancel                                                context.CancelFunc
-	bgWG                                                  sync.WaitGroup // background icon lookups
-	firstFrame                                            chan struct{}
-	firstFrameOnce                                        sync.Once
-	launcherUpdateOnce                                    sync.Once
-	launcherUpdate                                        launcherUpdateState
-	checkLauncherRelease                                  func(context.Context) (*launcherRelease, error)
-	events                                                chan func()
-	page                                                  string
-	snapshot                                              launcher.Snapshot
-	selectionEpoch                                        atomic.Uint64
-	selectionMu                                           sync.Mutex
-	selectionPending                                      bool
-	settings                                              launcher.Settings
-	systemLanguage                                        string
-	systemLanguages                                       func() []string
-	languageOverride                                      string
-	settingsRevision                                      atomic.Uint64
-	settingsMu                                            sync.Mutex
-	memory                                                float64
-	memoryText                                            string
-	memoryInfo                                            launcher.MemoryInfo
-	memoryError                                           string
-	javaScanning                                          bool
-	javaDeep                                              bool
-	javaScanned                                           int
-	javaElapsed                                           int64
-	javaPhase                                             string
-	javaScanCancel                                        context.CancelFunc
-	javaScanRevision                                      int
-	javaFilter                                            string
-	javaScannedOnce                                       bool
-	javaReadyToScan                                       bool
-	message                                               string
-	noticeKind                                            string // "", "error", "warning", "info"
-	noticeRetry                                           func()
-	noticeFor                                             string // message the retry belongs to
-	noticeShown                                           string
-	noticeShownKind                                       string
-	noticeCopied                                          bool
-	appearanceErr                                         string
-	confirmRemove                                         string
-	wv                                                    worldView
-	worldListGen, worldBackupsGen                         uint64
-	packChecked                                           map[string]bool
-	toastHeld                                             bool
-	toastGen                                              int
-	toastLifeKey                                          string
-	errorMessage                                          bool
-	dialog                                                string
-	dialogOpen                                            bool
-	dialogGen                                             uint64
-	pageDir, accountTabDir                                float32
-	dialogShown                                           string
-	packErr                                               string
-	packPlan                                              *launcher.PackUpdatePlan
-	packPlanReport                                        bool
-	packExpand                                            map[string]bool
-	packDropPath                                          string
-	prevPage                                              string
-	form                                                  formState
-	addonTab                                              string
-	instTab, instFilter, instLoaded, instLoader           string
-	instScrollPending                                     bool
-	instRows                                              ui.ListState
-	pending                                               map[string]int
-	pendingRequests                                       map[string]pendingRequest
-	modsGen                                               int
-	modsCancel                                            context.CancelFunc
-	modCheckCancel                                        func()
-	modChecking                                           bool
-	addonCache                                            map[string]addonCacheEntry
-	addonOrder                                            []string
-	instStatus                                            launcher.InstanceStatus
-	instStatusKey                                         string
-	statusCancel                                          context.CancelFunc
-	statusGen                                             int
-	statusCache                                           map[string]launcher.InstanceStatus
-	statusLoading                                         bool
-	instStatusErr                                         string
-	overviewDisplay                                       overviewPresentation
-	overviewHolding                                       bool
-	contentSwaps                                          map[string]*contentSwapState
-	numberFlips                                           map[string]*numberFlipState
-	overviewImageSlots                                    chan struct{}
-	recentPing                                            recentServerPing
-	logView                                               logViewState
-	logSess                                               logSessions
-	launchAgain                                           launchAgainState
-	logFilters                                            map[string]logFilter
-	accountMenuOpen                                       bool
-	javaGet                                               javaGetState
-	lastScale                                             float32
-	instListBounds                                        ui.Rect
-	tabViewBounds, modListBounds                          ui.Rect
-	embedMods                                             bool
-	mods                                                  []launcher.Mod
-	assetPacks                                            []launcher.AssetPack
-	modFilter                                             string
-	addonFilterKind, addonSortKey                         string
-	verMemSlider                                          float64
-	toggleMu                                              sync.Mutex
-	lastToggle                                            time.Duration
-	modIconAsked                                          map[string]bool
-	modIconURLs                                           map[string]string
-	addonRemote                                           map[string]launcher.RemoteInfo // sha1 (mods) or kind|file (packs)
-	packRemoteAsked                                       map[string]bool
-	zhNames                                               *launcher.ZhNames
-	zhAsked                                               bool
-	addonListMode                                         bool
-	projShowAll, projLoading                              bool
-	plan                                                  []launcher.PlanItem
-	planKey, planErr, planJob, planReplace                string
-	planLoading, planFinished                             bool
-	planErrUI                                             uiError
-	catFailed                                             map[string]bool
-	catSel                                                map[string][]string // source|type -> selected category ids
-	catOpts                                               map[string][]launcher.Category
-	catAsked                                              map[string]bool
-	planOff                                               map[string]bool // explicit check state, true = unchecked
-	planCancel                                            context.CancelFunc
-	addonGridW                                            map[string]float32
-	gameStates                                            map[string]instGameState
-	shaderMods                                            map[string][]launcher.Mod
-	gameStateAsked                                        map[string]bool
-	modsLoading                                           bool
-	provider, resourceType, query, filterMC, filterLoader string
-	searchResult                                          launcher.SearchResult
-	searchLoading                                         bool
-	searchError                                           string
-	searchRevision                                        int
-	searchSort                                            string
-	discoverMotion                                        discoverMotionState
-	discoverFeed                                          discoverFeedState
-	project                                               *launcher.Project
-	projectVersions                                       []launcher.ProjectVersion
-	verFilter                                             verFilter
-	packRemote                                            map[string]*launcher.PackPreview
-	projectVersionFilter                                  string
-	packPreview                                           *launcher.PackPreview
-	minecraftVersions                                     []launcher.MinecraftVersion
-	versionKind, versionQuery                             string
-	manifestLoading                                       bool
-	manifestError                                         string
-	manifestRevision                                      int
-	loaders                                               []string
-	loaderLoading                                         bool
-	loaderError                                           string
-	loaderRevision                                        int
-	accountTab                                            string
-	accountAdding                                         bool
-	serverCustom                                          bool
-	serverEdit                                            *authServerEditor
-	device                                                *launcher.DeviceInfo
-	deviceUntil, nextDevicePoll                           time.Time
-	polling                                               bool
-	profiles                                              []launcher.ThirdProfile
-	appearance                                            launcher.Appearance
-	avatars                                               avatarCache
-	appearanceAccount                                     string
-	appearanceLoading                                     bool
-	preview                                               *skinPreview
-	model, selectedCape                                   string
-	wardrobeSt                                            *wardrobeState
-	packReport                                            *launcher.PackReport
-	logText                                               string
-	java                                                  []launcher.JavaInfo
-	imageMu                                               sync.Mutex
-	images                                                map[string]ui.ImageSource
-	imagePending                                          map[string]bool
-	imageRetry                                            map[string]time.Time
-	imageSlots                                            chan struct{}
-}
 
 type formState struct {
 	Name, Path, Parent, Minecraft, Loader, LoaderVersion, Target, VersionID, Server, Username, Password, Profile string
@@ -333,6 +149,9 @@ func (a *App) goPage(page string) {
 		if a.instTab == "" {
 			a.instTab = "mods"
 		}
+	}
+	if page == "discover" && a.page != page {
+		a.discoverMotion.categories = discoverCategoryMotion{}
 	}
 	a.page = page
 	switch page {

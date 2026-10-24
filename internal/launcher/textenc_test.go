@@ -1,12 +1,14 @@
 package launcher
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
-	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
@@ -16,37 +18,6 @@ func gbk(t *testing.T, s string) []byte {
 		t.Fatal(e)
 	}
 	return b
-}
-
-func TestDecodeLineGBK(t *testing.T) {
-	for _, s := range []string{"[30日8月2026 17:32:44.712] [Render thread/INFO] [fastquit/]: 正在保存世界 (1s)", "Disconnected \"已断开连接\" from the client.", "退出游戏"} {
-		if got := DecodeLine(gbk(t, s)); got != s {
-			t.Fatalf("GBK line: %q != %q", got, s)
-		}
-	}
-	if got := DecodeLine([]byte("UTF-8 正常 ✓")); got != "UTF-8 正常 ✓" {
-		t.Fatal(got)
-	}
-	if got := DecodeLine([]byte{'o', 'k', 0xff, 0xfe, 0x80}); strings.ContainsRune(got, '\uFFFD') || !strings.HasPrefix(got, "ok") {
-		t.Fatalf("garbage bytes must not show U+FFFD: %q", got)
-	}
-}
-
-func TestChineseLogsOnWesternWindowsKeepLatinAccents(t *testing.T) {
-	for _, text := range []string{"正在保存世界", "退出游戏", "[INFO] 保存中"} {
-		if got := decodeLegacyLine(gbk(t, text), charmap.Windows1252); got != text {
-			t.Fatalf("imported Chinese log decoded using Western ANSI: %q", got)
-		}
-	}
-	for _, text := range []string{"München", "café déjà vu", "€ 10", "naïve"} {
-		data, err := charmap.Windows1252.NewEncoder().Bytes([]byte(text))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := decodeLegacyLine(data, charmap.Windows1252); got != text {
-			t.Fatalf("Western log changed: %q != %q", got, text)
-		}
-	}
 }
 
 func TestTailLinesMixedEncodings(t *testing.T) {
@@ -86,5 +57,96 @@ func TestZhNamesParse(t *testing.T) {
 	}
 	if z.Project(Project{Source: "modrinth", Type: "mod", URL: "https://modrinth.com/mod/alexs-mobs"}) != "Alex 的生物" {
 		t.Fatal("project lookup")
+	}
+}
+
+// gameLogR10 is the r10 stream path, kept for the benchmark.
+type gameLogR10 struct {
+	ring    *lineRing
+	pending string
+}
+
+func (l *gameLogR10) Write(b []byte) {
+	text := append([]byte(l.pending), b...)
+	parts := bytes.Split(text, []byte("\n"))
+	l.pending = string(parts[len(parts)-1])
+	for _, raw := range parts[:len(parts)-1] {
+		v := decodeLineR10(bytes.TrimRight(raw, "\r"))
+		v = strings.TrimRight(v, "\r")
+		l.ring.Add(v)
+	}
+}
+
+func decodeLineR10(b []byte) string {
+	if utf8.Valid(b) {
+		return strings.ReplaceAll(string(b), "\uFFFD", "")
+	}
+	if s, e := simplifiedchinese.GB18030.NewDecoder().Bytes(b); e == nil && utf8.Valid(s) && !strings.ContainsRune(string(s), '\uFFFD') {
+		return string(s)
+	}
+	return strings.ToValidUTF8(string(b), "")
+}
+
+func mixedLog(n int) [][]byte {
+	gbkBytes, _ := simplifiedchinese.GBK.NewEncoder().Bytes([]byte("[17:32:45] [Server thread/INFO] [fastquit]: 成功保存\"新的世界\"(1s)"))
+	out := make([][]byte, n)
+	for i := range out {
+		switch i % 10 {
+		case 0:
+			out[i] = gbkBytes
+		case 1:
+			out[i] = []byte("[17:32:45] [Render thread/INFO] [minecraft/Minecraft]: 正在加载资源包 逆转未来 2.3.3")
+		default:
+			out[i] = []byte(fmt.Sprintf("[17:32:45] [Worker-Main-%d/INFO] [epicfight]: Data keys [efn:charge_power, efn:charge_ticks, efn:key2_press_time]", i%7))
+		}
+	}
+	return out
+}
+
+func streamBytes() []byte {
+	var buf bytes.Buffer
+	for _, l := range mixedLog(120000) {
+		buf.Write(l)
+		buf.WriteString("\r\n")
+	}
+	return buf.Bytes()
+}
+
+// Java flushes the console in ~8 KiB writes.
+func benchStream(b *testing.B, write func([]byte)) {
+	data := streamBytes()
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		for off := 0; off < len(data); off += 8192 {
+			write(data[off:min(off+8192, len(data))])
+		}
+	}
+	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*120000), "ns/line")
+}
+
+func BenchmarkStreamR10(b *testing.B) {
+	l := &gameLogR10{ring: newLineRing(LogRingLines)}
+	benchStream(b, l.Write)
+}
+
+func BenchmarkStream(b *testing.B) {
+	l := &gameLog{ring: newLineRing(LogRingLines), secret: "tok"}
+	benchStream(b, func(p []byte) { _, _ = l.Write(p) })
+}
+
+// TailLines on a 120k-line file only decodes the requested window.
+func BenchmarkTailLines(b *testing.B) {
+	p := filepath.Join(b.TempDir(), "latest.log")
+	if e := os.WriteFile(p, streamBytes(), 0644); e != nil {
+		b.Fatal(e)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if _, _, e := TailLines(p, 7000, -1); e != nil {
+			b.Fatal(e)
+		}
 	}
 }

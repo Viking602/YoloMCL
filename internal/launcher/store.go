@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Viking602/YoloMCL/internal/distribution"
+	publisherconfig "github.com/Viking602/YoloMCL/internal/config"
 )
 
 func New(dataDir string) (*Service, error) {
-	publisher, e := distribution.Load()
+	publisher, e := publisherconfig.Load()
 	if e != nil {
 		return nil, e
 	}
@@ -27,7 +27,7 @@ func New(dataDir string) (*Service, error) {
 			return nil, err
 		}
 		dataDir = filepath.Join(base, "YoloMCL")
-		MigrateDataRoot(filepath.Join(base, "MCL"), dataDir)
+		migrateDataRoot(filepath.Join(base, "MCL"), dataDir)
 	}
 	dataDir, e = filepath.Abs(dataDir)
 	if e != nil {
@@ -48,7 +48,7 @@ func New(dataDir string) (*Service, error) {
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}
 	transport.MaxIdleConnsPerHost = 8
 	transport.ResponseHeaderTimeout = 30 * time.Second
-	s := &Service{dir: dataDir, http: &http.Client{Transport: WithNetFault(transport), CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	s := &Service{dir: dataDir, http: &http.Client{Transport: withNetFault(transport), CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) > 8 {
 			return errors.New("重定向次数过多")
 		}
@@ -86,7 +86,7 @@ func New(dataDir string) (*Service, error) {
 		return nil, err
 	}
 	s.cfg.Settings.Language = NormalizeLanguage(s.cfg.Settings.Language)
-	s.distribution = publisher
+	s.publisher = publisher
 	return s, nil
 }
 func newID() string {
@@ -130,14 +130,13 @@ func atomicBytes(path string, b []byte, mode os.FileMode) error {
 	}
 	return os.Rename(tmp, path)
 }
-func (s *Service) saveLocked() error  { return atomicJSON(filepath.Join(s.dir, "config.json"), s.cfg) }
 func (s *Service) settings() Settings { s.mu.Lock(); defer s.mu.Unlock(); return s.cfg.Settings }
 func (s *Service) getRoot(id string) (Root, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, r := range s.cfg.Roots {
 		if r.ID == id {
-			return r, nil
+			return r.clone(), nil
 		}
 	}
 	return Root{}, errors.New("找不到 Minecraft 目录")
@@ -195,6 +194,7 @@ func (s *Service) SaveSettings(v Settings) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.cfg.Settings = v
-	return s.saveLocked()
+	draft := s.cfg.clone()
+	draft.Settings = v
+	return s.saveConfigLocked(draft)
 }

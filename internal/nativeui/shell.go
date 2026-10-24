@@ -1,14 +1,10 @@
 package nativeui
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
-
-	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 // Native coordinates scale uniformly from the 1536×1024 reference canvas so
@@ -89,7 +85,6 @@ ready:
 					})
 					a.toast(c)
 				})
-				a.launchDock(c)
 			})
 		})
 		if draggingFiles {
@@ -206,232 +201,8 @@ var navTones = map[string][2]ui.Color{
 	"settings": {ui.Hex("#8e8e93"), ui.Hex("#5b5b66")},
 }
 
-func (a *App) accountEntry(c *ui.Context) {
-	s := uiScale(c)
-	t := a.tr()
-	name := t.SideAccountAdd
-	if ac := a.account(); ac != nil {
-		name = ac.Name
-	}
-	tip := t.SideAccountManage
-	if ac := a.account(); ac != nil {
-		tip = ac.Name + "   " + a.accountKindTag(*ac)
-	}
-	b := ui.ButtonBase(c.Key("account-menu")).Label(t.SideAccountManage).Tooltip(tip).Height(btnSm*s).PaddingX(8*s).Gap(6*s).AlignItems(ui.Center).Radius(999).Border(1, glassEdge).Shrink(0)
-	bg := ui.RGBA(255, 255, 255, .6)
-	if a.page == "settings" {
-		bg = accentSoft
-	} else if b.Hovered() {
-		bg = panel
-	}
-	b.Background(b.AnimateColor("bg", bg, fastAnim))
-	if b.Children(func() {
-		a.headAvatar(c, a.account(), 22*s, func() {
-			ui.Box(c).Size(22*s, 22*s).Radius(11 * s).LinearGradient(tintGradient(ui.Hex("#64d2ff"), accentIndigo)).Center().Children(func() {
-				ui.Icon(c, icons["account"]).Size(12*s, 12*s).TextColor(panel)
-			})
-		})
-		ui.Text(c, midEllipsis(c, name, 130*s, typeCallout*s, 600)).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).NoWrap()
-		if ac := a.account(); ac != nil {
-			kind := ac.Kind
-			if kind != "microsoft" && kind != "yggdrasil" {
-				kind = "offline"
-			}
-			col := accountTypeColor(kind)
-			ui.Box(c).Size(18*s, 18*s).Radius(999).Background(col.Alpha(.12)).Center().Shrink(0).Children(func() {
-				accountTypeIconL(c, a, "当前账号类型 ", kind, ac.Server, 11*s, col)
-			})
-		}
-		ui.Icon(c, icons["chevron-down"]).Size(9.5*s, 9.5*s).TextColor(muted)
-	}).Clicked() {
-		if len(a.snapshot.Accounts) == 0 {
-			a.accountAdding = false
-			a.openDialog("account")
-		} else {
-			a.accountMenuOpen = !a.accountMenuOpen
-		}
-	}
-	a.accountMenu(c, b)
-}
-
-// accountMenu is the quick switcher under the top-bar account chip: every
-// account, one click to switch, then the manager and add entries. A click
-// outside or Escape closes it.
-func (a *App) accountMenu(c *ui.Context, anchor ui.Element) {
-	s := uiScale(c)
-	t := a.tr()
-	ui.PopoverBase(c.Key("account-menu-pop"), anchor, &a.accountMenuOpen, func(pop ui.Element) {
-		popover(pop.Label("账号快速切换").AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).Margin(6*s, 0, 0, 0).Width(264*s).MaxWidthPercent(40).Padding(6*s), 14*s, s)
-		ui.Column(c).FillWidth().Gap(2 * s).Children(func() {
-			cur := a.account()
-			scrollArea(c, "account-menu-scroll").FillWidth().MaxHeight(320 * s).Gap(2 * s).Children(func() {
-				for _, acc := range a.snapshot.Accounts {
-					ac := acc
-					active := cur != nil && cur.ID == ac.ID
-					row := ui.ButtonBase(c.Key("qs-" + ac.ID)).Label("切换到 " + ac.Name).FillWidth().Height(44 * s).PaddingX(8 * s).Gap(10 * s).Radius(9 * s).AlignItems(ui.Center)
-					bg := ui.Transparent
-					if active {
-						bg = accentSoft
-					} else if row.Hovered() {
-						bg = ui.RGBA(120, 130, 160, .10)
-					}
-					row.Background(bg)
-					if row.Children(func() {
-						a.headAvatar(c, &ac, 26*s, func() {
-							ui.Box(c).Size(26*s, 26*s).Radius(6.5*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
-								ui.Icon(c, icons["account"]).Size(13*s, 13*s).TextColor(accent)
-							})
-						})
-						fg := ink
-						if active {
-							fg = accent
-						}
-						ui.Text(c, ac.Name).FontSize(typeCallout * s).FontWeight(600).TextColor(fg).SingleLine().Grow(1).MinWidth(0).Tooltip(ac.Name)
-						a.accountTypeTag(c, ac)
-						if active {
-							ui.Icon(c, icons["check"]).Size(13*s, 13*s).TextColor(accent).Shrink(0)
-						} else {
-							ui.Box(c).Size(13*s, 13*s).Shrink(0)
-						}
-					}).Clicked() && !a.pendingOp("select") {
-						a.accountMenuOpen = false
-						if !active {
-							a.execute("select", map[string]string{"accountId": ac.ID}, func(json.RawMessage) {
-								if a.page == "wardrobe" {
-									a.loadAppearance()
-								}
-							})
-						}
-					}
-				}
-			})
-			ui.Box(c).FillWidth().Height(1).Margin(4*s, 0).Background(line)
-			// Footer rows share the account rows' geometry: same height, hover,
-			// a 26-DIP icon column, so the text lines up with the names.
-			item := func(key, text, icon string) bool {
-				b := ui.ButtonBase(c.Key(key)).Label(text).FillWidth().Height(44 * s).PaddingX(8 * s).Radius(9 * s)
-				if b.Hovered() {
-					b.Background(ui.RGBA(120, 130, 160, .10))
-				}
-				return b.Children(func() {
-					ui.Row(c).FillWidth().FillHeight().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-						ui.Box(c).Size(26*s, 26*s).Center().Shrink(0).Children(func() {
-							ui.Icon(c, icons[icon]).Size(14*s, 14*s).TextColor(inkSecondary)
-						})
-						ui.Text(c, text).FontSize(typeCallout * s).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
-					})
-				}).Clicked()
-			}
-			if item("qs-manage", a.L("账号管理", "Manage accounts"), "account") {
-				a.accountMenuOpen, a.accountAdding = false, false
-				a.openDialog("account")
-			}
-			if item("qs-add", t.AccAddAccountBtn, "plus") {
-				a.accountMenuOpen, a.accountAdding = false, true
-				a.openDialog("account")
-			}
-		})
-	})
-}
-
-const launchDockHeight float32 = 54
-
-const launchDockBottom float32 = 16
-
-// The launch dock gave way to the instance hero's 启动游戏 button.
-func (a *App) launchDockVisible() bool { return false }
-
-// Keep an opaque panel, but let the page extend behind its rounded corners.
-// Transparent wrapper nodes must not paint or catch input in those corners.
-func (a *App) launchDock(c *ui.Context) {
-	s := uiScale(c)
-	t := a.tr()
-	r := a.root()
-	shown := a.launchDockVisible()
-	dock := ui.Box(c.Key("launch-dock-slot")).Absolute().Left(0).Right(0).Bottom(launchDockBottom * s).Height(launchDockHeight * s).PassThrough().Transition(ui.ElementTransition{
-		Animation: &motionEnter,
-		Enter:     &ui.Motion{Y: 20 * s, Opacity: 0},
-		Exit:      &ui.Motion{Y: 20 * s, Opacity: 0},
-	})
-	if shown {
-		dock.Children(func() {
-			ui.Box(c).Fill().PaddingX(pageGutter * s).PassThrough().Children(func() {
-				glass(ui.Row(c.Key("launch-dock")).Label("启动栏").Height(launchDockHeight*s).FillWidth().MaxWidth(1160*s).AlignSelf(ui.Center).Padding(8*s, 14*s, 8*s, 16*s).Gap(12*s), 16*s, s).
-					LinearGradient(ui.LinearGradient{From: panel, To: ui.Hex("#f8fbff"), Angle: 180}).
-					PassThrough().HandleInput(a.forwardDockScroll).AlignItems(ui.Center).Children(func() {
-					iconName := "gamepad"
-					if v := a.gameVersion(); v != nil {
-						iconName = loaderIconName(v.Loader)
-					} else if r != nil && r.Pack != nil {
-						iconName = "layers"
-					}
-					tone := navTones["home"]
-					if v := a.gameVersion(); v != nil {
-						tone = [2]ui.Color{loaderTone(v.Loader), accentIndigo}
-					}
-					if v := a.gameVersion(); v == nil || !loaderLogo(c, v.Loader, 34*s) {
-						appleSoftIconBox(c, 34*s, iconName, tone[0], tone[1], panel)
-					}
-
-					ui.Column(c.Key("dock-version-" + a.versionSwapKey())).Grow(1).Basis(0).MinWidth(0).Clip().PassThrough().Gap(3 * s).Transition(versionSwap(s)).Children(func() {
-						v := a.gameVersion()
-						switch {
-						case r == nil:
-							ui.Text(c, t.TopNoInstance).FillWidth().MinWidth(0).FontSize(typeSubhead * s).Bold().TextColor(ink).SingleLine()
-						case v == nil:
-							ui.Text(c, t.HomeHeroNoVersion).FillWidth().MinWidth(0).FontSize(typeSubhead * s).Bold().TextColor(ink).SingleLine()
-							label(c, midEllipsis(c, r.Name, dockFolderMax*s, 12.5*s, 400)).FillWidth().MinWidth(0).FontSize(typeFootnote * s).SingleLine().Tooltip(r.Path)
-						default:
-							title, sub := a.cardText(*r, *v)
-							titleWithTags(c, title, v.ID, typeSubhead*s, 700, a.versionTags(*r, *v, true), 3)
-							label(c, joinDistinct(midEllipsis(c, r.Name, dockFolderMax*s, 12.5*s, 400), sub)).FillWidth().MinWidth(0).FontSize(typeFootnote * s).SingleLine().Tooltip(r.Path)
-						}
-					})
-					if r != nil {
-						if verRunning(r) && button(c, "dock-stop", t.HomeStopBtn, "cross", false, a.instancePending("stop")) {
-							a.execute("stop", map[string]string{"rootId": r.ID}, nil)
-						}
-					}
-					// Launcher settings sit right before the primary launch button.
-					if fixedButton(c, "dock-settings", t.NavSettings, "settings", 0, 29*s, false, false) {
-						a.goPage("settings")
-					}
-					launchText := t.HomeLaunchBtn
-					if verRunning(r) {
-						launchText = t.HomeRunningBtn
-					}
-					why := whyOf(a.instancePending("launch", "launchAgain"), t.WhyBusy, verRunning(r), t.WhyRunning, r != nil && a.gameVersion() == nil, t.WhyNoVersion)
-					pendingWhy = why
-					if fixedButton(c, "launch", launchText, "play", 118*s, 30*s, true, why != "") {
-						a.launch()
-					}
-				})
-			})
-		})
-	}
-}
-
-// A wheel or touchpad gesture over the dock's labels/buttons still scrolls
-// the page; pointer presses continue to use the buttons' normal handlers.
-func (a *App) forwardDockScroll(ev ui.InputEvent) bool {
-	if ev.Kind != ui.InputScroll || ev.Mods&ui.Shift != 0 {
-		return false
-	}
-	track := scrollTracks["page-scroll-"+a.page]
-	if track == nil {
-		return false
-	}
-	y := max(0, min(track.st.MaxY, track.st.Y+ev.DY))
-	if y == track.st.Y {
-		return false
-	}
-	track.st.Y = y
-	return true
-}
-
-// backCrumb leads the 设置 page header: settings opens from the bottom bar,
-// so instead of a nav highlight the page offers a way back ("‹ 游戏库").
-func (a *App) backCrumb(c *ui.Context) {
+// A separate back control keeps navigation distinct from the settings title.
+func (a *App) settingsBack(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
 	prev := a.prevPage
@@ -439,24 +210,17 @@ func (a *App) backCrumb(c *ui.Context) {
 		prev = "home"
 	}
 	name := map[string]string{"home": t.NavHome, "mods": t.NavMods, "discover": t.NavDiscover, "wardrobe": t.NavWardrobe, "tasks": t.NavTasks}[prev]
-	b := ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel).Height(24 * s).PaddingX(0).Gap(space1 * s).AlignItems(ui.Center).AlignSelf(ui.Start)
-	fg := accent
-	if b.Hovered() {
-		fg = accentIndigo
-	}
+	b := ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel).
+		Tooltip(fmt.Sprintf(a.L("返回%s", "Back to %s"), name)).Size(34*s, 34*s).Shrink(0).Radius(11 * s).Center()
+	styleButton(b, s, false, false)
 	if b.Children(func() {
-		ui.Text(c, "‹").FontSize(typeHeadline * s).FontWeight(600).TextColor(b.AnimateColor("fg", fg, motionFast)).NoWrap()
-		ui.Text(c, name).FontSize(typeCallout * s).FontWeight(600).TextColor(b.AnimateColor("fg2", fg, motionFast)).NoWrap()
+		ui.Icon(c, icons["chevron-left"]).Size(15*s, 15*s).TextColor(inkSecondary)
 	}).Clicked() {
 		a.goPage(prev)
 	}
 }
 
-// dockFolderMax caps the folder name in the launch bar subtitle; longer
-// names lose their middle, and the tooltip shows the full path.
-const dockFolderMax float32 = 240
-
-// toastReserve is the room a page notice takes above the launch bar
+// toastReserve is the room reserved for a floating page notice
 // (toast height plus its gap).
 const toastReserve float32 = 64
 
@@ -464,9 +228,6 @@ const toastReserve float32 = 64
 // scroll end. It does not shorten the viewport or block content moving below.
 func (a *App) scrollEndPad(s float32) float32 {
 	pad := space6 * s
-	if a.launchDockVisible() {
-		pad += (launchDockHeight + launchDockBottom) * s
-	}
 	if a.message != "" || a.noticeShown != "" {
 		pad += toastReserve * s
 	}
@@ -480,120 +241,4 @@ var chromeBg = ui.Hex("#edf0f7")
 // radius, the same 10-DIP margin to the window edges everywhere.
 func contentPanel(e ui.Element, s float32) ui.Element {
 	return e.Margin(0, 10*s, 10*s, 0).Radius(14*s).Background(ui.Hex("#f9fafd")).Border(1, ui.RGBA(60, 70, 110, .10)).Clip().Shadow(0, 1*s, 3*s, 0, ui.RGBA(30, 40, 80, .04))
-}
-
-// jobTitles renders a task title from its key at display time, so it
-// follows the UI language and re-renders on a live switch.
-var jobTitles = map[string][2]string{
-	"pack.download":      {"下载 %s", "Download %s"},
-	"pack.update":        {"更新 %s", "Update %s"},
-	"pack.rollback":      {"回滚 %s", "Roll back %s"},
-	"game.install":       {"安装 Minecraft %s", "Install Minecraft %s"},
-	"java.download":      {"下载 Java %s", "Download Java %s"},
-	"game.launch":        {"启动 %s", "Launch %s"},
-	"world.restore":      {"还原存档 %s", "Restore world %s"},
-	"world.backup":       {"备份存档 %s", "Back up world %s"},
-	"world.backupAll":    {"备份全部存档%s", "Back up all worlds%s"},
-	"mods.installDeps":   {"安装模组及前置%s", "Install mods and dependencies%s"},
-	"mods.detect":        {"检测模组版本%s", "Check mod versions%s"},
-	"addon.resourcepack": {"安装材质包%s", "Install resource packs%s"},
-	"addon.shader":       {"安装光影包%s", "Install shaders%s"},
-}
-
-// jobTitle is a task's display name in the current language.
-func (a *App) jobTitle(j launcher.Job) string {
-	key, arg := j.TitleKey, j.TitleArg
-	if key == "" {
-		key, arg, _ = launcher.JobTitleKey(j.Title)
-	}
-	if f, ok := jobTitles[key]; ok {
-		if a.isEN() {
-			return fmt.Sprintf(f[1], arg)
-		}
-		return fmt.Sprintf(f[0], arg)
-	}
-	return j.Title
-}
-
-// jobPill is the fixed-width title-bar progress pill: name, thin bar,
-// smoothed speed (or the step name) and percent; several tasks aggregate.
-func (a *App) jobPill(c *ui.Context) {
-	s := uiScale(c)
-	var run []launcher.Job
-	for _, j := range a.snapshot.Jobs {
-		if j.State == "running" || j.State == "queued" {
-			run = append(run, j)
-		}
-	}
-	if len(run) == 0 {
-		return
-	}
-	var done, total, speed, bDone, bTotal int64
-	for _, j := range run {
-		speed += j.Speed
-		bDone += j.BytesDone
-		bTotal += j.BytesTotal
-		done += int64(j.Done)
-		total += int64(j.Total)
-	}
-	frac := 0.0
-	switch {
-	case bTotal > 0:
-		frac = float64(bDone) / float64(bTotal)
-	case total > 0:
-		frac = float64(done) / float64(total)
-	}
-	frac = min(1, max(0, frac))
-	name := a.jobTitle(run[0])
-	tip := name
-	if run[0].Total > 0 {
-		tip += fmt.Sprintf("  (%d/%d)", run[0].Done, run[0].Total)
-	}
-	if len(run) > 1 {
-		name = fmt.Sprintf(a.L("%d 个任务", "%d tasks"), len(run))
-		tip = ""
-		for _, j := range run {
-			tip += a.jobTitle(j) + "\n"
-		}
-	}
-	right := fmt.Sprintf("%d%%", int(frac*100))
-	mid := ""
-	if speed >= 1024 {
-		mid = fmtSize(speed) + "/s"
-	} else if len(run) == 1 {
-		mid = jobStep(a.jobMsg(run[0].Message))
-	}
-	b := ui.ButtonBase(c.Key("title-job")).Label(a.L("查看下载", "View downloads")).Tooltip(strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(999).Clip().Background(accentSoft)
-	if b.Hovered() {
-		b.Background(accent.Alpha(.16))
-	}
-	if b.Children(func() {
-		ui.Column(c).Fill().Gap(0).Children(func() {
-			ui.Row(c).FillWidth().Grow(1).PaddingX(12 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, icons["download"]).Size(12*s, 12*s).TextColor(accent).Shrink(0)
-				ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).SingleLine().Grow(1).Basis(0).MinWidth(0)
-				ui.Box(c).Width(70 * s).Shrink(0).AlignItems(ui.End).Children(func() {
-					numText(c, mid, typeCaption*s, inkSecondary).SingleLine()
-				})
-				ui.Box(c).Width(32 * s).Shrink(0).AlignItems(ui.End).Children(func() {
-					numText(c, right, typeCaption*s, accent).FontWeight(650)
-				})
-			})
-			ui.Row(c).FillWidth().Height(3 * s).Shrink(0).Background(accent.Alpha(.12)).Children(func() {
-				ui.Box(c).FillHeight().Width(0).Grow(float32(frac)).Background(accent)
-				ui.Box(c).FillHeight().Width(0).Grow(float32(1 - frac))
-			})
-		})
-	}).Clicked() {
-		a.goPage("tasks")
-	}
-}
-
-// jobStep is the step part of a progress message ("正在校验" from
-// "正在校验 (3/10): x.jar"), shown instead of a speed.
-func jobStep(msg string) string {
-	if i := strings.IndexAny(msg, "(（:："); i > 0 {
-		msg = msg[:i]
-	}
-	return strings.TrimSpace(msg)
 }

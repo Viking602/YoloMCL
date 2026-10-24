@@ -15,7 +15,7 @@ const (
 	ReleasesURL   = RepositoryURL + "/releases"
 )
 
-// These values are supplied by our build command, never by runtime settings.
+// These values are supplied by scripts/build.sh, never by runtime settings.
 var version, commit, dirty string
 
 //go:embed update-public-key.txt

@@ -186,11 +186,14 @@ func (s *Service) ResolveInstall(ctx context.Context, rootID, source, project, v
 		t.File = m.File
 		t.Note = m.Version // the present version; installing replaces it
 	}
-	if !compatible(target, mc, loader) {
-		t.Status, t.Note = "none", fmt.Sprintf("%s %s", mc, loader)
+	if !compatible(target, mc, loader) || loader == "vanilla" {
+		t.Status = "none" // Note remains the actual installed version, not the runtime.
 	}
 	add(t)
 	emit(markUnverified(append([]PlanItem(nil), items...), idx.degraded))
+	if t.Status == "none" {
+		return markUnverified(items, idx.degraded), nil
+	}
 
 	type pending struct {
 		dep    Dependency

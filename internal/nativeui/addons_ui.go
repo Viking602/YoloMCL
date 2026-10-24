@@ -14,143 +14,6 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
-// localIcon decodes an icon read from disk once, off the UI thread, and
-// caches it (misses too) under key; nil until it is ready.
-func (a *App) localIcon(key string, load func() ([]byte, error)) ui.ImageSource {
-	a.imageMu.Lock()
-	cached, pending, retry := a.images[key], a.imagePending[key], a.imageRetry[key]
-	if cached != nil || pending || !retry.IsZero() {
-		a.imageMu.Unlock()
-		return cached
-	}
-	a.imagePending[key] = true
-	a.imageMu.Unlock()
-	ready := a.firstFrame
-	go func() {
-		if !waitForFirstFrame(a.ctx, ready) {
-			return
-		}
-		select {
-		case a.imageSlots <- struct{}{}:
-			defer func() { <-a.imageSlots }()
-		case <-a.ctx.Done():
-			return
-		}
-		var src ui.ImageSource
-		if b, e := load(); e == nil {
-			src, _ = decodeResourceImage(b)
-		}
-		a.imageMu.Lock()
-		delete(a.imagePending, key)
-		if src != nil {
-			a.images[key] = src
-		} else {
-			a.imageRetry[key] = time.Now().Add(24 * time.Hour)
-		}
-		a.imageMu.Unlock()
-		a.post(func() {})
-	}()
-	return nil
-}
-
-func (a *App) addonIcon(rootID, kind, file string) ui.ImageSource {
-	ver := ""
-	if r := a.root(); r != nil {
-		ver = r.SelectedVersion
-	}
-	return a.localIcon("addon:"+rootID+":"+ver+":"+kind+":"+stableFile(file), func() ([]byte, error) {
-		b, e := a.service.AddonIcon(rootID, ver, kind, file)
-		if e != nil { // renamed meanwhile: try the other name
-			b, e = a.service.AddonIcon(rootID, ver, kind, toggledName(file))
-		}
-		return b, e
-	})
-}
-
-// localIconMissed reports that the file has no icon of its own.
-func (a *App) localIconMissed(rootID, kind, file string) bool {
-	ver := ""
-	if r := a.root(); r != nil {
-		ver = r.SelectedVersion
-	}
-	a.imageMu.Lock()
-	defer a.imageMu.Unlock()
-	return !a.imageRetry["addon:"+rootID+":"+ver+":"+kind+":"+stableFile(file)].IsZero()
-}
-
-// fetchModIcons looks up project icons for the listed mods once per list.
-func (a *App) fetchModIcons() {
-	r := a.root()
-	if r == nil || a.service == nil || len(a.mods) == 0 {
-		return
-	}
-	key := r.ID + "|" + r.SelectedVersion + "|" + fmt.Sprint(len(a.mods))
-	if a.modIconAsked[key] {
-		return
-	}
-	if a.modIconAsked == nil {
-		a.modIconAsked = map[string]bool{}
-		a.modIconURLs = map[string]string{}
-	}
-	a.modIconAsked[key] = true
-	id, ver := r.ID, r.SelectedVersion
-	refs := make([]launcher.AddonRef, 0, len(a.mods))
-	for _, m := range a.mods {
-		refs = append(refs, launcher.AddonRef{SHA1: m.SHA1, File: m.File})
-	}
-	a.bgWG.Add(1)
-	go func() {
-		defer a.bgWG.Done()
-		info, _ := a.service.AddonRemoteInfo(a.ctx, id, ver, "mod", refs)
-		a.post(func() {
-			if a.addonRemote == nil {
-				a.addonRemote = map[string]launcher.RemoteInfo{}
-			}
-			for k, v := range info {
-				a.addonRemote[k] = v
-				if v.Icon != "" {
-					a.modIconURLs[k] = v.Icon
-				}
-			}
-		})
-	}()
-}
-
-// fetchPackIcons does the same for resource packs and shaders: most shader
-// zips carry no icon, but Modrinth and CurseForge know the project.
-func (a *App) fetchPackIcons(kind string) {
-	r := a.root()
-	if r == nil || a.service == nil || len(a.assetPacks) == 0 {
-		return
-	}
-	key := kind + "|" + r.ID + "|" + r.SelectedVersion + "|" + fmt.Sprint(len(a.assetPacks))
-	if a.packRemoteAsked[key] {
-		return
-	}
-	if a.packRemoteAsked == nil {
-		a.packRemoteAsked = map[string]bool{}
-	}
-	a.packRemoteAsked[key] = true
-	id, ver := r.ID, r.SelectedVersion
-	packs := append([]launcher.AssetPack(nil), a.assetPacks...)
-	a.bgWG.Add(1)
-	go func() {
-		defer a.bgWG.Done()
-		refs := a.service.PackRefs(id, ver, kind, packs)
-		info, _ := a.service.AddonRemoteInfo(a.ctx, id, ver, kind, refs)
-		a.post(func() {
-			if a.addonRemote == nil {
-				a.addonRemote = map[string]launcher.RemoteInfo{}
-			}
-			for _, ref := range refs {
-				if v, ok := info[ref.SHA1]; ok {
-					a.addonRemote[kind+"|"+stableFile(ref.File)] = v
-				}
-			}
-		})
-	}()
-}
-
 // ensureZhNames loads the MC百科 name mapping once, in the background,
 // when the UI is in Chinese.
 func (a *App) ensureZhNames() {
@@ -175,19 +38,6 @@ func (a *App) zhTitle(zh, original string) (primary, secondary string) {
 		return original, ""
 	}
 	return zh, original
-}
-
-func (a *App) versionIcon(rootID, versionID string) ui.ImageSource {
-	isPack := false
-	if r := a.rootByID(rootID); r != nil && r.Pack != nil {
-		isPack = true
-	}
-	return a.localIcon("version:"+rootID+":"+versionID, func() ([]byte, error) {
-		if isPack {
-			a.service.EnsurePackIcon(rootID)
-		}
-		return a.service.VersionIcon(rootID, versionID)
-	})
 }
 
 func hasCJK(s string) bool {
@@ -320,10 +170,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 		primary, secondary := a.itemNames(it)
 		if b.Children(func() {
 			size := 36 * s
-			icon := a.addonIcon(a.root().ID, it.kind, it.file)
-			if icon == nil && it.iconURL != "" && a.localIconMissed(a.root().ID, it.kind, it.file) {
-				icon = a.remoteImage(it.iconURL)
-			}
+			icon := a.addonIcon(a.root().ID, a.root().SelectedVersion, it.kind, it.file, it.iconURL)
 			op := float32(1)
 			if !it.enabled {
 				op = .42
@@ -505,17 +352,6 @@ func (a *App) toggleAsync(tab, file string, run func() error) {
 	}()
 }
 
-func (a *App) toggleModFn(m launcher.Mod) func() {
-	return func() {
-		r := a.root()
-		if r == nil {
-			return
-		}
-		id, file := r.ID, m.File
-		a.toggleAsync("mods", file, func() error { return a.service.ToggleMod(id, file) })
-	}
-}
-
 func (a *App) togglePackFn(p launcher.AssetPack) func() {
 	return func() {
 		r := a.root()
@@ -658,7 +494,7 @@ func agoText(a *App, t time.Time) string {
 	return friendlyTime(a.isEN(), t, time.Now())
 }
 
-// friendlyTime: 刚刚 / N 分钟前 / 今天 15:04 / 昨天 / N 天前 / 8月30日 / 2025年8月30日.
+// friendlyTime: 刚刚 / N 分钟前 / 今天 15:04 / 昨天 / N 天前 / 08月30日 / 2025年08月30日.
 func friendlyTime(en bool, t, now time.Time) string {
 	t, now = t.Local(), now.Local()
 	L := func(zh, e string) string {
@@ -682,15 +518,9 @@ func friendlyTime(en bool, t, now time.Time) string {
 	case days > 1 && days < 7:
 		return fmt.Sprintf(L("%d 天前", "%d days ago"), days)
 	case t.Year() == now.Year():
-		if en {
-			return t.Format("Jan 2")
-		}
-		return fmt.Sprintf("%d月%d日", int(t.Month()), t.Day())
+		return t.Format(L("01月02日", "Jan 02"))
 	}
-	if en {
-		return t.Format("Jan 2, 2006")
-	}
-	return fmt.Sprintf("%d年%d月%d日", t.Year(), int(t.Month()), t.Day())
+	return t.Format(L("2006年01月02日", "Jan 02, 2006"))
 }
 
 // itemNames is the title pair for a row or card: the Chinese name first

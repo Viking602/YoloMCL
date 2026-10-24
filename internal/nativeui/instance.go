@@ -83,24 +83,26 @@ func (a *App) instanceView(c *ui.Context) {
 				a.instanceHero(c, *r)
 				a.instanceTabBar(c, *r)
 				ui.Box(c.Key("inst-tab-slot")).Grow(1).MinHeight(0).FillWidth().Clip().Children(func() {
-					ui.Column(c.Key("inst-tab-" + a.instTab)).Absolute().Left(0).Top(0).Right(0).Bottom(0).Transition(versionSwap(s)).Children(func() {
-						if a.instTab == "overview" {
-							a.fixedOverviewPane(c, *r)
-							return
-						}
-						if a.instTab == "logs" {
-							// The log pane owns its scrolling. Its header and toolbar
-							// stay fixed, with the line list taking the remaining space.
-							ui.Column(c.Key("instance-log-pane")).Fill().MinHeight(0).Padding(22*s, pageGutter*s, 22*s).Gap(16 * s).Clip().Children(func() {
-								a.instanceTabContent(c, *r)
-							})
-							return
-						}
-						tabScroll := scrollArea(c, "page-scroll-home-"+a.instTab)
-						a.tabViewBounds = tabScroll.LayoutBounds()
-						tabScroll.Grow(1).MinHeight(0).Padding(22*s, pageGutter*s, 32*s).Children(func() {
-							ui.Column(c).FillWidth().Gap(20 * s).Children(func() {
-								a.instanceTabContent(c, *r)
+					a.instanceTabBody(c).Children(func() {
+						ui.Column(c.Key("inst-tab-" + a.instTab)).Fill().MinHeight(0).Children(func() {
+							if a.instTab == "overview" {
+								a.fixedOverviewPane(c, *r)
+								return
+							}
+							if a.instTab == "logs" {
+								// The log pane owns its scrolling. Its header and toolbar
+								// stay fixed, with the line list taking the remaining space.
+								ui.Column(c.Key("instance-log-pane")).Fill().MinHeight(0).Padding(22*s, pageGutter*s, 22*s).Gap(16 * s).Clip().Children(func() {
+									a.instanceTabContent(c, *r)
+								})
+								return
+							}
+							tabScroll := scrollArea(c, "page-scroll-home-"+a.instTab)
+							a.tabViewBounds = tabScroll.LayoutBounds()
+							tabScroll.Grow(1).MinHeight(0).Padding(22*s, pageGutter*s, 32*s).Children(func() {
+								ui.Column(c).FillWidth().Gap(20 * s).Children(func() {
+									a.instanceTabContent(c, *r)
+								})
 							})
 						})
 					})
@@ -130,40 +132,6 @@ func (a *App) fixedOverviewPane(c *ui.Context, r launcher.Instance) {
 			ui.Box(c.Key("overview-canvas")).Absolute().Left(0).Top(0).Width(w/fit).Height(height).
 				TransformOrigin(0, 0).Scale(fit, fit).Children(func() { a.instanceTabContent(c, r) })
 		})
-	})
-}
-
-func (a *App) instanceTabBar(c *ui.Context, r launcher.Instance) {
-	s := uiScale(c)
-	ui.Row(c.Key("inst-tabs")).Label("实例标签").FillWidth().Padding(16*s, pageGutter*s, 0, pageGutter*s).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Draw(func(p *ui.Painter, b ui.Rect) {
-		p.Fill(ui.Rect{X: b.X + pageGutter*s, Y: b.Y + b.H - 1, W: b.W - 2*pageGutter*s, H: 1}, line, 0)
-	}).Children(func() {
-		for _, it := range a.instTabs(r) {
-			tab := it
-			sel := a.instTab == tab.key
-			b := ui.ButtonBase(c.Key("inst-tab-btn-" + tab.key)).Label(tab.text).Height(40 * s).PaddingX(12 * s).AlignItems(ui.Center).Shrink(0)
-			fg := inkSecondary
-			if sel {
-				fg = accent
-			} else if b.Hovered() {
-				fg = ink
-			}
-			fg = b.AnimateColor("fg", fg, motionFast)
-			w := 500
-			if sel {
-				w = 650
-			}
-			b.Draw(func(p *ui.Painter, rr ui.Rect) {
-				if sel {
-					p.Fill(ui.Rect{X: rr.X + 10*s, Y: rr.Y + rr.H - 2*s, W: rr.W - 20*s, H: 2 * s}, accent, 1*s)
-				}
-			})
-			if b.Children(func() {
-				ui.Text(c, tab.text).FontSize(typeCallout * s).FontWeight(w).TextColor(fg).NoWrap()
-			}).Clicked() && !sel {
-				a.setInstTab(tab.key)
-			}
-		}
 	})
 }
 

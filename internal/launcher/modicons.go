@@ -192,7 +192,7 @@ func (s *Service) AddonRemoteInfo(ctx context.Context, rootID, versionID, kind s
 	if kind != "mod" {
 		sub, _ = packFolder(kind)
 	}
-	if s.distribution.HasCurseForge() && sub != "" {
+	if s.publisher.HasCurseForge() && sub != "" {
 		r, e := s.rootAt(rootID, versionID)
 		if e == nil {
 			fps, byFP := []uint32{}, map[uint32]string{}

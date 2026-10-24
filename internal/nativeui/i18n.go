@@ -5,12 +5,17 @@ import (
 	"strings"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
+	"github.com/Viking602/YoloMCL/internal/nativeui/i18n"
 )
 
 const (
-	LangZH = "zh-CN"
-	LangEN = "en-US"
+	LangZH = i18n.LangZH
+	LangEN = i18n.LangEN
 )
+
+type Copy = i18n.Copy
+
+var enCopy = &i18n.EN
 
 func (a *App) lang() string {
 	if a.languageOverride != "" {
@@ -30,10 +35,11 @@ func (a *App) isEN() bool {
 }
 
 func (a *App) tr() *Copy {
-	if a.isEN() {
-		return &enCopy
-	}
-	return &zhCopy
+	return i18n.For(a.isEN())
+}
+
+func (a *App) translateCategory(cat string) string {
+	return i18n.TranslateCategory(a.isEN(), cat)
 }
 
 func (a *App) setLanguage(lang string) {
@@ -73,8 +79,12 @@ func (a *App) dialogTitle(dialog string) string {
 		return t.DialogTitleRemRoot
 	case "removeMod":
 		return t.DialogTitleRemMod
+	case "disableMod":
+		return a.L("禁用这个模组？", "Disable this mod?")
 	case "account":
 		return t.DialogTitleAccount
+	case "accountAdd":
+		return t.AccAddAccountBtn
 	case "import":
 		return t.DialogTitleImport
 	case "install":

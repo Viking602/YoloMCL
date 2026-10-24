@@ -27,7 +27,7 @@ func (a *App) fmtWhen(t time.Time) string {
 	if t.YearDay() == now.YearDay() && t.Year() == now.Year() {
 		return a.L("今天 ", "Today ") + t.Format("15:04")
 	}
-	return t.Format(a.L("1月2日 15:04", "Jan 2 15:04"))
+	return t.Format(a.L("01月02日 15:04", "Jan 02 15:04"))
 }
 
 func fmtSize(n int64) string {
@@ -161,9 +161,10 @@ func (a *App) sessionHeader(c *ui.Context, g *launcher.GameSession, scope string
 }
 
 // fileHeader stands in for the summary while a saved log file is shown.
-func (a *App) fileHeader(c *ui.Context) {
+func (a *App) fileHeader(c *ui.Context) bool {
 	s := uiScale(c)
 	lv := &a.logView
+	back := false
 	var f *launcher.LogFile
 	for i := range lv.recent {
 		if lv.recent[i].Path == lv.file {
@@ -171,10 +172,7 @@ func (a *App) fileHeader(c *ui.Context) {
 		}
 	}
 	ui.Row(c.Key("log-summary")).Label("日志摘要").FillWidth().Height(64*s).Shrink(0).Padding(0, 16*s).Gap(18*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-		if fixedButton(c, "log-file-back", a.L("返回", "Back"), "chevron-left", 0, btnSm*s, false, false) {
-			lv.file, lv.key = "", ""
-			lv.lines = nil
-		}
+		back = fixedButton(c, "log-file-back", a.L("返回", "Back"), "chevron-left", 0, btnSm*s, false, false)
 		ui.Column(c).Gap(4 * s).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, filepath.Base(lv.file)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).SingleLine()
 			kind := a.L("日志文件", "Log file")
@@ -189,6 +187,7 @@ func (a *App) fileHeader(c *ui.Context) {
 			metric(c, "m-mod", a.L("修改于", "Modified"), a.fmtWhen(f.ModTime), 100)
 		}
 	})
+	return back
 }
 
 // crashCard explains a crash in plain words, with the report at hand.
@@ -307,18 +306,21 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 			var b strings.Builder
 			for _, i := range lv.vis {
 				l := lv.lines[i]
-				b.WriteString(l.raw)
-				if l.repeat > 1 {
-					fmt.Fprintf(&b, "  (×%d)", l.repeat)
+				b.WriteString(l.Raw)
+				if l.Repeat > 1 {
+					fmt.Fprintf(&b, "  (×%d)", l.Repeat)
 				}
 				b.WriteByte('\n')
 			}
 			c.WriteClipboard(b.String())
 			a.notice(fmt.Sprintf(a.L("已复制 %d 行", "Copied %d lines"), len(lv.vis)))
 		}
-		p := lv.path
-		if cur != nil && cur.LogPath != "" {
-			p = cur.LogPath
+		p := lv.file
+		if p == "" {
+			p = lv.path
+			if cur != nil && cur.LogPath != "" {
+				p = cur.LogPath
+			}
 		}
 		open, clear := false, false
 		if compact {
@@ -331,8 +333,8 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 		if open {
 			openLogFile(c, p)
 		}
-		if p != "" && iconOnlyButton(c, "log-open-folder", "folder", a.L("打开所在目录", "Open containing folder"), btnSm*s, false) {
-			openLogFolder(c, p)
+		if p != "" && iconOnlyButton(c, "log-open-folder", "folder", a.L("在文件夹中显示", "Show in folder"), btnSm*s, false) {
+			openLogFolder(p)
 		}
 		if clear {
 			lv.clearAt = lv.dropped + len(lv.lines)
@@ -357,11 +359,11 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 			})
 		}()
 	}
-	ui.Row(c.Key("log-empty")).FillWidth().Height(108*s).Shrink(0).Padding(0, 22*s).Gap(18*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-		appleSoftIconBox(c, 44*s, "terminal", ui.Hex("#64d2ff"), accentIndigo, panel)
+	ui.Row(c.Key("log-empty")).Font(uiSansFamily()).FillWidth().MinHeight(108*s).Shrink(0).Padding(16*s, 20*s).Gap(16*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
+		emptyArtwork(c, "log-idle", "terminal", .8*s)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
-			ui.Text(c, a.L("现在没有运行中的游戏", "No game is running")).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink).SingleLine()
-			ui.Text(c, a.L("启动后这里会实时显示日志，崩溃时给出可能的原因。也可以打开下面的最近日志。", "Launch to follow the log live, with a likely cause if it crashes. Or open a recent log below.")).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
+			ui.Text(c, a.L("现在没有运行中的游戏", "No game is running")).FontSize(typeHeadline * s).FontWeight(600).TextColor(inkSecondary).FillWidth()
+			ui.Text(c, a.L("启动游戏后查看实时输出，也可以打开下方的最近日志。", "Launch to follow the live output, or open a recent log below.")).FontSize(typeFootnote * s).TextColor(muted).FillWidth()
 		})
 		if scope != "" || a.dialog == "logs" {
 			if buttonWhy(c, "log-launch", a.L("启动游戏", "Launch"), "arrow", true, whyOf(a.instancePending("launch", "launchAgain"), a.tr().WhyBusy, verRunning(r), a.L("这个版本正在运行", "Already running")), false) {
@@ -374,9 +376,7 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 		ui.Text(c, fmt.Sprintf(a.L("%d 个文件", "%d files"), len(lv.recent))).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 	})
 	if len(lv.recent) == 0 {
-		ui.Row(c.Key("log-recent-none")).FillWidth().Height(52*s).Padding(0, 16*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .5)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-			label(c, a.L("这个版本还没有日志文件", "No log files for this version yet")).FontSize(typeFootnote * s)
-		})
+		emptyNote(c, "log-recent-none", "terminal", a.L("还没有日志文件", "No log files yet"), a.L("运行游戏后，最近的日志会保留在这里", "Recent logs will appear here after you run the game"))
 		return
 	}
 	scrollArea(c, a.logScrollKey()+"-recent").Label("日志文件列表").FillWidth().Grow(1).Basis(0).MinHeight(0).Children(func() {
@@ -402,13 +402,13 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 					})
 					ui.Text(c, a.fmtWhen(f.ModTime)).Width(110 * s).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
 					ui.Text(c, fmtSize(f.Size)).Width(70 * s).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
-					folderHit = iconOnlyButton(c, "log-folder-"+f.Path, "folder", a.L("打开所在目录：", "Open containing folder: ")+f.Name, 28*s, false)
+					folderHit = iconOnlyButton(c, "log-folder-"+f.Path, "folder", a.L("在文件夹中显示：", "Show in folder: ")+f.Name, 28*s, false)
 					ui.Icon(c, icons["chevron-right"]).Size(10*s, 10*s).TextColor(muted)
 				}).Clicked() && !folderHit {
 					lv.file, lv.key = f.Path, ""
 				}
 				if folderHit {
-					openLogFolder(c, f.Path)
+					openLogFolder(f.Path)
 				}
 			}
 		})

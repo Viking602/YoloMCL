@@ -7,6 +7,8 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
+const addonCacheSize = 24
+
 // loadMods loads the current version's mods or packs (per a.addonTab).
 // Each request carries a generation: a result that arrives after another
 // switch is dropped, so stale lists never flash in. Results are cached per

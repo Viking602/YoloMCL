@@ -15,6 +15,7 @@ type skinPreview struct {
 	skin, cape        image.Image
 	slim, dirty, spin bool
 	yaw, pitch, zoom  float64
+	zoomGoal          float64
 	last              time.Time
 	target            *float64 // eased yaw goal (front / back / cape turn)
 	bitmap            *ui.Bitmap
@@ -29,8 +30,13 @@ type skinFace struct {
 }
 
 func newSkinPreview() *skinPreview {
-	return &skinPreview{skin: builtinSkin(false), yaw: -.35, pitch: -.1, zoom: 1, dirty: true}
+	return &skinPreview{skin: builtinSkin(false), yaw: -.35, pitch: -.1, zoom: 1, zoomGoal: 1, dirty: true}
 }
+
+func (p *skinPreview) zoomBy(delta float64) {
+	p.zoomGoal = max(.65, min(1.4, p.zoomGoal+delta))
+}
+
 func (p *skinPreview) set(skin, cape image.Image, slim bool) {
 	if skin == nil {
 		skin = builtinSkin(slim)

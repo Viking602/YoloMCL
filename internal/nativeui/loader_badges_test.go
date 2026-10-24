@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,5 +66,17 @@ func TestLoaderVersionFitsHeroWithSidebar(t *testing.T) {
 			}
 			snapshotUI(t, tt, fmt.Sprintf("loader-fit-%s-%d-%s", tc.lang, tc.width, tc.loader))
 		})
+	}
+}
+
+func TestRecommendedJavaIsTag(t *testing.T) {
+	_, tt := homeTester(t, "zh-CN")
+	if _, ok := tt.Find("Java 标签 21"); !ok {
+		t.Error("recommended Java should render as a tag")
+	}
+	for _, txt := range tt.Texts() {
+		if strings.Contains(txt, "· Java") {
+			t.Errorf("inline Java text remains: %q", txt)
+		}
 	}
 }

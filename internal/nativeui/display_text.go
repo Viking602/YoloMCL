@@ -2,7 +2,11 @@ package nativeui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
+
+	"github.com/egoist/mygo/ui"
 )
 
 func loaderName(s string) string {
@@ -67,4 +71,91 @@ func cleanName(s string) string {
 		s = strings.ReplaceAll(s, string(r), "-")
 	}
 	return strings.TrimSpace(s)
+}
+
+var javaWord = regexp.MustCompile(`(?i)\bjava\b`)
+
+// javaDisplay capitalises the word "java" in display-only text such as
+// runtime folder names ("java-runtime-delta") or vendor strings. Never use
+// it on paths or stored values.
+func javaDisplay(s string) string { return javaWord.ReplaceAllString(s, "Java") }
+
+// updatedAgo is shared by resource cards and individual releases.
+func updatedAgo(en bool, t, now time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	d := now.Sub(t)
+	L := func(zh, e string, n int) string {
+		if en {
+			if n == 1 {
+				e = strings.Replace(e, "s ago", " ago", 1)
+			}
+			zh = e
+		}
+		if n == 0 {
+			return zh
+		}
+		return fmt.Sprintf(zh, n)
+	}
+	days := int(d.Hours() / 24)
+	switch {
+	case d < time.Minute:
+		return L("刚刚", "just now", 0)
+	case d < time.Hour:
+		return L("%d 分钟前", "%d minutes ago", int(d/time.Minute))
+	case d < 24*time.Hour:
+		return L("%d 小时前", "%d hours ago", int(d/time.Hour))
+	case days < 2:
+		return L("昨天", "yesterday", 0)
+	case days < 7:
+		return L("%d 天前", "%d days ago", days)
+	case days < 30:
+		return L("%d 周前", "%d weeks ago", days/7)
+	case days < 365:
+		return L("%d 个月前", "%d months ago", days/30)
+	}
+	return L("%d 年前", "%d years ago", days/365)
+}
+
+// Refresh only when the displayed time can change, including while idle.
+// API timestamps keep their offset for comparison; hover details use local time.
+func (a *App) resourceTime(c *ui.Context, raw string) (relative, exact string) {
+	at, err := time.Parse(time.RFC3339, raw)
+	if err != nil || at.IsZero() {
+		return "", ""
+	}
+	now := c.Now()
+	elapsed := max(now.Sub(at), 0)
+	step := 24 * time.Hour
+	if elapsed < time.Hour {
+		step = time.Minute
+	} else if elapsed < 24*time.Hour {
+		step = time.Hour
+	}
+	c.After(step - elapsed%step)
+	return updatedAgo(a.isEN(), at, now), at.Local().Format("2006-01-02 15:04:05")
+}
+
+func loaderLabel(l string) string {
+	switch strings.ToLower(l) {
+	case "forge":
+		return "Forge"
+	case "neoforge":
+		return "NeoForge"
+	case "fabric":
+		return "Fabric"
+	case "quilt":
+		return "Quilt"
+	case "iris":
+		return "Iris"
+	case "optifine":
+		return "OptiFine"
+	case "minecraft", "vanilla":
+		return ""
+	}
+	if l == "" {
+		return ""
+	}
+	return strings.ToUpper(l[:1]) + l[1:]
 }

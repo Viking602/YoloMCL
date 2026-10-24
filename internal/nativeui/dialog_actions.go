@@ -50,6 +50,7 @@ func (a *App) openDialog(name string) {
 	t := a.tr()
 	a.dialog = name
 	a.dialogOpen = true
+	a.modDisable = modDisableState{}
 	a.packPreview = nil
 	a.form = formState{Loader: t.LoaderVanilla, Target: t.InstallTargetNew, Memory: "0", VerMemory: "0"}
 	a.message = ""
@@ -89,8 +90,8 @@ func (a *App) openDialog(name string) {
 			}
 			a.loadVersionConfigForm(ver)
 		}
-	case "account":
-		a.accountAdding, a.serverEdit, a.serverCustom = false, nil, false
+	case "account", "accountAdd":
+		a.serverEdit, a.serverCustom = nil, false
 	case "version":
 		a.ensureJavaScan()
 		if r := a.root(); r != nil {
@@ -107,6 +108,7 @@ func (a *App) openDialog(name string) {
 
 func (a *App) closeDialog() {
 	a.dialogGen++
+	a.cancelProjectRequests()
 	if a.device != nil {
 		a.service.CancelMicrosoft(a.device.ID)
 	}

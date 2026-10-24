@@ -119,7 +119,7 @@ func (a *App) launcherRestartBlocked() bool {
 			return true
 		}
 	}
-	return a.accountAdding || a.javaScanning
+	return (a.dialogOpen && a.dialog == "accountAdd") || a.javaScanning
 }
 
 func (a *App) installLauncherUpdate() {

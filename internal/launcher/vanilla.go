@@ -9,7 +9,7 @@ import (
 )
 
 // Original Minecraft 26.1.2 assets, embedded unchanged so first-run and offline
-// previews have the real Steve/Alex textures. See THIRD_PARTY_NOTICES.md.
+// previews have the real Steve/Alex textures. See docs/THIRD_PARTY_NOTICES.md.
 //
 //go:embed assets/skins/steve.png
 var vanillaStevePNG []byte

@@ -24,7 +24,11 @@ func (a *App) launch() {
 		return
 	}
 	if a.account() == nil {
-		a.openDialog("account")
+		if len(a.snapshot.Accounts) == 0 {
+			a.openDialog("accountAdd")
+		} else {
+			a.openDialog("account")
+		}
 		return
 	}
 	if r.SelectedVersion == "" {

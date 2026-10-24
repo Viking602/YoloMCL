@@ -56,6 +56,9 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,16 +68,24 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+      - name: Prepare Make and OpenSSL
+        run: |
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            choco install make --no-progress --yes
+          elif [[ "$RUNNER_OS" == macOS ]]; then
+            brew list openssl@3 >/dev/null 2>&1 || brew install openssl@3
+            echo "$(brew --prefix openssl@3)/bin" >> "$GITHUB_PATH"
+          fi
       - name: Build and sign release assets
         shell: bash
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          TAG: ${{ github.ref_name }}
           TARGET_OS: ${{ matrix.os }}
           TARGET_ARCH: ${{ matrix.arch }}
           CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
-        run: go run ./cmd/release -tag "$RELEASE_TAG" -goos "$TARGET_OS" -goarch "$TARGET_ARCH"
+        run: make release
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ matrix.os }}-${{ matrix.arch }}
@@ -105,8 +116,8 @@ jobs:
           merge-multiple: true
       - name: Verify every platform before publication
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: go run ./cmd/release -verify -tag "$RELEASE_TAG"
+          TAG: ${{ github.ref_name }}
+        run: make verify
       - name: Publish complete release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -233,3 +233,84 @@ var tagNeutral = ui.Hex("#475569")
 
 // tagMaxWidth caps a tag; longer text ellipsizes (tooltip on the title).
 const tagMaxWidth float32 = 120
+
+func loaderIconName(loader string) string {
+	v := strings.ToLower(strings.TrimSpace(loader))
+	switch v {
+	case "fabric":
+		return "loader-fabric"
+	case "forge":
+		return "loader-forge"
+	case "neoforge":
+		return "loader-neoforge"
+	case "quilt":
+		return "loader-quilt"
+	case "all", "all loaders", "全部加载器":
+		return "layers"
+	default:
+		return "loader-vanilla"
+	}
+}
+
+func loaderTone(loader string) ui.Color {
+	switch strings.ToLower(strings.TrimSpace(loader)) {
+	case "fabric":
+		return ui.Hex("#0284c7")
+	case "forge":
+		return ui.Hex("#d97706")
+	case "neoforge":
+		return ui.Hex("#ea580c")
+	case "quilt":
+		return ui.Hex("#7c3aed")
+	default:
+		return successInk
+	}
+}
+
+// loaderLogoKey maps a loader name or icon name to its official logo key,
+// or "" when there is none (e.g. "all loaders").
+func loaderLogoKey(loader string) string {
+	k := strings.TrimPrefix(loaderIconName(loader), "loader-")
+	if loaderLogos[k] != nil {
+		return k
+	}
+	return ""
+}
+
+// loaderLogo draws the loader's official logo unaltered inside a neutral
+// rounded container (no tinted tile), or nothing when it has none.
+func loaderLogo(c *ui.Context, loader string, size float32) bool {
+	k := loaderLogoKey(loader)
+	if k == "" {
+		return false
+	}
+	ui.Box(c).Size(size, size).Radius(size*.26).Shrink(0).Background(panel).Border(1, line).Clip().Center().Children(func() {
+		inner := size * .8
+		if k == "forge" || k == "vanilla" {
+			inner = size // full-bleed app-icon style logos
+		}
+		ui.Image(c, loaderLogos[k]).Size(inner, inner).Fit(ui.Contain).Label(k + " logo")
+	})
+	return true
+}
+
+// javaTag is the small tinted pill for a recommended/required Java major.
+func javaTag(c *ui.Context, major int) {
+	if major <= 0 {
+		return
+	}
+	scale := uiScale(c)
+	ui.Row(c).Label(fmt.Sprintf("Java 标签 %d", major)).Shrink(0).Padding(2*scale, 8*scale).Radius(999).Background(accent.Alpha(.10)).Border(1, accent.Alpha(.18)).Children(func() {
+		ui.Text(c, fmt.Sprintf("Java %d", major)).FontSize(typeCaption2 * scale).FontWeight(600).TextColor(accent).NoWrap().Shrink(0)
+	})
+}
+
+func (a *App) releaseLabel(t string) (string, ui.Color) {
+	switch strings.ToLower(t) {
+	case "beta":
+		return "Beta", warningInk
+	case "alpha":
+		return "Alpha", danger
+	}
+	return a.L("正式", "Release"), successInk
+}

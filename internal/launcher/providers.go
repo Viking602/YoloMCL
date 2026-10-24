@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -38,6 +39,7 @@ type mrVersion struct {
 	Name         string   `json:"name"`
 	Number       string   `json:"version_number"`
 	Published    string   `json:"date_published"`
+	Downloads    *int64   `json:"downloads"`
 	GameVersions []string `json:"game_versions"`
 	Loaders      []string `json:"loaders"`
 	Type         string   `json:"version_type"`
@@ -60,7 +62,7 @@ type mrVersion struct {
 }
 
 func (v mrVersion) version() ProjectVersion {
-	out := ProjectVersion{ID: v.ID, ProjectID: v.ProjectID, Name: v.Name, Number: v.Number, Source: "modrinth", Published: v.Published, GameVersions: v.GameVersions, Loaders: v.Loaders, Type: v.Type, Changelog: v.Changelog, Files: []DownloadFile{}, Dependencies: []Dependency{}}
+	out := ProjectVersion{ID: v.ID, ProjectID: v.ProjectID, Name: v.Name, Number: v.Number, Source: "modrinth", Published: v.Published, Downloads: v.Downloads, GameVersions: v.GameVersions, Loaders: v.Loaders, Type: v.Type, Changelog: v.Changelog, Files: []DownloadFile{}, Dependencies: []Dependency{}}
 	for _, f := range v.Files {
 		out.Files = append(out.Files, DownloadFile{Name: f.Filename, URL: f.URL, Size: f.Size, Primary: f.Primary, SHA1: f.Hashes.SHA1, SHA512: f.Hashes.SHA512})
 	}
@@ -77,6 +79,7 @@ type cfFile struct {
 	FileName     string   `json:"fileName"`
 	FileDate     string   `json:"fileDate"`
 	FileLength   int64    `json:"fileLength"`
+	Downloads    *int64   `json:"downloadCount"`
 	DownloadURL  string   `json:"downloadUrl"`
 	GameVersions []string `json:"gameVersions"`
 	Fingerprint  uint32   `json:"fileFingerprint"`
@@ -92,13 +95,16 @@ type cfFile struct {
 }
 
 func (v cfFile) version() ProjectVersion {
-	out := ProjectVersion{ID: strconv.Itoa(v.ID), ProjectID: strconv.Itoa(v.ModID), Name: v.DisplayName, Number: v.DisplayName, Source: "curseforge", Type: map[int]string{1: "release", 2: "beta", 3: "alpha"}[v.ReleaseType], Published: v.FileDate, GameVersions: []string{}, Loaders: []string{}, Dependencies: []Dependency{}}
+	out := ProjectVersion{ID: strconv.Itoa(v.ID), ProjectID: strconv.Itoa(v.ModID), Name: v.DisplayName, Number: v.DisplayName, Source: "curseforge", Type: map[int]string{1: "release", 2: "beta", 3: "alpha"}[v.ReleaseType], Published: v.FileDate, Downloads: v.Downloads, GameVersions: []string{}, Loaders: []string{}, Dependencies: []Dependency{}}
 	for _, g := range v.GameVersions {
 		switch strings.ToLower(g) {
-		case "fabric", "forge", "neoforge", "quilt":
+		case "fabric", "forge", "neoforge", "quilt", "iris", "optifine", "liteloader", "rift":
 			out.Loaders = append(out.Loaders, strings.ToLower(g))
 		default:
-			out.GameVersions = append(out.GameVersions, g)
+			// CurseForge mixes Minecraft versions with environment/Java tags.
+			if g != "" && (g[0] >= '0' && g[0] <= '9' || strings.HasPrefix(g, "b1.") || strings.HasPrefix(g, "a1.") || strings.HasPrefix(g, "c0.") || strings.HasPrefix(g, "rd-") || strings.HasPrefix(g, "inf-") || strings.HasPrefix(g, "in-")) {
+				out.GameVersions = append(out.GameVersions, g)
+			}
 		}
 	}
 	f := DownloadFile{Name: v.FileName, URL: v.DownloadURL, Size: v.FileLength, Primary: true}
@@ -118,18 +124,15 @@ func (v cfFile) version() ProjectVersion {
 }
 
 // CurseForgeAvailable reports whether this build can reach the CurseForge
-// API (via the distribution proxy or an API key).
+// API using the publisher's API key.
 func (s *Service) CurseForgeAvailable() bool {
-	return s.distribution.CurseForgeProxyURL != "" || s.distribution.CurseForgeAPIKey != ""
+	return s.publisher.HasCurseForge()
 }
 
 const curseForgeUnavailable = "此构建未配置 CurseForge 服务（缺少 API 密钥），无法下载 CurseForge 整合包中的模组；请改用 Modrinth 版本的整合包"
 
 func (s *Service) cfJSON(ctx context.Context, method, path string, body, out any) error {
-	if s.distribution.CurseForgeProxyURL != "" {
-		return s.jsonRequest(ctx, method, s.distribution.CurseForgeProxyURL+path, body, nil, out)
-	}
-	if key := s.distribution.CurseForgeAPIKey; key != "" {
+	if key := s.publisher.CurseForgeAPIKey; key != "" {
 		return cfError(path, s.jsonRequest(ctx, method, curseAPI+path, body, map[string]string{"x-api-key": key}, out))
 	}
 	return errors.New("此开发构建的 CurseForge 服务尚未启用，请使用 Modrinth 获取资源")
@@ -305,22 +308,41 @@ func (s *Service) Versions(ctx context.Context, source, project, mc, loader stri
 		return out, errors.New("项目 ID 不能为空")
 	}
 	if source == "curseforge" {
-		v := url.Values{"pageSize": {"50"}, "index": {"0"}}
+		v := url.Values{"pageSize": {"50"}}
 		if mc != "" {
 			v.Set("gameVersion", mc)
 		}
 		if l := loaderType(loader); l != "" {
 			v.Set("modLoaderType", l)
 		}
-		var r struct {
-			Data []cfFile `json:"data"`
+		seen := map[int]bool{}
+		for index := 0; index+50 <= 10000; {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			v.Set("index", strconv.Itoa(index))
+			var r struct {
+				Data       []cfFile `json:"data"`
+				Pagination struct {
+					Total int `json:"totalCount"`
+				} `json:"pagination"`
+			}
+			if e := s.cfJSON(ctx, "GET", "/mods/"+url.PathEscape(project)+"/files?"+v.Encode(), nil, &r); e != nil {
+				return nil, e // never present a partial catalog as complete
+			}
+			before := len(out)
+			for _, f := range r.Data {
+				if !seen[f.ID] {
+					seen[f.ID] = true
+					out = append(out, f.version())
+				}
+			}
+			index += len(r.Data)
+			if len(out) == before || (r.Pagination.Total > 0 && index >= r.Pagination.Total) || (r.Pagination.Total == 0 && len(r.Data) < 50) {
+				break
+			}
 		}
-		if e := s.cfJSON(ctx, "GET", "/mods/"+url.PathEscape(project)+"/files?"+v.Encode(), nil, &r); e != nil {
-			return out, e
-		}
-		for _, f := range r.Data {
-			out = append(out, f.version())
-		}
+		slices.SortStableFunc(out, func(x, y ProjectVersion) int { return strings.Compare(y.Published, x.Published) })
 		return out, nil
 	}
 	v := url.Values{}

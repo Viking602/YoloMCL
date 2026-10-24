@@ -98,6 +98,35 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	if a.snapshot.Accounts[0].Kind != "offline" {
 		t.Fatal(a.snapshot.Accounts)
 	}
+	// Both top-bar entries must reach distinct rendered dialogs in the real
+	// app view, including after successfully adding the first account.
+	tt.Advance(300 * time.Millisecond)
+	clickUI(t, tt, a.tr().SideAccountManage)
+	tt.Advance(250 * time.Millisecond)
+	clickUI(t, tt, a.L("账号管理", "Manage accounts"))
+	tt.Advance(250 * time.Millisecond)
+	if _, ok := tt.Find("账号行 " + a.snapshot.Accounts[0].ID); !ok {
+		t.Fatal("Manage did not show the newly saved account")
+	}
+	if _, ok := tt.Find("账号登录方式"); ok {
+		t.Fatal("Manage incorrectly opened the add form")
+	}
+	snapshotUI(t, tt, "account-managed-in-app")
+	clickUI(t, tt, a.tr().DialogCloseBtn)
+	tt.Advance(250 * time.Millisecond)
+	clickUI(t, tt, a.tr().SideAccountManage)
+	tt.Advance(250 * time.Millisecond)
+	clickUI(t, tt, a.tr().AccAddAccountBtn)
+	tt.Advance(250 * time.Millisecond)
+	if _, ok := tt.Find("弹窗标题 " + a.tr().AccAddAccountBtn); !ok {
+		t.Fatal("Add did not open its own dialog")
+	}
+	if _, ok := tt.Find("账号登录方式"); !ok {
+		t.Fatal("Add did not show the sign-in methods")
+	}
+	snapshotUI(t, tt, "account-add-in-app")
+	clickUI(t, tt, a.tr().DialogCloseBtn)
+	tt.Advance(250 * time.Millisecond)
 	clickUI(t, tt, "衣橱")
 	waitUI(t, tt, func() bool { return !a.appearanceLoading && a.appearanceAccount != "" })
 	if !tt.HasText("本机") {
@@ -112,7 +141,11 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	var jar bytes.Buffer
 	z := zip.NewWriter(&jar)
 	entry, _ := z.Create("fabric.mod.json")
-	_, _ = entry.Write([]byte(`{"schemaVersion":1,"id":"native_test","version":"1.2.3","name":"测试模组"}`))
+	_, _ = entry.Write([]byte(`{"schemaVersion":1,"id":"native_test","version":"1.2.3","name":"测试模组","icon":"icon.png"}`))
+	entry, _ = z.Create("icon.png")
+	if e = png.Encode(entry, disableModIconFixture()); e != nil {
+		t.Fatal(e)
+	}
 	_ = z.Close()
 	if e = os.WriteFile(filepath.Join(mc, "mods", "native-test.jar"), jar.Bytes(), 0644); e != nil {
 		t.Fatal(e)
@@ -134,12 +167,62 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	if !tt.HasText("测试模组") || !tt.HasText("1.2.3") {
 		t.Fatal(tt.Texts())
 	}
-	clickUI(t, tt, "切换启用 测试模组")
-	waitUI(t, tt, func() bool {
-		return !(len(a.pendingRequests) > 0) && !a.modsLoading && len(a.mods) == 1 && !a.mods[0].Enabled
-	})
-	if _, e = os.Stat(filepath.Join(mc, "mods", "native-test.jar.disabled")); e != nil {
-		t.Fatal(e)
+	modFile := filepath.Join(mc, "mods", "native-test.jar")
+	assertEnabled := func() {
+		t.Helper()
+		_, enabledErr := os.Stat(modFile)
+		_, disabledErr := os.Stat(modFile + ".disabled")
+		if !a.mods[0].Enabled || enabledErr != nil || !os.IsNotExist(disabledErr) {
+			t.Fatalf("mod changed before confirmation: %+v, %v, %v", a.mods[0], enabledErr, disabledErr)
+		}
+	}
+	for _, mode := range []string{"grid", "list"} {
+		a.addonListMode = mode == "list"
+		tt.Frame()
+		for _, dismiss := range []string{"cancel", "escape", "backdrop", "close"} {
+			clickUI(t, tt, "切换启用 测试模组")
+			tt.Advance(250 * time.Millisecond)
+			if !a.dialogOpen || a.dialog != "disableMod" || !tt.HasText("native-test.jar") || !tt.HasText("确认禁用") {
+				t.Fatal("disable confirmation did not identify the target mod")
+			}
+			waitUI(t, tt, func() bool { _, ok := tt.Find("禁用模组图标"); return ok })
+			assertDisableModIcon(t, tt)
+			assertEnabled()
+			snapshotUI(t, tt, "disable-mod-confirm-"+mode)
+			switch dismiss {
+			case "cancel":
+				clickUI(t, tt, "取消")
+			case "escape":
+				tt.Key(0, ui.KeyEscape)
+			case "backdrop":
+				tt.ClickAt(24, 24)
+			case "close":
+				clickUI(t, tt, a.tr().DialogCloseBtn)
+			}
+			tt.Advance(250 * time.Millisecond)
+			if a.dialogOpen {
+				t.Fatalf("%s did not dismiss the confirmation", dismiss)
+			}
+			assertEnabled()
+		}
+		clickUI(t, tt, "切换启用 测试模组")
+		tt.Advance(250 * time.Millisecond)
+		clickUI(t, tt, "确认禁用")
+		clickUI(t, tt, "确认禁用") // a second click during exit must not toggle again
+		waitUI(t, tt, func() bool {
+			_, err := os.Stat(modFile + ".disabled")
+			return !a.dialogOpen && !a.modsLoading && !a.mods[0].Enabled && err == nil
+		})
+		tt.Advance(250 * time.Millisecond)
+		clickUI(t, tt, "切换启用 测试模组")
+		if a.dialogOpen {
+			t.Fatal("re-enabling unexpectedly requires confirmation")
+		}
+		waitUI(t, tt, func() bool {
+			_, err := os.Stat(modFile)
+			return a.mods[0].Enabled && err == nil
+		})
+		assertEnabled()
 	}
 	snapshotUI(t, tt, "mods")
 	clickUI(t, tt, "管理账号")

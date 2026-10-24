@@ -116,9 +116,10 @@ func (s *Service) SaveAuthServer(previousURL, name, raw string) (AuthServer, err
 	prev := strings.ToLower(strings.TrimRight(strings.TrimSpace(previousURL), "/"))
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	list := s.cfg.AuthServers[:0:0]
+	draft := s.cfg.clone()
+	list := draft.AuthServers[:0:0]
 	replaced := false
-	for _, x := range s.cfg.AuthServers {
+	for _, x := range draft.AuthServers {
 		k := strings.ToLower(x.URL)
 		if k == prev || k == strings.ToLower(u) {
 			if !replaced {
@@ -132,8 +133,8 @@ func (s *Service) SaveAuthServer(previousURL, name, raw string) (AuthServer, err
 	if !replaced {
 		list = append(list, v)
 	}
-	s.cfg.AuthServers = list
-	return v, s.saveLocked()
+	draft.AuthServers = list
+	return v, s.saveConfigLocked(draft)
 }
 
 // DeleteAuthServer removes a saved server entry only; accounts that use it
@@ -145,14 +146,15 @@ func (s *Service) DeleteAuthServer(raw string) error {
 	k := strings.ToLower(strings.TrimRight(strings.TrimSpace(raw), "/"))
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	list := s.cfg.AuthServers[:0:0]
-	for _, x := range s.cfg.AuthServers {
+	draft := s.cfg.clone()
+	list := draft.AuthServers[:0:0]
+	for _, x := range draft.AuthServers {
 		if strings.ToLower(x.URL) != k {
 			list = append(list, x)
 		}
 	}
-	s.cfg.AuthServers = list
-	return s.saveLocked()
+	draft.AuthServers = list
+	return s.saveConfigLocked(draft)
 }
 
 // FetchAuthServerName reads meta.serverName from the Yggdrasil API root.

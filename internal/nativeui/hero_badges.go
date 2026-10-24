@@ -65,7 +65,7 @@ func (a *App) heroHistory(r launcher.Instance) heroHistoryBadge {
 			record.value = a.L("暂无游玩记录", "Not played yet")
 		} else {
 			record.label = a.L("上次游玩", "Played")
-			record.value = when.Local().Format(a.L("1月2日", "Jan 2"))
+			record.value = when.Local().Format(a.L("01月02日", "Jan 02"))
 			record.tip = when.Local().Format("2006-01-02 15:04") + "\n" + record.tip
 		}
 	} else if prior := a.contentSwaps["hero-history"]; prior != nil && a.instStatusErr == "" {
@@ -126,7 +126,7 @@ func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 					if stacked {
 						size = typeBody
 					}
-					a.flipNumber(c, "hero-history-date", shown.value, size*s, 600, fg).Shrink(1)
+					a.rollNumber(c, "hero-history-date", shown.value, size*s, 600, fg).Shrink(1)
 				}
 			})
 		})

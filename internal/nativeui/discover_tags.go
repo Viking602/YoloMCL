@@ -158,8 +158,11 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 	s := uiScale(c)
 	a.ensureCats()
 	k := a.catKey()
+	if m := &a.discoverMotion.categories; m.key != k {
+		*m = discoverCategoryMotion{key: k, entered: c.Now()}
+	}
 	if a.catFailed[k] {
-		ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
+		a.discoverCategoryBody(c).Children(func() {
 			railTitle(c, a.L("分类", "Tags"))
 			if a.loadFailed(c, "cats-failed", failInline, false) {
 				delete(a.catFailed, k)
@@ -172,7 +175,7 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 	if len(opts) == 0 {
 		return
 	}
-	ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
+	a.discoverCategoryBody(c).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
 			railTitle(c, a.L("分类", "Tags"))
 			ui.Spacer(c).Grow(1)

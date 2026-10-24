@@ -3,11 +3,15 @@ package nativeui
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -92,4 +96,13 @@ func (a *App) remoteImage(raw string) ui.ImageSource {
 		})
 	}()
 	return nil
+}
+
+func imageFromData(data string) image.Image {
+	b, e := base64.StdEncoding.DecodeString(strings.TrimPrefix(data, "data:image/png;base64,"))
+	if e != nil {
+		return nil
+	}
+	img, _, _ := image.Decode(strings.NewReader(string(b)))
+	return img
 }

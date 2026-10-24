@@ -1,9 +1,8 @@
 package nativeui
 
 import (
-	"fmt"
+	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -25,69 +24,65 @@ func numText(c *ui.Context, text string, size float32, color ui.Color) ui.Elemen
 	return ui.Text(c, text).Font(uiSansFamily()).FontFeatures("tnum").FontSize(size).TextColor(color).NoWrap()
 }
 
-// updatedAgo is the one relative format for "updated" dates.
-func updatedAgo(en bool, t, now time.Time) string {
-	d := now.Sub(t)
-	L := func(zh, e string, n int) string {
-		if en {
-			if n == 1 {
-				return strings.Replace(e, "s ago", " ago", 1)
-			}
-			return fmt.Sprintf(e, n)
-		}
-		return fmt.Sprintf(zh, n)
-	}
-	days := int(d.Hours() / 24)
-	switch {
-	case d < 24*time.Hour:
-		if en {
-			return "today"
-		}
-		return "今天"
-	case days < 2:
-		if en {
-			return "yesterday"
-		}
-		return "昨天"
-	case days < 7:
-		return L("%d 天前", "%d days ago", days)
-	case days < 30:
-		return L("%d 周前", "%d weeks ago", days/7)
-	case days < 365:
-		return L("%d 个月前", "%d months ago", days/30)
-	}
-	return L("%d 年前", "%d years ago", days/365)
+func label(c *ui.Context, s string) ui.Element {
+	return ui.Text(c, s).TextColor(muted).FontSize(typeCallout * uiScale(c))
 }
 
-func loaderLabel(l string) string {
-	switch strings.ToLower(l) {
-	case "forge":
-		return "Forge"
-	case "neoforge":
-		return "NeoForge"
-	case "fabric":
-		return "Fabric"
-	case "quilt":
-		return "Quilt"
-	case "iris":
-		return "Iris"
-	case "optifine":
-		return "OptiFine"
-	case "minecraft", "vanilla":
-		return ""
+func pathLabel(c *ui.Context, path string, size float32) ui.Element {
+	s := uiScale(c)
+	dir, base := filepath.Split(path)
+	if base == "" {
+		dir, base = filepath.Split(strings.TrimRight(path, `/\`))
+		base += string(filepath.Separator)
 	}
-	if l == "" {
-		return ""
-	}
-	return strings.ToUpper(l[:1]) + l[1:]
+	return ui.Row(c).Label("路径 " + path).Grow(1).Basis(0).MinWidth(0).Gap(0).AlignItems(ui.Center).Tooltip(path).Children(func() {
+		if dir != "" {
+			ui.Text(c, dir).FontSize(size).TextColor(muted).SingleLine().Shrink(1).MinWidth(0)
+		}
+		ui.Text(c, base).FontSize(size).FontWeight(600).TextColor(inkSecondary).SingleLine().Shrink(0).MaxWidthPercent(70)
+		_ = s
+	})
 }
 
-func (a *App) releaseLabel(t string) (string, ui.Color) {
-	switch strings.ToLower(t) {
-	case "beta":
-		return "Beta", warningInk
-	case "alpha":
-		return "Alpha", danger
+// midEllipsis shortens text to fit maxW by cutting its middle, keeping the
+// start and the end ("一个非常…目录名称", "C:\Users\…\.minecraft").
+func midEllipsis(c *ui.Context, text string, maxW, size float32, weight int) string {
+	measure := func(t string) float32 {
+		w, _ := c.MeasureText(0, ui.Span{Text: t, Font: theme.Font, Size: size, Weight: weight})
+		return w
 	}
-	return a.L("正式", "Release"), successInk
+	if measure(text) <= maxW {
+		return text
+	}
+	r := []rune(text)
+	lo, hi := 0, len(r)
+	for lo < hi { // largest keep count that fits
+		mid := (lo + hi + 1) / 2
+		head := (mid + 1) / 2
+		cand := string(r[:head]) + "…" + string(r[len(r)-(mid-head):])
+		if measure(cand) <= maxW {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	head := (lo + 1) / 2
+	return string(r[:head]) + "…" + string(r[len(r)-(lo-head):])
+}
+
+// uiMonoFamily is the bundled JetBrains Mono, the primary face for Latin
+// text, digits, versions and paths.
+const uiMonoFamily = "MCL JetBrains Mono"
+
+// uiFontFamily is the UI family list: the bundled JetBrains Mono first
+// (it has no CJK glyphs), then the OS's own CJK face, then the system UI.
+func uiFontFamily(goos string) string {
+	cjk := "Noto Sans CJK SC, Noto Sans SC, WenQuanYi Micro Hei"
+	switch goos {
+	case "darwin":
+		cjk = "PingFang SC, Hiragino Sans GB"
+	case "windows":
+		cjk = "Microsoft YaHei UI, Microsoft YaHei"
+	}
+	return uiMonoFamily + ", " + cjk + ", system-ui"
 }

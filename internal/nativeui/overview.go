@@ -92,7 +92,7 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 					} else if st.Dir != "" {
 						text = fmtSize(st.Total)
 					}
-					a.flipNumber(c, "storage-total", text, typeHeadline*s, 700, ink, true).Width(104 * s)
+					a.rollNumber(c, "storage-total", text, typeHeadline*s, 700, ink, true).Width(104 * s)
 					if iconOnlyButton(c, "ov-refresh", "refresh", a.L("刷新概览", "Refresh overview"), 26*s, false) && a.overviewActionReady("ov-dir") {
 						a.loadInstanceStatus()
 					}
@@ -169,9 +169,9 @@ func (a *App) ovStats(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 								ui.Text(c, it.title).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).MinWidth(0)
 							})
 							key := "stat-value-" + it.key
-							a.flipNumber(c, key, it.value, typeDisplay*s, 750, ink).FillWidth()
+							a.rollNumber(c, key, it.value, typeDisplay*s, 750, ink).FillWidth()
 							hintKey := "stat-hint-" + it.key
-							a.flipNumber(c, hintKey, it.hint, typeCaption*s, 400, muted).FillWidth().Tooltip(it.hint)
+							a.rollNumber(c, hintKey, it.hint, typeCaption*s, 400, muted).FillWidth().Tooltip(it.hint)
 						})
 					}).Clicked() && a.overviewActionReady("stat-value-"+it.key) {
 						a.setInstTab(it.tab)
@@ -205,14 +205,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 		}
 		w := st.RecentWorld
 		if w == nil {
-			title, hint := a.L("下一个世界，等你创造", "Your next world starts here"), a.L("进入游戏创建世界后，会在这里显示最近的存档", "Create a world in game to see it here")
-			ui.Column(c).FillWidth().Grow(1).Gap(12 * s).Center().Children(func() {
-				ui.Box(c).Size(56*s, 56*s).Radius(16 * s).Background(successSoft).Center().Children(func() {
-					ui.Icon(c, icons["globe"]).Size(26*s, 26*s).TextColor(successInk)
-				})
-				ui.Text(c, title).FontSize(typeTitle * s).FontWeight(650).TextColor(ink).SingleLine()
-				ui.Text(c, hint).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth().TextAlign(ui.Center)
-			})
+			emptyPanel(c, "world-empty", "world", a.L("还没有存档", "No worlds yet"), a.L("创建并游玩世界后，最近存档会显示在这里", "Create and play a world to see your latest save here"))
 			return
 		}
 		ui.Row(c).FillWidth().PaddingY(12 * s).Gap(16 * s).AlignItems(ui.Center).Children(func() {
@@ -252,7 +245,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 			} {
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
 					ui.Text(c, it[0]).FontSize(typeCaption * s).TextColor(muted).SingleLine()
-					a.flipNumber(c, it[2], it[1], typeCallout*s, 650, ink).FillWidth()
+					a.rollNumber(c, it[2], it[1], typeCallout*s, 650, ink).FillWidth()
 				})
 			}
 		})
@@ -286,12 +279,17 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 			ovLoading(c)
 			return
 		}
-		var img ui.ImageSource
-		if shot := st.LatestShot; shot != nil {
-			id, ver, file := r.ID, r.SelectedVersion, shot.File
-			key := overviewShotKey(r, *shot)
-			img = a.localIcon(key, func() ([]byte, error) { return a.service.ScreenshotPreview(id, ver, file) })
+		if st.LatestShot == nil {
+			title, hint := a.L("还没有游戏截图", "No screenshots yet"), a.L("在游戏中按 F2，保存的画面会显示在这里", "Press F2 in game to save a moment here")
+			if st.Screenshots > 0 {
+				title, hint = a.L("截图预览暂不可用", "Screenshot preview unavailable"), a.L("可打开截图文件夹查看原图", "Open the folder to view the original")
+			}
+			emptyPanel(c, "screenshot-empty", "image", title, hint)
+			return
 		}
+		shot := st.LatestShot
+		id, ver, file := r.ID, r.SelectedVersion, shot.File
+		img := a.localIcon(overviewShotKey(r, *shot), func() ([]byte, error) { return a.service.ScreenshotPreview(id, ver, file) })
 		ui.Box(c.Key("ov-shot-image")).FillWidth().Grow(1).Basis(0).MinHeight(0).Radius(12 * s).Clip().Background(accentSoft).Children(func() {
 			if img != nil {
 				image := ui.Image(c.Key("screenshot-preview-ready"), img).Absolute().Left(0).Top(0).Right(0).Bottom(0).Fit(ui.Cover)
@@ -302,19 +300,13 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 			}
 			ui.Image(c, landscape).Absolute().Left(0).Top(0).Right(0).Bottom(0).Fit(ui.Cover).Opacity(.16)
 			ui.Column(c).Fill().Center().PaddingX(16 * s).Gap(9 * s).Children(func() {
-				title, hint := a.L("留住游戏里的风景", "Keep a little of your world"), a.L("游戏中按 F2，截图会出现在这里", "Press F2 in game to save a screenshot")
-				if st.LatestShot != nil {
-					title, hint = a.L("最新截图", "Latest screenshot"), a.L("可打开截图文件夹查看原图", "Open the folder to view the original")
-				}
+				title, hint := a.L("最新截图", "Latest screenshot"), a.L("可打开截图文件夹查看原图", "Open the folder to view the original")
 				ui.Text(c, title).FontSize(typeTitle * s).FontWeight(650).TextColor(ink).SingleLine()
 				ui.Text(c, hint).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth().TextAlign(ui.Center)
 			})
 		})
 		ui.Row(c).FillWidth().Height(26 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			text, date := a.L("记录你的下一次冒险", "A place for your next adventure"), "F2"
-			if shot := st.LatestShot; shot != nil {
-				text, date = shot.File, agoText(a, shot.Modified)
-			}
+			text, date := shot.File, agoText(a, shot.Modified)
 			ui.Text(c, text).FontSize(typeCaption * s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(text)
 			ui.Text(c, date).FontSize(typeCaption * s).TextColor(muted).NoWrap().Shrink(0)
 		})
@@ -405,9 +397,11 @@ func (a *App) ovLastSession(c *ui.Context, r launcher.Instance, st launcher.Inst
 	case !st.LastLog.IsZero():
 		title, detail = a.L("最近日志", "Recent log"), agoText(a, st.LastLog)
 	}
-	b := ui.ButtonBase(c.Key("ov-last-session")).Label(a.L("查看运行日志", "View session logs")).FillWidth().Height(58*s).Shrink(0).Padding(10*s, 12*s).Gap(10 * s).Radius(10 * s).Background(raised).AlignItems(ui.Center)
+	b := ui.ButtonBase(c.Key("ov-last-session")).Font(uiSansFamily()).Label(a.L("查看运行日志", "View session logs")).FillWidth().Height(58*s).Shrink(0).Padding(10*s, 12*s).Gap(10 * s).Radius(10 * s).Background(raised).AlignItems(ui.Center)
 	if b.Children(func() {
-		ui.Icon(c, icons["terminal"]).Size(18*s, 18*s).TextColor(tone).Shrink(0)
+		ui.Box(c).Size(30*s, 32*s).Radius(8*s).Background(panel).Border(1, line).Shrink(0).Center().Children(func() {
+			ui.Icon(c, icons["terminal"]).Size(16*s, 16*s).TextColor(tone)
+		})
 		text := swappedContent(a, c, "last-session-text", [2]string{title, detail}, [2]string{title, detail})
 		a.contentBody(c, "last-session-text").Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, text[0]).FontSize(typeFootnote * s).FontWeight(600).TextColor(tone).SingleLine().FillWidth()

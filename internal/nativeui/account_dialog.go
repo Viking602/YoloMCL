@@ -15,30 +15,33 @@ import (
 func (a *App) accountDialog(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	// With saved accounts the list is the focus; adding one is a separate
-	// step behind "+ 添加账号". With none, go straight to the add form.
-	if len(a.snapshot.Accounts) > 0 && !a.accountAdding {
-		a.accountList(c)
-		ui.Row(c).FillWidth().Gap(space2 * s).AlignItems(ui.Center).Children(func() {
+	if len(a.snapshot.Accounts) == 0 {
+		emptyState(c, "empty-accounts", "account", a.L("还没有账号", "No saved accounts"), a.L("添加账号后，可以在这里切换和管理。", "Add an account to switch and manage it here."), func() {
 			if button(c, "account-add-open", t.AccAddAccountBtn, "plus", true, a.dialogPending()) {
-				a.accountAdding = true
+				a.openDialog("accountAdd")
 			}
 		})
 		return
 	}
-	if len(a.snapshot.Accounts) > 0 {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(space2 * s).Children(func() {
-			if button(c, "account-add-back", t.AccBackBtn, "", false, a.dialogPending()) {
-				a.accountAdding = false
-				a.serverEdit = nil
+	a.accountList(c)
+	ui.Row(c).FillWidth().Gap(space2 * s).AlignItems(ui.Center).Children(func() {
+		if button(c, "account-add-open", t.AccAddAccountBtn, "plus", true, a.dialogPending()) {
+			a.openDialog("accountAdd")
+		}
+	})
+}
+
+func (a *App) accountAddDialog(c *ui.Context) {
+	s := uiScale(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(space2 * s).Children(func() {
+		if len(a.snapshot.Accounts) > 0 {
+			if button(c, "account-add-back", a.tr().AccBackBtn, "chevron-left", false, a.dialogPending()) {
+				a.closeDialog() // Cancel an active sign-in before returning to the list.
+				a.openDialog("account")
 			}
-			label(c, t.AccAddSection).FontSize(typeCallout * s).FontWeight(700)
-		})
-	} else {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
-			label(c, t.AccAddSection).FontSize(typeCallout * s).FontWeight(700).Grow(1)
-		})
-	}
+		}
+		label(c, a.L("选择登录方式，添加你的游戏账号。", "Choose how to sign in to your game account.")).Grow(1).MinWidth(0)
+	})
 	a.accountAddForm(c)
 }
 
@@ -208,7 +211,7 @@ func (a *App) accountAddForm(c *ui.Context) {
 		}
 	}
 	const segPad, segGap = 4, 4
-	segRow := ui.Row(c.Key("auth-segment")).FillWidth().Padding(segPad * s).Gap(segGap * s).Radius(13 * s).Background(ui.Hex("#eaeff7"))
+	segRow := ui.Row(c.Key("auth-segment")).Label("账号登录方式").FillWidth().Padding(segPad * s).Gap(segGap * s).Radius(13 * s).Background(ui.Hex("#eaeff7"))
 	thumb := segRow.AnimateTo("thumb", float32(activeIndex), accountTabAnim)
 	segRow.Draw(func(p *ui.Painter, r ui.Rect) {
 		n := float32(len(tabs))

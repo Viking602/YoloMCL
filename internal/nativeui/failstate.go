@@ -1,10 +1,6 @@
 package nativeui
 
 import (
-	"errors"
-	"regexp"
-	"strings"
-
 	"github.com/egoist/mygo/ui"
 )
 
@@ -14,21 +10,6 @@ const (
 	failCard
 	failPanel
 )
-
-var hostRe = regexp.MustCompile(`(?i)\b[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|net|org|io|dev|cn|gg|me|app|cc)\b`)
-
-// looksNetwork reports whether raw error text came from a remote request.
-func looksNetwork(low string) bool {
-	if hostRe.MatchString(low) {
-		return true
-	}
-	for _, k := range []string{"http", "://", "no such host", "dial tcp", "connection refused", "connection reset", "network", "tls:", "x509:", "eof", "unexpected status", "status code", "status 4", "status 5", "proxy", "dns", "i/o timeout", "timeout", "timed out", "deadline exceeded", "too many requests", "unreachable", "read tcp", "write tcp", "wsarecv", "wsasend", "forcibly closed"} {
-		if strings.Contains(low, k) {
-			return true
-		}
-	}
-	return false
-}
 
 // loadFailed is the one look for anything that could not be fetched:
 // "加载失败" and a 重试 that spins while busy. Returns true on retry click.
@@ -68,5 +49,3 @@ func (a *App) loadFailed(c *ui.Context, key string, size int, busy bool) bool {
 	}
 	return clicked
 }
-
-var errStatus = errors.New("unexpected status")

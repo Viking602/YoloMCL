@@ -15,6 +15,45 @@ import (
 	"time"
 )
 
+func (s *Service) Snapshot() Snapshot {
+	s.mu.Lock()
+	cfg := s.cfg.clone()
+	authServers := s.authServersLocked()
+	sysMem, _ := SystemMemory()
+	jobs := s.jobListLocked()
+	running := map[string]bool{}
+	runVers := map[string][]string{}
+	for k := range s.running {
+		id, ver, _ := strings.Cut(k, "|")
+		ver, _, _ = strings.Cut(ver, "#") // a second copy of the same version
+		running[id] = true
+		if !slices.Contains(runVers[id], ver) {
+			runVers[id] = append(runVers[id], ver)
+		}
+	}
+	s.mu.Unlock()
+	out := Snapshot{Settings: cfg.Settings, Instances: []Instance{}, Accounts: cfg.Accounts, ActiveRoot: cfg.ActiveRoot, ActiveAccount: cfg.ActiveAccount, Jobs: jobs, AuthServers: authServers, DataDir: s.dir}
+	out.Services = ServiceAvailability{Microsoft: s.publisher.HasMicrosoft(), CurseForge: s.publisher.HasCurseForge()}
+	for _, r := range cfg.Roots {
+		index := s.rootInventory(r)
+		versions := index.versions()
+		for i := range versions {
+			if vc, ok := r.VersionConfigs[versions[i].ID]; ok {
+				versions[i].JavaPath = vc.JavaPath
+				versions[i].MemoryMB = vc.MemoryMB
+				versions[i].MemoryAutoSet = vc.MemoryAuto
+				versions[i].JVMArgs = vc.JVMArgs
+				versions[i].DisplayName = vc.DisplayName
+			}
+			versions[i].MemoryAuto, _ = r.MemoryPlan(versions[i].ID, cfg.Settings)
+			versions[i].AutoMemoryMB = AutoMemoryMB(AutoMemoryInput{TotalMB: sysMem.TotalMB, AvailableMB: sysMem.AvailableMB,
+				Minecraft: versions[i].Minecraft, Loader: versions[i].Loader, Mods: index.modCount(versions[i].ID).Enabled})
+		}
+		out.Instances = append(out.Instances, Instance{Root: r, Available: index.Available, Versions: versions, ModCount: index.modCount(r.SelectedVersion).Total, Pack: index.Pack, Running: running[r.ID], RunningVersions: runVers[r.ID], PackUpdate: index.PackUpdate, PackBackups: slices.Clone(index.PackBackups)})
+	}
+	return out
+}
+
 // Snapshots of jobs/selection are frequent. Filesystem inventories are not:
 // reuse them, probe only known Minecraft metadata every five seconds, and
 // invalidate immediately after launcher operations. Never hold Service.mu

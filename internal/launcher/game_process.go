@@ -19,7 +19,7 @@ type runningGame struct {
 // killTree stops the game and every process it spawned.
 func (g *runningGame) killTree() error {
 	if g.tree != nil {
-		return g.tree.kill()
+		return g.tree.Kill()
 	}
 	return g.cmd.Process.Kill()
 }
@@ -30,10 +30,10 @@ func (g *runningGame) waitTreeGone() {
 	if g.tree == nil {
 		return
 	}
-	for g.tree.alive() {
+	for g.tree.Alive() {
 		time.Sleep(200 * time.Millisecond)
 	}
-	g.tree.close()
+	g.tree.Close()
 }
 
 type gameLog struct {

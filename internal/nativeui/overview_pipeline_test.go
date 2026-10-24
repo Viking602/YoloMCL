@@ -59,16 +59,16 @@ func TestOverviewRetainsContentUntilTargetIsReady(t *testing.T) {
 		t.Fatal("incoming text overlapped the outgoing overview")
 	}
 	tt.Advance(66 * time.Millisecond)
-	start, _ := tt.Find("数字翻牌 stat-value-mods")
+	start, _ := tt.Find("动态数字 stat-value-mods")
 	first := append([]byte(nil), tt.Image().Pix...)
 	tt.Advance(70 * time.Millisecond)
-	middle, _ := tt.Find("数字翻牌 stat-value-mods")
+	middle, _ := tt.Find("动态数字 stat-value-mods")
 	if bytes.Equal(first, tt.Image().Pix) {
 		t.Fatal("overview switched without animation")
 	}
 	snapshotUI(t, tt, "overview-transition-middle")
 	tt.Advance(330 * time.Millisecond)
-	end, _ := tt.Find("数字翻牌 stat-value-mods")
+	end, _ := tt.Find("动态数字 stat-value-mods")
 	if start.W <= 0 || start != middle || middle != end {
 		t.Fatalf("number flip moved its fixed slot: %+v %+v %+v", start, middle, end)
 	}
@@ -95,7 +95,7 @@ func overviewRegionPixels(img *image.RGBA, r ui.Rect) []byte {
 	return pixels
 }
 
-func TestRecentServerStatesKeepIdentityInPlace(t *testing.T) {
+func TestRecentServerEmptyToRecordedKeepsPanelInPlace(t *testing.T) {
 	a, previous := homeTester(t, LangZH)
 	a.bgWG.Wait()
 	previous.Frame()
@@ -106,21 +106,26 @@ func TestRecentServerStatesKeepIdentityInPlace(t *testing.T) {
 	}, 390, 280)
 	tt.Advance(400 * time.Millisecond)
 	snapshotUI(t, tt, "server-empty-geometry")
-	icon, _ := tt.Find("服务器图标")
-	identity, _ := tt.Find("服务器标识")
+	panel, _ := tt.Find("最近服务器")
+	if !tt.HasText("还没有连接记录") || tt.HasText("服务器数据") {
+		t.Fatal("empty server card implies a recorded connection")
+	}
 	address := "friends.example.test:25565"
 	st.RecentServer = &launcher.InstanceServer{Address: address, Confirmed: true, Connected: time.Now()}
 	a.recentPing.cache = map[string]serverProbe{address: {checked: time.Now(), status: &launcher.ServerStatus{Description: "Welcome", Version: "1.21.1"}}}
 	tt.Frame()
-	snapshotUI(t, tt, "server-filled-geometry")
-	if got, _ := tt.Find("服务器图标"); got != icon {
-		t.Fatalf("empty and populated cards move the icon: %+v -> %+v", icon, got)
-	}
-	if got, _ := tt.Find("服务器标识"); got != identity {
-		t.Fatal("server identity jumped")
+	if !tt.HasText("还没有连接记录") {
+		t.Fatal("incoming server skipped the outgoing empty-state transition")
 	}
 	first := append([]byte(nil), tt.Image().Pix...)
 	tt.Advance(300 * time.Millisecond)
+	snapshotUI(t, tt, "server-filled-geometry")
+	if got, _ := tt.Find("最近服务器"); got != panel {
+		t.Fatalf("record arrival moved the server panel: %+v -> %+v", panel, got)
+	}
+	if tt.HasText("还没有连接记录") || !tt.HasText("服务器数据") || !tt.HasText("friends.example.test") {
+		t.Fatal("recorded server did not replace the empty state")
+	}
 	if bytes.Equal(first, tt.Image().Pix) {
 		t.Fatal("server details appeared without a transition")
 	}

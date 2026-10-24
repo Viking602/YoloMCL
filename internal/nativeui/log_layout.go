@@ -15,14 +15,14 @@ type logMeasureKey struct {
 }
 
 func logMessage(l logLine) string {
-	if !l.cont && !l.structured() {
-		return strings.ReplaceAll(l.raw, "\t", "    ")
+	if !l.Cont && !l.Structured() {
+		return strings.ReplaceAll(l.Raw, "\t", "    ")
 	}
-	return l.msg
+	return l.Msg
 }
 
 func (a *App) logStackLabel(l logLine) string {
-	return fmt.Sprintf(a.L("堆栈 %d 行", "Stack %d lines"), l.kids)
+	return fmt.Sprintf(a.L("堆栈 %d 行", "Stack %d lines"), l.Kids)
 }
 
 // Heights and prefix offsets replace fixed-line arithmetic for reports and
@@ -41,17 +41,17 @@ func (a *App) layoutLogRows(c *ui.Context, width float32) {
 	for pos, index := range lv.vis {
 		l := lv.lines[index]
 		height := logRowHeight * s
-		if l.cont || !l.structured() {
+		if l.Cont || !l.Structured() {
 			textWidth := width - 28*s // row padding; scroll gutter is excluded by the caller
-			if l.cont {
+			if l.Cont {
 				textWidth -= 12 * s
 			}
-			if l.stack && l.kids > 0 && !l.cont {
+			if l.Stack && l.Kids > 0 && !l.Cont {
 				w, _ := c.MeasureText(0, ui.Span{Text: a.logStackLabel(l), Size: typeCaption2 * s, Weight: 600})
 				textWidth -= w + 39*s
 			}
-			if l.repeat > 1 {
-				w, _ := c.MeasureText(0, ui.Span{Text: fmt.Sprintf("×%d", l.repeat), Size: typeCaption2 * s, Weight: 700})
+			if l.Repeat > 1 {
+				w, _ := c.MeasureText(0, ui.Span{Text: fmt.Sprintf("×%d", l.Repeat), Size: typeCaption2 * s, Weight: 700})
 				textWidth -= w + 24*s
 			}
 			textWidth = max(32*s, textWidth)

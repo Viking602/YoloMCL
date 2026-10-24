@@ -66,9 +66,6 @@ func (a *App) toast(c *ui.Context) {
 		a.noticeRetry, a.noticeFor = nil, ""
 	}
 	bottom := space3 * s
-	if a.launchDockVisible() {
-		bottom += (launchDockHeight + launchDockBottom) * s
-	}
 	host := ui.Box(c.Key("toast-host")).Label("页面通知").Absolute().Left(pageGutter * s).Right(pageGutter * s).Bottom(bottom)
 	target, anim := float32(0), motionExit
 	if a.message != "" && a.dialog == "" {

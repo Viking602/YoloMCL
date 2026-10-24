@@ -86,7 +86,7 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 		mem = a.L("自动  约 ", "Auto  about ") + mem
 	}
 	kvRow(c, a.L("内存", "Memory"), func() {
-		a.flipNumber(c, "runtime-memory", mem, typeCallout*s, 600, ink).Width(188 * s).Shrink(1)
+		a.rollNumber(c, "runtime-memory", mem, typeCallout*s, 600, ink).Width(188 * s).Shrink(1)
 		if a.memoryInfo.TotalMB > 0 {
 			numText(c, fmt.Sprintf(a.L("系统 %.0f GB", "of %.0f GB"), float64(a.memoryInfo.TotalMB)/1024), typeFootnote*s, muted)
 		}

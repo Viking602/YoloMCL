@@ -18,9 +18,9 @@ MCL：发行时内置自己的公开应用身份；使用原生设备授权界�
 - [curseforgeSearch.ts](https://github.com/Voxelum/x-minecraft-launcher/blob/75a52faa73faca04a24e49c58c3afaf79b5bce16/xmcl-keystone-ui/src/composables/curseforgeSearch.ts) 将结果的 `logo.url` 作为图标，按返回分页信息处理下一页，并将单页上限限制到 50。
 - [curseforgeInstaller.ts](https://github.com/Voxelum/x-minecraft-launcher/blob/75a52faa73faca04a24e49c58c3afaf79b5bce16/xmcl-keystone-ui/src/composables/curseforgeInstaller.ts) 处理安装目录、加载器和必需依赖。
 
-MCL 已对照落实：发行方构建注入 API Key 或使用发行方 HTTPS 转发服务，均不需要玩家填写；官方接口检索、Minecraft / 加载器筛选、三种排序、分页长度一致、必需依赖解析、SHA-1 校验及失败回滚。下载使用 API 返回的文件地址；缺少可分发地址的整合包文件显示手动下载信息。
+MCL 已对照落实：发行方构建注入 API Key，不需要玩家填写；官方接口检索、Minecraft / 加载器筛选、三种排序、分页长度一致、必需依赖解析、SHA-1 校验及失败回滚。下载使用 API 返回的文件地址；缺少可分发地址的整合包文件显示手动下载信息。
 
-直连 Key 会随发行程序分发；若发行方希望 Key 仅留在服务器，可使用仓库自带的 `cmd/catalog-relay`。两种接入方式均未使用 XMCL 的 Key。
+启动器直接访问 CurseForge，Key 随发行程序分发。仓库只保留启动器，不附带代理服务，也不使用 XMCL 的 Key。
 
 ## 图标问题定位
 

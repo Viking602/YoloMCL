@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -174,52 +173,6 @@ func javaHint(a *App, major int) string {
 		return "1.20.5–1.21.x"
 	}
 	return a.L("26.1 及更新", "26.1 and newer")
-}
-
-// javaSection lists runtimes as cards in 全局设置.
-func (a *App) javaSection(c *ui.Context) {
-	s := uiScale(c)
-	g := &a.javaGet
-	a.refreshJavaList(false)
-	need := 0
-	if r := a.root(); r != nil {
-		if v := a.versionInfo(r.ID, r.SelectedVersion); v != nil {
-			need = javaFor(*r, *v)
-		}
-	}
-	ui.Column(c.Key("java-section")).FillWidth().Gap(space2 * s).Children(func() {
-		ui.Row(c).FillWidth().Height(btnMd * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L("Java 运行环境", "Java runtimes")).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink)
-			ui.Text(c, fmt.Sprintf(a.L("%d 个", "%d found"), len(g.list))).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
-			var managed int64
-			for _, j := range g.list {
-				if j.Managed {
-					managed += j.Size
-				}
-			}
-			if managed > 0 {
-				numText(c, a.L("YoloMCL 安装共 ", "YoloMCL installs ")+fmtSize(managed), typeFootnote*s, muted)
-			}
-			ui.Spacer(c).Grow(1)
-			if fixedButton(c, "java-rescan", a.L("重新扫描", "Rescan"), "refresh", 0, btnSm*s, false, g.listBusy || a.javaScanning) {
-				a.refreshJavaList(true)
-			}
-			if fixedButton(c, "java-get-open", a.L("下载 Java", "Download Java"), "download", 0, btnSm*s, true, false) {
-				a.openJavaGet(max(need, 0), "", false)
-			}
-		})
-		if len(g.list) == 0 {
-			ui.Row(c.Key("java-none")).FillWidth().Height(56*s).Padding(0, 16*s).Radius(radiusCard*s).Background(raised).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-				msg := a.L("还没有找到 Java，可以直接下载一个", "No Java found yet; download one")
-				if g.listBusy || a.javaScanning || !a.javaScannedOnce {
-					msg = a.L("正在检测已安装的 Java", "Looking for installed Java")
-				}
-				label(c, msg).FontSize(typeFootnote * s)
-			})
-			return
-		}
-		a.javaGroups(c)
-	})
 }
 
 // javaGetDialog: pick a version and a source, then follow the download.
@@ -517,112 +470,4 @@ func (a *App) javaUse() (map[string]int, map[int]string) {
 		}
 	}
 	return use, auto
-}
-
-// javaGroups lists installed Javas grouped by major (newest first), each
-// group headed by what it suits; rows use fixed columns.
-func (a *App) javaGroups(c *ui.Context) {
-	s := uiScale(c)
-	g := &a.javaGet
-	use, auto := a.javaUse()
-	majors := []int{}
-	by := map[int][]launcher.InstalledJava{}
-	for _, j := range g.list {
-		if by[j.Major] == nil {
-			majors = append(majors, j.Major)
-		}
-		by[j.Major] = append(by[j.Major], j)
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(majors)))
-	scrollArea(c, "java-list").FillWidth().MaxHeight(460*s).Radius(radiusCard*s).Background(raised).Border(1, glassEdge).Children(func() {
-		ui.Column(c).FillWidth().Padding(6*s, 0).Gap(0).Children(func() {
-			for gi, m := range majors {
-				m := m
-				if gi > 0 {
-					ui.Box(c).FillWidth().Height(1).Background(line).Margin(4*s, 0)
-				}
-				ui.Row(c.Key(fmt.Sprintf("java-group-%d", m))).FillWidth().Height(30 * s).PaddingX(16 * s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, fmt.Sprintf("Java %d", m)).FontSize(typeCallout * s).FontWeight(750).TextColor(ink).NoWrap()
-					label(c, javaSuits(a, m)).FontSize(typeFootnote * s).NoWrap()
-				})
-				for _, item := range by[m] {
-					a.javaListRow(c, item, use[strings.ToLower(item.Path)], auto[m] == strings.ToLower(item.Path))
-				}
-			}
-		})
-	})
-}
-
-func (a *App) javaListRow(c *ui.Context, j launcher.InstalledJava, used int, isAuto bool) {
-	s := uiScale(c)
-	g := &a.javaGet
-	// Path budget: the card is min(window, settings column); subtract the
-	// fixed right columns (usage 104 + size 76 + actions 170), padding and gaps.
-	ww, _ := c.Size()
-	card := ww - 2*space5*s
-	if mx := settingsColumnWidth * s; card > mx {
-		card = mx
-	}
-	pathW := card - (32+104+76+170+36)*s
-	chars := int(pathW / (typeCaption * s * 0.62))
-	if chars < 16 {
-		chars = 16
-	}
-	ui.Row(c.Key("java-card-" + j.Path)).FillWidth().Height(56 * s).PaddingX(16 * s).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-		// left: two lines, flexes and clips
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(3 * s).Children(func() {
-			ui.Row(c).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, javaVendor(a, j)).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).NoWrap()
-				numText(c, j.Version, typeFootnote*s, inkSecondary)
-				if isAuto {
-					quietTag(c, a.L("自动选用", "Auto pick"), successInk)
-				}
-				if j.Managed {
-					quietTag(c, a.L("YoloMCL 安装", "By YoloMCL"), accent)
-				}
-			})
-			ui.Box(c).FillWidth().Clip().Tooltip(j.Path).Children(func() {
-				ui.Text(c, midPath(j.Home, chars)).FontSize(typeCaption * s).TextColor(muted).SingleLine()
-			})
-		})
-		ui.Box(c).Width(104 * s).Shrink(0).Clip().AlignItems(ui.End).Children(func() {
-			if used > 0 {
-				label(c, fmt.Sprintf(a.L("%d 个实例在用", "used by %d"), used)).FontSize(typeFootnote * s).NoWrap()
-			}
-		})
-		ui.Box(c).Width(76 * s).Shrink(0).Clip().AlignItems(ui.End).Children(func() {
-			if j.Size > 0 {
-				numText(c, fmtSize(j.Size), typeFootnote*s, muted)
-			}
-		})
-		// actions: fixed slot
-		ui.Row(c).Width(170 * s).Shrink(0).Gap(4 * s).Justify(ui.End).AlignItems(ui.Center).Children(func() {
-			if iconOnlyButton(c, "java-copy-"+j.Path, "doc", a.L("复制路径", "Copy path"), 26*s, false) {
-				c.WriteClipboard(j.Path)
-				a.notice(a.L("已复制路径", "Path copied"))
-			}
-			if iconOnlyButton(c, "java-open-"+j.Path, "folder", a.L("打开文件夹", "Open folder"), 26*s, false) {
-				if e := openPath(j.Home); e != nil {
-					a.message, a.errorMessage = a.friendlyErr(e), true
-				}
-			}
-			if !j.Managed {
-				ui.Box(c).Width(76 * s).Shrink(0)
-				return
-			}
-			if g.confirm != j.Home {
-				if fixedButton(c, "java-uninstall-"+j.Path, a.L("卸载", "Uninstall"), "trash", 76*s, btnSm*s, false, false) {
-					g.confirm = j.Home
-				}
-			} else if dangerButton(c, "java-uninstall-ok-"+j.Path, a.L("确认卸载", "Confirm"), btnSm*s, false) {
-				g.confirm = ""
-				if e := a.service.UninstallJava(j.Home); e != nil {
-					a.message, a.errorMessage = a.friendlyErr(e), true
-				} else {
-					a.notice(a.L("已卸载 ", "Uninstalled ") + "Java " + j.Version)
-				}
-				a.refreshJavaList(true)
-			}
-		})
-	})
 }

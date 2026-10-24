@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Viking602/YoloMCL/internal/distribution"
+	publisherconfig "github.com/Viking602/YoloMCL/internal/config"
 )
 
 const appVersion = "0.2.0"
@@ -176,19 +176,19 @@ type jobState struct {
 	holdDone  int
 }
 type Service struct {
-	mu           sync.Mutex
-	inventoryMu  sync.Mutex
-	inventories  map[string]*inventoryEntry
-	authMu       sync.Mutex
-	cfg          config
-	distribution distribution.Config
-	dir          string
-	http         *http.Client
-	jobs         map[string]*jobState
-	running      map[string]*runningGame
-	sessions     []*gameSession
-	rootLocks    map[string]bool
-	devices      map[string]*deviceSession
+	mu          sync.Mutex
+	inventoryMu sync.Mutex
+	inventories map[string]*inventoryEntry
+	authMu      sync.Mutex
+	cfg         config
+	publisher   publisherconfig.Config
+	dir         string
+	http        *http.Client
+	jobs        map[string]*jobState
+	running     map[string]*runningGame
+	sessions    []*gameSession
+	rootLocks   map[string]bool
+	devices     map[string]*deviceSession
 }
 type Mod struct {
 	File        string          `json:"file"`
@@ -267,6 +267,7 @@ type ProjectVersion struct {
 	Name         string         `json:"name"`
 	Number       string         `json:"number"`
 	Published    string         `json:"published"`
+	Downloads    *int64         `json:"downloads,omitempty"` // nil means the provider did not supply a count; zero is known
 	GameVersions []string       `json:"gameVersions"`
 	Loaders      []string       `json:"loaders"`
 	Files        []DownloadFile `json:"files"`

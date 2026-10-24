@@ -1,228 +1,15 @@
 package nativeui
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
-
-// instGameState is what the game itself remembers for an instance: the
-// shader pack picked in Iris / Oculus / OptiFine and the resource pack
-// order from options.txt. Only files that exist are read; unknown stays "".
-type instGameState struct {
-	shaderCfg  string // iris | oculus | optifine | ""
-	shaderPack string
-	shadersOn  bool
-	hasOptions bool
-	rpOrder    []string // pack files, highest priority first
-}
-
-func parseProps(b []byte) map[string]string {
-	out := map[string]string{}
-	lines := strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n")
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(strings.TrimRight(lines[i], "\r"))
-		for strings.HasSuffix(line, `\`) && !strings.HasSuffix(line, `\\`) && i+1 < len(lines) { // continuation
-			i++
-			line = strings.TrimSuffix(line, `\`) + strings.TrimSpace(lines[i])
-		}
-		if line == "" || line[0] == '#' || line[0] == '!' {
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			k, v, ok = strings.Cut(line, ":")
-		}
-		if !ok {
-			continue
-		}
-		out[propUnescape(strings.TrimSpace(k))] = propUnescape(strings.TrimSpace(v))
-	}
-	return out
-}
-
-// propUnescape decodes Java .properties escapes: \uXXXX (Iris/Oculus/
-// OptiFine write non-ASCII names this way), \t \n \r \f, and \x -> x for
-// any other char (\! \: \= \# \space \\).
-func propUnescape(v string) string {
-	if !strings.Contains(v, `\`) {
-		return v
-	}
-	var b strings.Builder
-	r := []rune(v)
-	for i := 0; i < len(r); i++ {
-		if r[i] != '\\' || i+1 >= len(r) {
-			b.WriteRune(r[i])
-			continue
-		}
-		i++
-		switch r[i] {
-		case 'u':
-			if i+4 < len(r) {
-				if n, e := strconv.ParseUint(string(r[i+1:i+5]), 16, 32); e == nil {
-					b.WriteRune(rune(n))
-					i += 4
-					continue
-				}
-			}
-			b.WriteRune('u')
-		case 't':
-			b.WriteRune('\t')
-		case 'n':
-			b.WriteRune('\n')
-		case 'r':
-			b.WriteRune('\r')
-		case 'f':
-			b.WriteRune('\f')
-		default:
-			b.WriteRune(r[i])
-		}
-	}
-	return b.String()
-}
-
-func readGameState(dir string) instGameState {
-	var st instGameState
-	for _, c := range []struct{ file, kind string }{{"config/iris.properties", "iris"}, {"config/oculus.properties", "oculus"}} {
-		b, e := os.ReadFile(filepath.Join(dir, c.file))
-		if e != nil {
-			continue
-		}
-		p := parseProps(b)
-		st.shaderCfg, st.shaderPack = c.kind, p["shaderPack"]
-		st.shadersOn = st.shaderPack != "" && !strings.EqualFold(p["enableShaders"], "false")
-		break
-	}
-	if st.shaderCfg == "" {
-		if b, e := os.ReadFile(filepath.Join(dir, "optionsshaders.txt")); e == nil {
-			st.shaderCfg = "optifine"
-			if v := parseProps(b)["shaderPack"]; v != "" && v != "OFF" && v != "(internal)" {
-				st.shaderPack, st.shadersOn = v, true
-			}
-		}
-	}
-	if b, e := os.ReadFile(filepath.Join(dir, "options.txt")); e == nil {
-		st.hasOptions = true
-		for _, line := range strings.Split(string(b), "\n") {
-			if v, ok := strings.CutPrefix(strings.TrimSpace(line), "resourcePacks:"); ok {
-				var list []string
-				if json.Unmarshal([]byte(v), &list) == nil {
-					for i := len(list) - 1; i >= 0; i-- { // the last entry wins in game
-						if f, ok := strings.CutPrefix(list[i], "file/"); ok {
-							st.rpOrder = append(st.rpOrder, f)
-						}
-					}
-				}
-			}
-		}
-	}
-	return st
-}
-
-// refreshGameState rereads the game's own files in the background; the
-// previous value stays on screen until the new one lands (no flash).
-func (a *App) refreshGameState() {
-	a.refreshGameStateContext(a.ctx)
-}
-
-func (a *App) refreshGameStateContext(ctx context.Context) {
-	r := a.root()
-	if r == nil || a.service == nil {
-		return
-	}
-	key := r.ID + "|" + r.SelectedVersion
-	id, ver, tab := r.ID, r.SelectedVersion, a.addonTab
-	ready := a.firstFrame
-	a.bgWG.Add(1)
-	go func() {
-		defer a.bgWG.Done()
-		if !waitForFirstFrame(ctx, ready) {
-			return
-		}
-		dir, e := a.service.InstanceFolder(id, ver, "")
-		if e != nil {
-			return
-		}
-		st := readGameState(dir)
-		var mods []launcher.Mod
-		if tab == "shader" {
-			mods, _ = a.service.ListModsStreamContext(ctx, id, ver, nil)
-		}
-		a.post(func() {
-			if ctx.Err() != nil {
-				return
-			}
-			if a.gameStates == nil {
-				a.gameStates = map[string]instGameState{}
-				a.shaderMods = map[string][]launcher.Mod{}
-			}
-			a.gameStates[key] = st
-			if mods != nil {
-				a.shaderMods[key] = mods
-			}
-		})
-	}()
-}
-
-func (a *App) gameState() (instGameState, bool) {
-	r := a.root()
-	if r == nil {
-		return instGameState{}, false
-	}
-	st, ok := a.gameStates[r.ID+"|"+r.SelectedVersion]
-	return st, ok
-}
-
-// shaderLoader finds Iris / Oculus / OptiFine among the instance's mods.
-func (a *App) shaderLoader() (name, version string, known bool) {
-	r := a.root()
-	if r == nil {
-		return "", "", false
-	}
-	key := r.ID + "|" + r.SelectedVersion
-	mods, ok := a.shaderMods[key]
-	if c, hit := a.addonCache[key+"|mods"]; hit {
-		mods, ok = c.mods, true
-	}
-	if !ok {
-		return "", "", false
-	}
-	for _, m := range mods {
-		if !m.Enabled {
-			continue
-		}
-		id, f := strings.ToLower(m.ModID), strings.ToLower(m.File)
-		switch {
-		case id == "iris" || strings.HasPrefix(f, "iris-") || strings.HasPrefix(f, "iris_"):
-			return "Iris", m.Version, true
-		case id == "oculus" || strings.HasPrefix(f, "oculus"):
-			return "Oculus", m.Version, true
-		case id == "optifine" || strings.HasPrefix(f, "optifine"):
-			return "OptiFine", m.Version, true
-		}
-	}
-	return "", "", true
-}
-
-// shaderNeed is the shader loader that fits the instance's mod loader.
-func shaderNeed(loader string) (label, query string) {
-	switch strings.ToLower(loader) {
-	case "fabric", "quilt", "neoforge":
-		return "Iris", "iris"
-	case "forge":
-		return "Oculus", "oculus"
-	}
-	return "OptiFine", ""
-}
 
 func (a *App) goDiscover(kind, query string) {
 	t := a.tr()
@@ -267,135 +54,6 @@ func addonFolder(kind string) string {
 		return "shaderpacks"
 	}
 	return "mods"
-}
-
-type addonEntry struct {
-	it     addonItem
-	mod    *launcher.Mod
-	pack   *launcher.AssetPack
-	name   string
-	size   int64
-	update bool
-}
-
-func (a *App) addonEntries() []addonEntry {
-	var out []addonEntry
-	if a.addonTab == "mods" {
-		inst := ""
-		if v := a.gameVersion(); v != nil {
-			inst = strings.ToLower(v.Loader)
-		}
-		have := map[string]bool{}
-		for _, m := range a.mods {
-			if m.Enabled {
-				have[strings.ToLower(m.ModID)] = true
-				for _, p := range m.Provides {
-					have[strings.ToLower(p)] = true
-				}
-			}
-		}
-		for i := range a.mods {
-			m := &a.mods[i]
-			it := a.modItem(*m)
-			if m.Enabled {
-				for _, r := range m.Requires {
-					if !have[strings.ToLower(r)] {
-						it.missing = append(it.missing, r)
-					}
-				}
-			}
-			loader := a.loaderDisplay(m.Loader)
-			if strings.EqualFold(m.Loader, inst) || m.Loader == "" {
-				loader = "" // same as the instance: no need to repeat it on every row
-			}
-			it.meta = joinMeta(m.Version, loader)
-			it.version, it.loader = m.Version, loader
-			it.size, it.source = sizeText(m.Size), m.Source
-			it.iconURL = a.modIconURLs[m.SHA1]
-			p, sec := addonNames(m.Name, m.File)
-			rem := a.addonRemote[m.SHA1]
-			it.summary, it.cats = rem.Summary, rem.Cats
-			if it.summary == "" {
-				it.summary = m.Description
-			}
-			if !a.isEN() {
-				if zh := a.zhNames.Mod(rem.CFSlug, rem.MRSlug, m.ModID); zh != "" && !hasCJK(p) {
-					it.zhName = zh
-				}
-			}
-			out = append(out, addonEntry{it: it, mod: m, name: strings.ToLower(p + " " + sec + " " + m.File + " " + m.ModID), size: m.Size, update: m.Latest != nil})
-		}
-		return out
-	}
-	for i := range a.assetPacks {
-		p := &a.assetPacks[i]
-		it := a.packItem(*p)
-		it.meta = strings.Join(strings.Fields(p.Description), " ")
-		it.size = sizeText(p.Size)
-		rem := a.addonRemote[p.Kind+"|"+stableFile(p.File)]
-		it.iconURL, it.cats = rem.Icon, rem.Cats
-		it.summary = strings.Join(strings.Fields(p.Description), " ")
-		if rem.Summary != "" && (it.summary == "" || len([]rune(it.summary)) < 12) {
-			it.summary = rem.Summary
-		}
-		out = append(out, addonEntry{it: it, pack: p, name: strings.ToLower(p.Name + " " + p.File + " " + p.Description), size: p.Size})
-	}
-	return out
-}
-
-func (a *App) addonFilterCounts(all []addonEntry) (on, off, upd int) {
-	for _, e := range all {
-		if e.it.enabled {
-			on++
-		} else {
-			off++
-		}
-		if e.update {
-			upd++
-		}
-	}
-	return
-}
-
-func (a *App) filteredAddons(all []addonEntry) []addonEntry {
-	q := strings.ToLower(strings.TrimSpace(a.modFilter))
-	var out []addonEntry
-	for _, e := range all {
-		if q != "" && !strings.Contains(e.name, q) {
-			continue
-		}
-		switch a.addonFilterKind {
-		case "on":
-			if !e.it.enabled {
-				continue
-			}
-		case "off":
-			if e.it.enabled {
-				continue
-			}
-		case "update":
-			if !e.update {
-				continue
-			}
-		}
-		out = append(out, e)
-	}
-	if a.addonSortKey == "size" {
-		sort.SliceStable(out, func(i, j int) bool { return out[i].size > out[j].size })
-	} else {
-		sort.SliceStable(out, func(i, j int) bool { return out[i].name < out[j].name })
-	}
-	return out
-}
-
-func (a *App) addonKindWord() string {
-	switch a.addonTab {
-	case "resourcepack":
-		return a.L("资源包", "resource packs")
-	case "shader":
-		return a.L("光影", "shaders")
-	}
-	return a.L("模组", "mods")
 }
 
 // addonToolbar: search, sort, the folder, import and Discover on one line;
@@ -468,33 +126,13 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 			return // nothing to tell apart: every item is on and current
 		}
 		ui.Row(c).FillWidth().Gap(6 * s).AlignItems(ui.Center).Children(func() {
-			pill := func(key, text string, n int) {
-				sel := a.addonFilterKind == key
-				b := ui.ButtonBase(c.Key("addon-filter-" + key)).Label(text).Height(28 * s).PaddingX(11 * s).Gap(6 * s).Radius(999).AlignItems(ui.Center).Shrink(0)
-				bg, fg := ui.RGBA(120, 130, 160, .08), inkSecondary
-				if sel {
-					bg, fg = accentSoft, accent
-				} else if b.Hovered() {
-					bg = ui.RGBA(120, 130, 160, .14)
-				}
-				b.Background(b.AnimateColor("bg", bg, fastAnim))
-				if b.Children(func() {
-					ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(600).TextColor(fg).NoWrap()
-					ui.Text(c, fmt.Sprint(n)).FontSize(typeFootnote * s).FontWeight(500).TextColor(fg.Alpha(.7)).NoWrap()
-				}).Clicked() {
-					a.addonFilterKind = key
-				}
-			}
-			pill("", a.L("全部", "All"), len(all))
-			pill("on", a.L("已启用", "Enabled"), on)
-			if off > 0 || a.addonFilterKind == "off" {
-				pill("off", a.L("已禁用", "Disabled"), off)
-			}
-			if upd > 0 || a.addonFilterKind == "update" {
-				pill("update", a.L("可更新", "Updates"), upd)
-			}
+			a.addonFilterPills(c, len(all), on, off, upd)
 			ui.Spacer(c).Grow(1)
-			label(c, a.L("点按一行即可启用或禁用", "Click a row to enable or disable")).FontSize(typeCaption * s).NoWrap().Shrink(1).MinWidth(0)
+			hint := a.L("点按切换启用状态", "Click to enable or disable")
+			if a.addonTab == "mods" {
+				hint = a.L("点按启用或禁用，禁用前需确认", "Click to toggle; disabling asks for confirmation")
+			}
+			label(c, hint).FontSize(typeCaption * s).NoWrap().Shrink(1).MinWidth(0)
 		})
 	})
 }
@@ -543,9 +181,9 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 				switch {
 				case !stOK:
 					cur = a.L("读取中", "Reading")
-				case st.shadersOn:
-					cur, fg = strings.TrimSuffix(st.shaderPack, ".zip"), ink
-				case st.shaderCfg != "" && st.shaderPack != "":
+				case st.ShadersOn:
+					cur, fg = strings.TrimSuffix(st.ShaderPack, ".zip"), ink
+				case st.ShaderConfig != "" && st.ShaderPack != "":
 					cur = a.L("光影已关闭", "Shaders are off")
 				}
 				ui.Text(c, cur).FontSize(typeHeadline * s).FontWeight(650).TextColor(fg).SingleLine().FillWidth().MinWidth(0)
@@ -586,7 +224,6 @@ func sectionTitle(c *ui.Context, text string, n int) {
 
 // addonTabBody is the embedded 模组 / 资源包 / 光影 tab.
 func (a *App) addonTabBody(c *ui.Context) {
-	s := uiScale(c)
 	t := a.tr()
 	if _, ok := a.gameState(); !ok && !a.gameStateAsked[a.addonTab+a.root().ID+"|"+a.root().SelectedVersion] {
 		if a.gameStateAsked == nil {
@@ -617,6 +254,12 @@ func (a *App) addonTabBody(c *ui.Context) {
 	}
 	a.addonToolbar(c, all)
 	shown := a.filteredAddons(all)
+	a.addonResultBody(c).Children(func() { a.addonResults(c, shown) })
+}
+
+func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
+	s := uiScale(c)
+	t := a.tr()
 	if len(shown) == 0 {
 		glass(ui.Column(c.Key("addon-nomatch")).FillWidth().Padding(28*s, 24*s).Gap(10*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
 			label(c, fmt.Sprintf(a.L("没有符合条件的%s", "No matching %s"), a.addonKindWord()))
@@ -694,14 +337,14 @@ func (a *App) addonTabBody(c *ui.Context) {
 	st, _ := a.gameState()
 	if a.addonTab == "shader" {
 		for i := range shown {
-			if st.shadersOn && shown[i].pack.File == st.shaderPack {
+			if st.ShadersOn && shown[i].pack.File == st.ShaderPack {
 				shown[i].it.badge = a.L("使用中", "In use")
 			}
 		}
 	}
-	if a.addonTab == "resourcepack" && st.hasOptions {
+	if a.addonTab == "resourcepack" && st.HasOptions {
 		rank := map[string]int{}
-		for i, f := range st.rpOrder {
+		for i, f := range st.ResourcePackOrder {
 			rank[f] = i + 1
 		}
 		var active, rest []addonEntry

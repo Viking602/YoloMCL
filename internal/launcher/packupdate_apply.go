@@ -198,27 +198,25 @@ func (s *Service) ApplyPackUpdate(planID string) (string, error) {
 					return e
 				}
 			}
-			return atomicJSON(filepath.Join(r.Path, ".mcl", "pack-lock.json"), nl)
+			if e := atomicJSON(filepath.Join(r.Path, ".mcl", "pack-lock.json"), nl); e != nil {
+				return e
+			}
+			m.Done = true
+			if e := atomicJSON(filepath.Join(bdir, "backup.json"), m); e != nil {
+				return e
+			}
+			if newGame != "" && newGame != r.SelectedVersion {
+				return s.setRootVersion(r.ID, newGame)
+			}
+			return nil
 		}
 		if e := apply(); e != nil {
 			p("更新失败，正在恢复原状", 0, 0)
 			if re := restoreBackup(r.Path, bdir, m); re != nil {
-				return fmt.Errorf("更新失败（%v），且恢复时出错：%v。备份保留在 %s", e, re, bdir)
+				return fmt.Errorf("更新失败（%w），且恢复时出错：%w。备份保留在 %s", e, re, bdir)
 			}
 			_ = os.RemoveAll(bdir)
 			return fmt.Errorf("更新失败，已恢复原状：%w", e)
-		}
-		m.Done = true
-		_ = atomicJSON(filepath.Join(bdir, "backup.json"), m)
-		if newGame != "" && newGame != r.SelectedVersion {
-			s.mu.Lock()
-			for i := range s.cfg.Roots {
-				if s.cfg.Roots[i].ID == r.ID {
-					s.cfg.Roots[i].SelectedVersion = newGame
-				}
-			}
-			_ = s.saveLocked()
-			s.mu.Unlock()
 		}
 		_ = os.Remove(filepath.Join(r.Path, ".mcl", "pack-update.json"))
 		prunePackBackups(r.Path)

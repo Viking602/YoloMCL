@@ -6,7 +6,7 @@ Releases are built from existing Git tags, not a manually edited version string.
 
 1. Authenticate the GitHub CLI (`gh auth login`) with repository and workflow access.
 2. Put your own `CURSEFORGE_API_KEY` and `MS_CLIENT_ID` in the ignored repository `.env`, or provide them as environment variables.
-3. Run `go run ./cmd/publish-secrets` from the repository root. It configures **CURSEFORGE_API_KEY**, **MS_CLIENT_ID**, and **MYGO_UPDATER_PRIVATE_KEY** in this repository's Actions Secrets. GitHub CLI encrypts the values locally; the helper supplies them through stdin and prints only secret names.
+3. Run `make publish-secrets` from the repository root, with Bash and OpenSSL 3 available. It configures **CURSEFORGE_API_KEY**, **MS_CLIENT_ID**, and **MYGO_UPDATER_PRIVATE_KEY** in this repository's Actions Secrets. GitHub CLI encrypts the values locally; the script supplies them through stdin.
 4. Commit `internal/buildinfo/update-public-key.txt`. This public key belongs in the launcher. The private key does not.
 
 The helper creates an Ed25519 signing key once and backs it up outside the repository under the OS configuration directory:
@@ -19,12 +19,12 @@ Keep a private backup. Later runs reuse this key and refuse to replace a committ
 
 Forks must change the repository constants in `internal/buildinfo`, generate their own update-key pair, and configure their own publisher credentials. Do not replace the upstream public key for an upstream release.
 
-Secrets are scoped to the build/sign step. Pull-request checks have no publisher secrets, the workflow does not write `.env`, and artifacts include only explicit launcher files, licenses, manifests, and checksums. The release private key is never embedded. The client-side CurseForge key is obfuscated, not cryptographically protected from reverse engineering; use a server-side relay when that boundary matters.
+Secrets are scoped to the build/sign step. Pull-request checks have no publisher secrets, the workflow does not write `.env`, and artifacts include only explicit launcher files, licenses, manifests, and checksums. The release private key is never embedded. The client-side CurseForge key is obfuscated, not cryptographically protected from reverse engineering.
 
 ## Publish a version
 
 ```sh
-go run ./cmd/check -cross
+make check CHECK_ARGS="--cross"
 git add <reviewed-files>
 git commit -m "Prepare release"
 git tag -a v1.0.0 -m "YoloMCL v1.0.0"
@@ -56,8 +56,8 @@ The updater verifies the archive before extraction. HTTPS protects manifest tran
 On a clean checkout at the release tag, provide the same publisher variables and `MYGO_UPDATER_PRIVATE_KEY` through the process environment, then run:
 
 ```sh
-go run ./cmd/release -tag v1.0.0 -goos windows -goarch amd64
-go run ./cmd/release -verify -tag v1.0.0  # after collecting all six target outputs
+make release TAG=v1.0.0 RELEASE_ARGS="--goos windows --goarch amd64"
+make verify TAG=v1.0.0  # after collecting all six target outputs
 ```
 
-macOS release packaging requires a macOS host for `codesign`. The shared build and archive code is in this repository; no MyGo module-cache files are edited.
+Make delegates to `scripts/release.sh`; it calls `scripts/build.sh`, then prepares archives and manifests using Shell and standard archive tools. OpenSSL 3 performs Ed25519 signing. Existing 64-byte private-key backups and the embedded public key remain compatible. macOS release packaging requires a macOS host for `codesign`; no MyGo module-cache files are edited.

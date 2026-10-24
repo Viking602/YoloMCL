@@ -28,7 +28,7 @@ func (a *App) resetContentChildren(parent string, children ...string) {
 	if state := a.contentSwaps[parent]; state != nil && state.childrenSerial != state.serial {
 		for _, key := range children {
 			delete(a.contentSwaps, key)
-			delete(a.numberFlips, key)
+			delete(a.numberRolls, key)
 		}
 		state.childrenSerial = state.serial
 	}

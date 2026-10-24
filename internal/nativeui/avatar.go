@@ -154,7 +154,7 @@ func (a *App) authIcon(server string) *ui.Bitmap {
 var builtinIcons sync.Map
 
 // builtinAuthIcon decodes the bundled site icon of a built-in server
-// (assets/authicons, sources in THIRD_PARTY_NOTICES.md).
+// (assets/authicons, sources in docs/THIRD_PARTY_NOTICES.md).
 func builtinAuthIcon(name string) *ui.Bitmap {
 	if v, ok := builtinIcons.Load(name); ok {
 		return v.(*ui.Bitmap)

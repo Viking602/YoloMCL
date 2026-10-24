@@ -26,19 +26,14 @@ func easeInCubic(t float32) float32  { return t * t * t }
 var easeStandard = ui.CubicBezier(.2, 0, 0, 1)
 
 var (
-	motionEnter = ui.Animation{Duration: motionDurEnter, Ease: easeOutCubic}
-	motionExit  = ui.Animation{Duration: motionDurExit, Ease: easeInCubic}
-	motionFast  = ui.Animation{Duration: motionDurFast, Ease: easeOutCubic}
-	motionMove  = ui.Animation{Duration: motionDurMove, Ease: easeStandard}
-	motionPack  = ui.Animation{Duration: 260 * time.Millisecond, Ease: ui.CubicBezier(.22, 1, .36, 1)}
+	motionEnter       = ui.Animation{Duration: motionDurEnter, Ease: easeOutCubic}
+	motionExit        = ui.Animation{Duration: motionDurExit, Ease: easeInCubic}
+	motionFast        = ui.Animation{Duration: motionDurFast, Ease: easeOutCubic}
+	motionMove        = ui.Animation{Duration: motionDurMove, Ease: easeStandard}
+	motionPack        = ui.Animation{Duration: 260 * time.Millisecond, Ease: ui.CubicBezier(.22, 1, .36, 1)}
+	motionDialogEnter = ui.Animation{Duration: 190 * time.Millisecond, Ease: easeOutCubic}
+	motionDialogExit  = ui.Animation{Duration: 130 * time.Millisecond, Ease: easeOutCubic}
 )
-
-// versionSwap crossfades the version text: the new label slides in a few
-// DIPs while the old one fades out under it, taking no room, so nothing
-// jumps. MyGo skips the motion when the desktop asks for reduced motion.
-func versionSwap(s float32) ui.ElementTransition {
-	return ui.ElementTransition{Animation: &motionEnter, Enter: &ui.Motion{Opacity: 0, X: 8 * s}, Exit: &ui.Motion{Opacity: 0, X: -8 * s}}
-}
 
 // The hero always shows the current selection. Keeping outgoing titles around
 // makes rapid switches overlap. Animate only the incoming artwork and text,

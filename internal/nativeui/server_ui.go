@@ -104,71 +104,98 @@ func (a *App) ovServer(c *ui.Context, st launcher.InstanceStatus) {
 		if server == nil {
 			return
 		}
-		ui.Row(c.Key("server-status-slot")).Label("服务器状态").Height(24 * s).MinWidth(40 * s).Justify(ui.End).AlignItems(ui.Center).Children(func() {
-			switch {
-			case probe.status != nil:
-				latency := max(1, probe.status.Latency.Milliseconds())
-				quietTag(c, fmt.Sprintf("%d ms", latency), successInk)
-			case !probe.checked.IsZero():
-				ui.Text(c, "×").Label(a.L("服务器不可达", "Server unreachable")).FontSize(22 * s).FontWeight(650).TextColor(danger).Tooltip(a.L("不可达", "Unreachable"))
-			default:
-				ui.Text(c, "…").Label(a.L("正在查询服务器", "Checking server")).FontSize(typeTitle * s).TextColor(muted)
-			}
-		})
+		a.serverStatusBadge(c, probe)
 	}, func() {
 		if st.Dir == "" {
 			ovLoading(c)
 			return
 		}
 		if server == nil {
-			ui.Row(c.Key("server-identity")).Label("服务器标识").FillWidth().Height(62 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-				a.serverIcon(c, nil)
-				title, hint := a.L("暂无连接记录", "No recent connection"), a.L("加入多人服务器后显示在这里", "Your latest multiplayer server appears here")
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
-					ui.Text(c, title).FontSize(typeTitle * s).FontWeight(650).TextColor(ink).SingleLine().FillWidth()
-					ui.Text(c, hint).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth().Tooltip(hint)
-				})
-			})
+			emptyPanel(c, "server-empty", "server", a.L("还没有连接记录", "No connections yet"), a.L("从游戏中加入服务器，最近连接会显示在这里", "Join a multiplayer server to see your latest connection here"))
 			return
 		}
-		ui.Row(c.Key("server-identity")).Label("服务器标识").FillWidth().Height(62 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			a.serverIcon(c, probe.icon)
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
-				ui.Text(c, address).FontSize(typeTitle * s).FontWeight(700).TextColor(ink).SingleLine().FillWidth().Tooltip(address)
-				text := a.L("上次连接 ", "Connected ")
-				if !server.Confirmed {
-					text = a.L("最近连接尝试 ", "Last attempted ")
-				}
-				ui.Text(c, text+agoText(a, server.Connected)).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth().Tooltip(server.Connected.Local().Format("2006-01-02 15:04:05"))
-			})
-		})
-		ui.Column(c).Label("服务器信息").FillWidth().Grow(1).MinHeight(0).Gap(8 * s).Clip().Children(func() {
+		ui.Column(c).Label("服务器信息").Font(uiSansFamily()).FillWidth().Grow(1).MinHeight(0).Clip().Children(func() {
 			var signature any
 			if info := probe.status; info != nil {
 				signature = []any{address, info.Description, info.Version, info.PlayersKnown, info.Online, info.Max}
 			}
 			info := swappedContent(a, c, "server-details", signature, probe.status)
-			a.contentBody(c, "server-details").Gap(8 * s).Children(func() {
-				if info != nil {
-					if info.Description != "" {
-						ui.Text(c, info.Description).FontSize(typeCallout * s).TextColor(inkSecondary).FillWidth().MinWidth(0).MaxLines(2).Ellipsis("…").Tooltip(info.Description)
-					}
-					ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
-						if info.PlayersKnown {
-							ui.Text(c, fmt.Sprintf(a.L("%d / %d 在线", "%d / %d online"), info.Online, info.Max)).FontSize(typeFootnote * s).FontWeight(600).TextColor(successInk).SingleLine().Shrink(0)
+			a.contentBody(c, "server-details").Grow(1).MinHeight(0).Gap(12 * s).Justify(ui.Center).Children(func() {
+				ui.Row(c.Key("server-identity")).Label("服务器标识").FillWidth().Height(66 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
+					a.serverIcon(c, probe.icon)
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
+						ui.Text(c, address).FontSize(typeTitle2 * s).FontWeight(650).TextColor(ink).SingleLine().FillWidth().Tooltip(address)
+						description := a.L("多人游戏服务器", "Multiplayer server")
+						if info != nil && info.Description != "" {
+							description = info.Description
 						}
-						if info.Version != "" {
-							ui.Text(c, info.Version).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).MinWidth(0).Tooltip(info.Version)
-						}
+						ui.Text(c, description).FontSize(typeFootnote * s).TextColor(muted).FillWidth().MaxLines(2).Ellipsis("…").Tooltip(description)
 					})
-				}
+				})
+				a.serverMetrics(c, info)
 			})
 		})
-		ui.Row(c).FillWidth().Height(30 * s).Shrink(0).Justify(ui.End).Children(func() {
-			if fixedButton(c, "ov-copy-server", a.L("复制地址", "Copy address"), "doc", 0, btnSm*s, false, false) && a.overviewActionReady("ov-server") {
+		ui.Row(c).Font(uiSansFamily()).FillWidth().Height(30 * s).Shrink(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+			text := a.L("上次连接 ", "Connected ")
+			if !server.Confirmed {
+				text = a.L("最近尝试 ", "Attempted ")
+			}
+			ui.Text(c, text+agoText(a, server.Connected)).FontSize(typeCaption * s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(server.Connected.Local().Format("2006-01-02 15:04:05"))
+			copy := ui.ButtonBase(c.Key("ov-copy-server")).Label(a.L("复制地址", "Copy address")).Height(28 * s).PaddingX(8 * s).Radius(8 * s).Gap(5 * s).Shrink(0).AlignItems(ui.Center)
+			color := ui.Transparent
+			if copy.Hovered() {
+				color = accentSoft
+			}
+			copy.Background(copy.AnimateColor("bg", color, fastAnim))
+			if copy.Children(func() {
+				ui.Icon(c, icons["doc"]).Size(12*s, 12*s).TextColor(accent)
+				ui.Text(c, a.L("复制地址", "Copy address")).Label("按钮文字 ov-copy-server").FontSize(typeCaption * s).FontWeight(600).TextColor(accent).NoWrap()
+			}).Clicked() && a.overviewActionReady("ov-server") {
 				c.WriteClipboard(address)
 				a.notice(a.L("已复制服务器地址", "Server address copied"))
 			}
+		})
+	})
+}
+
+func (a *App) serverStatusBadge(c *ui.Context, probe serverProbe) {
+	s := uiScale(c)
+	text, label, color := a.L("查询中", "Checking"), a.L("正在查询服务器", "Checking server"), muted
+	if probe.status != nil {
+		text = fmt.Sprintf("%d ms", max(1, probe.status.Latency.Milliseconds()))
+		label, color = text, successInk
+		if probe.status.Latency >= 150*time.Millisecond {
+			color = warningInk
+		}
+	} else if !probe.checked.IsZero() {
+		text, label = a.L("不可达", "Unreachable"), a.L("服务器不可达", "Server unreachable")
+	}
+	ui.Row(c.Key("server-status-slot")).Label("服务器状态").Height(23 * s).PaddingX(8 * s).Gap(5 * s).Radius(999).Background(color.Alpha(.08)).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Size(5*s, 5*s).Radius(3 * s).Background(color).Shrink(0)
+		numText(c, text, typeCaption*s, color).Label(label).FontWeight(600)
+	})
+}
+
+func (a *App) serverMetrics(c *ui.Context, info *launcher.ServerStatus) {
+	s := uiScale(c)
+	players, version := "—", "—"
+	if info != nil {
+		if info.PlayersKnown {
+			players = fmt.Sprintf("%d / %d", info.Online, info.Max)
+		}
+		if info.Version != "" {
+			version = info.Version
+		}
+	}
+	ui.Row(c.Key("server-metrics")).Label("服务器数据").FillWidth().Height(68*s).Shrink(0).Padding(10*s, 12*s).Gap(12 * s).Radius(10 * s).Background(ui.RGBA(100, 120, 160, .055)).AlignItems(ui.Center).Children(func() {
+		ui.Column(c).Grow(.8).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
+			ui.Text(c, a.L("在线玩家", "Players online")).FontSize(typeCaption * s).TextColor(muted).SingleLine().FillWidth()
+			numText(c, players, typeTitle*s, ink).FontWeight(650).SingleLine().FillWidth()
+		})
+		ui.Box(c).Width(1).Height(30 * s).Shrink(0).Background(line)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
+			ui.Text(c, a.L("版本", "Version")).FontSize(typeCaption * s).TextColor(muted).SingleLine().FillWidth()
+			ui.Text(c, version).FontSize(typeFootnote * s).FontWeight(600).TextColor(inkSecondary).SingleLine().FillWidth().Tooltip(version)
 		})
 	})
 }

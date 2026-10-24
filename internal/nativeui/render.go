@@ -27,7 +27,7 @@ func (a *App) ShowPage(page string) {
 	// QA: -page account/microsoft opens the sign-in dialog on its Microsoft
 	// tab; account/microsoft/start also requests the device code.
 	if strings.HasPrefix(page, "account/microsoft") {
-		a.openDialog("account")
+		a.openDialog("accountAdd")
 		a.accountTab = a.tr().AccTabMicrosoft
 		if strings.HasSuffix(page, "/start") && a.snapshot.Services.Microsoft {
 			a.execute("startMicrosoft", nil, func(b json.RawMessage) {

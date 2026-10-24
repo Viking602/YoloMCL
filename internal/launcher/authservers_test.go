@@ -60,7 +60,7 @@ func TestAuthServerBackwardCompat(t *testing.T) {
 	}
 	s.mu.Lock()
 	s.cfg.Accounts = append(s.cfg.Accounts, Account{ID: "yg-1", Name: "Old", UUID: "0123456789abcdef0123456789abcdef", Kind: "yggdrasil", Server: "https://skin.old.example/api/yggdrasil"})
-	e = s.saveLocked()
+	e = s.saveConfigLocked(s.cfg)
 	s.mu.Unlock()
 	if e != nil {
 		t.Fatal(e)

@@ -1,9 +1,11 @@
 package nativeui
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -62,6 +64,46 @@ func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {
 	tt.Scroll(700, 400, 0, 10000)
 	if r, ok := tt.Find("关于 YoloMCL 面板"); !ok || r.W <= 0 || r.H <= 0 || r.Y < 42 || r.Y+r.H > 720 {
 		t.Fatalf("About footer is not reachable: %+v", r)
+	}
+}
+
+func TestSettingsHeaderStaysAboveScroll(t *testing.T) {
+	for _, lang := range []string{LangZH, LangEN} {
+		for _, size := range [][2]int{{1536, 1024}, {900, 600}} {
+			t.Run(fmt.Sprintf("%s-%d", lang, size[0]), func(t *testing.T) {
+				a, tt := settingsTester(t)
+				a.OverrideLanguage(lang)
+				a.prevPage = "tasks"
+				tt.SetSize(size[0], size[1])
+				tt.Advance(300 * time.Millisecond)
+				header, ok := tt.Find("设置固定标题栏")
+				if !ok {
+					t.Fatal("missing settings toolbar")
+				}
+				viewport, _ := tt.Find("设置滚动区域")
+				title, _ := tt.Find("页面标题 " + a.tr().SettingsTitle)
+				desc, _ := tt.Find("设置简要说明")
+				actions, _ := tt.Find("设置操作栏")
+				back, _ := tt.Find(a.tr().BackLabel)
+				if viewport.Y < header.Y+header.H || back.X+back.W > title.X || title.X+title.W > actions.X || desc.X+desc.W > actions.X || actions.X+actions.W > header.X+header.W || actions.Y+actions.H > header.Y+header.H {
+					t.Fatalf("toolbar overlaps controls or scrolling content: header=%+v viewport=%+v back=%+v title=%+v desc=%+v actions=%+v", header, viewport, back, title, desc, actions)
+				}
+				snapshotUI(t, tt, fmt.Sprintf("settings-header-%s-%d", lang, size[0]))
+				tt.Scroll(viewport.X+viewport.W/2, viewport.Y+viewport.H/2, 0, 280)
+				tt.Advance(300 * time.Millisecond)
+				if got, _ := tt.Find("设置固定标题栏"); got != header {
+					t.Fatalf("toolbar moved while scrolling: before=%+v after=%+v", header, got)
+				}
+				if track := scrollTracks["settings-scroll"]; track == nil || track.st.Y <= 0 {
+					t.Fatal("settings body no longer scrolls below toolbar")
+				}
+				snapshotUI(t, tt, fmt.Sprintf("settings-header-scrolled-%s-%d", lang, size[0]))
+				clickUI(t, tt, a.tr().BackLabel)
+				if a.page != "tasks" {
+					t.Fatalf("back button did not return to previous page: %q", a.page)
+				}
+			})
+		}
 	}
 }
 

@@ -1,23 +1,15 @@
 package nativeui
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
-)
-
-const (
-	jvmPresetG1      = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=50 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=32M"
-	jvmPresetZGC     = "-XX:+UseZGC -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch"
-	jvmPresetCompact = "-XX:+UseG1GC -XX:MaxGCPauseMillis=35 -XX:+UseStringDeduplication -XX:G1HeapRegionSize=16M"
 )
 
 func (a *App) refreshMemory() {
@@ -39,306 +31,37 @@ func (a *App) memoryMaximum() float64 {
 	return max(32768, a.memory)
 }
 
-// MyGo calls this after presenting the first frame on every desktop platform.
-// Initial page selection and rendering may request Java before then; defer all
-// cache validation and discovery until this gate opens.
-func (a *App) startBackgroundJava() {
-	if a.javaReadyToScan {
-		return
-	}
-	a.javaReadyToScan = true
-	a.ensureJavaScan()
-}
-
-func (a *App) ensureJavaScan() {
-	if a.javaReadyToScan && !a.javaScannedOnce && !a.javaScanning {
-		a.startJavaScan(false)
-	}
-}
-
-func (a *App) startJavaScan(deep bool) {
-	if a.service == nil || a.ctx.Err() != nil {
-		return
-	}
-	if a.javaScanning {
-		if !deep || a.javaDeep {
-			return
-		}
-		if a.javaScanCancel != nil {
-			a.javaScanCancel()
-		}
-	}
-	a.javaScanRevision++
-	revision := a.javaScanRevision
-	var ctx context.Context
-	var cancel context.CancelFunc
-	if deep {
-		ctx, cancel = context.WithCancel(a.ctx)
-	} else {
-		ctx, cancel = context.WithTimeout(a.ctx, 12*time.Second)
-	}
-	a.javaScanCancel = cancel
-	a.javaScanning = true
-	a.javaDeep = deep
-	a.javaPhase = "正在检测已安装的 Java"
-	a.javaScanned = 0
-	a.javaElapsed = 0
-	previous := append([]launcher.JavaInfo(nil), a.java...)
-	a.bgWG.Add(1)
-	go func() {
-		defer a.bgWG.Done()
-		defer cancel()
-		if len(previous) == 0 {
-			previous = a.service.CachedJavaList()
-			cached := append([]launcher.JavaInfo(nil), previous...)
-			a.post(func() {
-				if revision == a.javaScanRevision {
-					a.java = cached
-				}
-			})
-		}
-		_, e := a.service.ScanJava(ctx, deep, func(p launcher.JavaScanProgress) {
-			keepPrevious := p.Running || ctx.Err() != nil
-			a.post(func() {
-				if revision != a.javaScanRevision {
-					return
-				}
-				if keepPrevious {
-					a.java = mergeJavaScanRows(previous, p.Found)
-				} else {
-					a.java = p.Found
-				}
-				a.javaScanning = p.Running
-				a.javaScanned = p.Visited
-				a.javaElapsed = p.ElapsedMS
-				a.javaPhase = p.Phase
-				a.javaScannedOnce = true
-			})
-		})
-		a.post(func() {
-			if revision != a.javaScanRevision {
-				return
-			}
-			a.javaScanning = false
-			if e == context.Canceled {
-				a.javaPhase = "扫描已停止"
-			} else if e != nil {
-				a.javaPhase = a.L("快速扫描已结束，可继续深入扫描", "Quick scan finished; check deeper in the same folders")
-			} else {
-				a.javaPhase = a.formatJavaScanSummary(len(a.java), a.javaElapsed)
-			}
-		})
-	}()
-}
-
-// settingsGroup is a System Settings-style inset grouped list: a caption
-// header above a frosted card, rows split by hairlines inset to the text
-// column, and an optional footnote below explaining the whole group.
-func settingsGroup(c *ui.Context, key, titleText, desc string, rows ...func()) {
-	s := uiScale(c)
-	ui.Column(c).FillWidth().Gap(space2 * s).Children(func() {
-		ui.Text(c, titleText).FontSize(typeCallout * s).FontWeight(650).TextColor(inkSecondary).PaddingX(space4 * s).SingleLine()
-		glass(ui.Column(c.Key(key)).Label(key).FillWidth().Clip(), radiusCard*s-4*s, s).Children(func() {
-			for i, row := range rows {
-				if i > 0 {
-					ui.Box(c).Height(1).FillWidth().MarginX(settingPadX * s).Background(line).Shrink(0)
-				}
-				row()
-			}
-		})
-		_ = desc // group descriptions are omitted to keep the page calm
-	})
-}
-
-// Row geometry: 18 padding gives titles, dividers and below-row controls one text column.
-const (
-	settingPadX      float32 = 20
-	settingIcon      float32 = 30
-	settingGap       float32 = 14
-	settingTextInset         = settingPadX + settingIcon + settingGap
-)
-
-// settingRow lays out one row: leading icon, title and description on the
-// left, the control on the right, and optionally a full-width control below
-// aligned with the title.
-func settingRow(c *ui.Context, leading func(), titleText, desc string, trailing, below func()) {
-	s := uiScale(c)
-	ui.Column(c).FillWidth().Padding(11*s, settingPadX*s).Gap(8 * s).Children(func() {
-		ui.Row(c).FillWidth().MinHeight(30 * s).Gap(settingGap * s).AlignItems(ui.Center).Children(func() {
-			if leading != nil {
-				leading()
-			}
-			ui.Column(c).Grow(1).MinWidth(0).Clip().Gap(3 * s).Children(func() {
-				ui.Text(c, titleText).FontSize(typeBody * s).FontWeight(600).TextColor(ink).SingleLine()
-				if desc != "" {
-					label(c, desc).FillWidth().MinWidth(0).FontSize(typeFootnote * s) // descriptions wrap, never ellipsize
-				}
-			})
-			if trailing != nil {
-				ui.Row(c).Shrink(0).Gap(space2 * s).AlignItems(ui.Center).Children(trailing)
-			}
-		})
-		if below != nil {
-			ui.Column(c).FillWidth().Gap(space2 * s).Children(below)
-		}
-	})
-}
-
-// rowIcon used to give each settings row a colored squircle; the decluttered
-// layout drops them so titles carry the hierarchy. Kept for call-site clarity.
-func rowIcon(c *ui.Context, icon string, tone [2]ui.Color) func() {
-	return nil
-}
-
-// segmented is a macOS segmented control; it returns the clicked option.
-func segmented(c *ui.Context, key string, options []string, selected string, height float32) (string, bool) {
-	s := uiScale(c)
-	clicked, changed := selected, false
-	track := ui.Row(c.Key(key)).Shrink(0).Padding(3 * s).Radius(height/2*.62 + 3*s).Background(fieldColor)
-	track.Children(func() {
-		var index float32
-		for i, option := range options {
-			if option == selected {
-				index = float32(i)
-			}
-		}
-		slide := track.AnimateTo("thumb", index, motionMove)
-		track.Draw(func(p *ui.Painter, r ui.Rect) {
-			if len(options) == 0 {
-				return
-			}
-			inner := r.W - 6*s
-			cell := inner / float32(len(options))
-			thumb := ui.Rect{X: r.X + 3*s + cell*slide, Y: r.Y + 3*s, W: cell, H: r.H - 6*s}
-			p.Shadow(thumb, height/2*.62, 0, 1*s, 3*s, 0, ui.RGBA(40, 52, 110, .14))
-			p.Fill(thumb, panel, height/2*.62)
-		})
-		for _, option := range options {
-			opt := option
-			active := opt == selected
-			b := ui.ButtonBase(c.Key(key + "-" + opt)).Label(opt).Height(height).PaddingX(10 * s).Radius(height / 2 * .62).AlignItems(ui.Center).Justify(ui.Center)
-			fg := inkSecondary
-			if active {
-				fg = ink
-			} else if b.Hovered() {
-				b.Background(ui.RGBA(255, 255, 255, .4))
-			}
-			if b.Children(func() {
-				ui.Text(c, opt).FontSize(min(typeFootnote*s, height*.48)).FontWeight(600).TextColor(fg).NoWrap()
-			}).Clicked() {
-				clicked, changed = opt, true
-			}
-		}
-	})
-	return clicked, changed
-}
-
-func nativeToggle(c *ui.Context, key, label string, on *bool) ui.Element {
-	s := uiScale(c)
-	toggle := ui.SwitchBase(c.Key(key), on).Label(label).Size(42*s, 24*s).Shrink(0)
-	targetFill := ui.RGBA(120, 120, 128, .2)
-	targetOffset := float32(2)
-	if *on {
-		targetFill = success
-		targetOffset = 20
-	}
-	animOffset := toggle.AnimateTo("knob", targetOffset, motionMove)
-	toggle.Radius(12 * s).Background(toggle.AnimateColor("bg", targetFill, fastAnim)).Draw(func(p *ui.Painter, r ui.Rect) {
-		knob := ui.Rect{X: r.X + animOffset*s, Y: r.Y + 2*s, W: 20 * s, H: 20 * s}
-		p.Shadow(knob, 10*s, 0, 1.5*s, 4*s, 0, ui.RGBA(0, 0, 0, .18))
-		p.Fill(knob, panel, 10*s)
-	})
-	return toggle
-}
-
-func jvmAdviceText(raw string, t *Copy) string {
-	v := strings.TrimSpace(raw)
-	switch {
-	case strings.Contains(v, "-XX:+UseZGC"):
-		return t.JVMAdviceZGC
-	case strings.Contains(v, "-XX:+UseStringDeduplication"):
-		return t.JVMAdviceCompact
-	case strings.Contains(v, "-XX:+UseG1GC"):
-		return t.JVMAdviceG1
-	default:
-		return t.JVMAdviceDefault
-	}
-}
-
-func renderJVMPresetBar(c *ui.Context, keyPrefix string, target *string, t *Copy, changed func()) {
-	s := uiScale(c)
-	ui.Row(c).FillWidth().Wrap().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-		label(c, t.JVMPresetTitle).FontSize(typeFootnote * s).FontWeight(600).NoWrap().Shrink(0)
-		for _, item := range []struct {
-			id, label, args string
-		}{
-			{"g1", t.JVMPresetG1, jvmPresetG1},
-			{"zgc", t.JVMPresetZGC, jvmPresetZGC},
-			{"compact", t.JVMPresetCompact, jvmPresetCompact},
-		} {
-			preset := item
-			active := strings.TrimSpace(*target) == preset.args
-			bgCol := ui.RGBA(255, 255, 255, .7)
-			fgCol := inkSecondary
-			borderCol := lineStrong
-			if active {
-				bgCol = accentSoft
-				fgCol = accent
-				borderCol = ui.RGBA(0, 122, 255, .35)
-			}
-			chip := ui.ButtonBase(c.Key(keyPrefix+"-"+preset.id)).Label(preset.label).Height(btnSm*s).PaddingX(12*s).Radius(999).Border(1, borderCol).AlignItems(ui.Center)
-			if chip.Hovered() && !active {
-				bgCol = panel
-			}
-			chip.Background(chip.AnimateColor("bg", bgCol, fastAnim))
-			if chip.Children(func() {
-				ui.Text(c, preset.label).FontSize(typeFootnote * s).FontWeight(600).TextColor(fgCol).NoWrap()
-			}).Clicked() {
-				*target = preset.args
-				if changed != nil {
-					changed()
-				}
-			}
-		}
-		if strings.TrimSpace(*target) != "" {
-			clearChip := ui.ButtonBase(c.Key(keyPrefix + "-clear")).Label(t.JVMPresetClear).Height(btnSm * s).PaddingX(12 * s).Radius(999).Background(fieldColor).AlignItems(ui.Center)
-			if clearChip.Children(func() {
-				ui.Text(c, t.JVMPresetClear).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
-			}).Clicked() {
-				*target = ""
-				if changed != nil {
-					changed()
-				}
-			}
-		}
-	})
-	ui.Row(c).FillWidth().Clip().Padding(9*s, 12*s).Radius(12 * s).LinearGradient(ui.LinearGradient{From: ui.RGBA(10, 132, 255, .08), To: ui.RGBA(175, 82, 222, .07), Angle: 90}).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-		ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
-		label(c, jvmAdviceText(*target, t)).Grow(1).MinWidth(0).FontSize(typeFootnote * s)
-	})
-}
-
-// preferences is the settings page: a fixed header that keeps the save
-// actions in reach, over a scrolling two-column body of grouped lists.
 func (a *App) preferences(c *ui.Context) {
 	s := uiScale(c)
+	surface := ui.Hex("#f9fafd")
 	ui.Column(c.Key("settings-layout")).Grow(1).MinHeight(0).FillWidth().Children(func() {
-		// Fixed header (title + live status + reset) above the scrolling body,
-		// sharing the page's content width so both edges line up.
-		ui.Box(c).FillWidth().Padding(pageTop*s, pageGutter*s, space4*s).Shrink(0).Children(func() {
+		header := ui.Box(c.Key("settings-header")).Label("设置固定标题栏").FillWidth().Padding(22*s, pageGutter*s, 20*s).Shrink(0).Background(surface)
+		target := float32(0)
+		if track := scrollTracks["settings-scroll"]; track != nil && track.st.Y > 1 {
+			target = 1
+		}
+		edge := header.AnimateTo("scroll-edge", target, motionFast)
+		if c.Preferences().ReduceMotion {
+			edge = header.Jump("scroll-edge", target)
+		}
+		header.Children(func() {
 			ui.Row(c).FillWidth().MaxWidth(settingsColumnWidth * s).AlignSelf(ui.Center).Children(func() { a.settingsHeader(c) })
 		})
-		scrollArea(c, "settings-scroll").Grow(1).MinHeight(0).FillWidth().Padding(space2*s, pageGutter*s, a.scrollEndPad(s)+(space8-space6)*s).Children(func() {
-			// One calm column of grouped lists, like macOS System Settings:
-			// general preferences, launch runtime, then a quiet
-			// about row as the page footer.
-			ui.Column(c).FillWidth().MaxWidth(settingsColumnWidth * s).AlignSelf(ui.Center).Gap(space5 * s).Children(func() {
-				a.accountSettings(c)
-				a.versionAndLangSettings(c)
-				a.runtimeSettings(c)
-				a.javaSection(c)
-				a.aboutSettings(c)
+		ui.Column(c.Key("settings-viewport")).Label("设置滚动区域").Grow(1).MinHeight(0).FillWidth().Clip().Children(func() {
+			scrollArea(c, "settings-scroll").Grow(1).MinHeight(0).FillWidth().Padding(space4*s, pageGutter*s, a.scrollEndPad(s)+(space8-space6)*s).Children(func() {
+				ui.Column(c).FillWidth().MaxWidth(settingsColumnWidth * s).AlignSelf(ui.Center).Gap(space5 * s).Children(func() {
+					a.accountSettings(c)
+					a.versionAndLangSettings(c)
+					a.runtimeSettings(c)
+					a.javaSection(c)
+					a.aboutSettings(c)
+				})
 			})
+			// A short fade softens clipped rows without blurring the scrolling
+			// page. The fixed toolbar never changes height as the user scrolls.
+			ui.Box(c.Key("settings-scroll-edge")).Label("设置滚动过渡").Absolute().Left(0).Right(0).Top(0).Height(12 * s).Opacity(edge).
+				LinearGradient(ui.LinearGradient{From: surface, To: surface.Alpha(0), Angle: 180})
+			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Height(1).Background(line).Opacity(edge)
 		})
 	})
 }
@@ -383,10 +106,17 @@ const settingsColumnWidth float32 = 860
 func (a *App) settingsHeader(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	// The apply hint is secondary text under the title; results of changes
-	// go to the shared toast rather than replacing it.
-	pageHeader(c, func() { a.backCrumb(c) }, t.SettingsTitle, t.SettingsDesc+"   "+t.SettingsDefaultHint, func() {
-		ui.Row(c.Key("settings-actions")).Label("设置操作栏").Height(30 * s).Shrink(1).MinWidth(0).Gap(space2 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Label("页面标题栏").Font(uiSansFamily()).FillWidth().Gap(14 * s).AlignItems(ui.Center).Children(func() {
+		a.settingsBack(c)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
+			ui.Text(c, t.SettingsTitle).Label("页面标题 " + t.SettingsTitle).FontSize(typeDisplay * s).FontWeight(700).TextColor(ink).SingleLine()
+			ui.Text(c, t.SettingsDesc).Label("设置简要说明").FontSize(typeFootnote * s).TextColor(muted).FillWidth().MinWidth(0).SingleLine().Tooltip(t.SettingsDesc)
+		})
+		ui.Row(c.Key("settings-actions")).Label("设置操作栏").Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Label("设置自动保存提示").Tooltip(t.SettingsDefaultHint).Padding(5*s, 9*s).Gap(5 * s).Radius(999).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
+				ui.Icon(c, icons["check"]).Size(11*s, 11*s).TextColor(successInk)
+				ui.Text(c, a.L("自动保存", "Auto-save")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
+			})
 			if fixedButton(c, "reset-settings", t.SettingsResetBtn, "refresh", 0, btnMd*s, false, false) {
 				recommended := 4096
 				if a.memoryInfo.RecommendedMB > 0 {
@@ -638,116 +368,4 @@ func (a *App) versionAndLangSettings(c *ui.Context) {
 			}, nil)
 		},
 	)
-}
-
-// persistSettings writes the current draft immediately. A blank notice keeps
-// the header hint; a validation failure shows the error and saves nothing.
-func (a *App) persistSettings(notice string) {
-	_ = a.tr()
-	value, e := strconv.Atoi(strings.TrimSpace(a.memoryText))
-	if e != nil || value < 512 || value > int(a.memoryMaximum()) {
-		a.message = a.formatMemoryRangeErr(int(a.memoryMaximum()))
-		a.errorMessage = true
-		return
-	}
-	a.memory = float64(value)
-	a.settings.MemoryMB = value
-	a.saveSettingsDraft(notice)
-}
-
-// All settings edits, including language switches, share one ordered writer.
-// Store the selection mode, never the language resolved from the current OS.
-func (a *App) saveSettingsDraft(notice string) {
-	a.settings.Language = launcher.NormalizeLanguage(a.settings.Language)
-	if a.service == nil {
-		return
-	}
-	draft := a.settings
-	epoch := a.selectionEpoch.Load()
-	revision := a.settingsRevision.Add(1)
-	a.bgWG.Add(1)
-	go func() {
-		defer a.bgWG.Done()
-		// Slider edits and switches may submit several drafts before the
-		// disk catches up. Persist only in order, never an older draft last.
-		a.settingsMu.Lock()
-		if revision != a.settingsRevision.Load() {
-			a.settingsMu.Unlock()
-			return
-		}
-		e := a.service.SaveSettings(draft)
-		a.settingsMu.Unlock()
-		snap := a.service.Snapshot()
-		a.post(func() {
-			if revision != a.settingsRevision.Load() {
-				return
-			}
-			a.applySnapshot(snap, epoch)
-			if e != nil {
-				a.message = a.friendlyErr(e)
-				a.errorMessage = true
-				return
-			}
-			a.settings = snap.Settings
-			a.notice(notice)
-		})
-	}()
-}
-
-func (a *App) javaDialog(c *ui.Context) {
-	s := uiScale(c)
-	t := a.tr()
-	ui.Row(c).Gap(10 * s).Children(func() {
-		if button(c, "java-quick", t.JavaQuickScanBtn, "search", !a.javaDeep, a.javaScanning && !a.javaDeep) {
-			a.startJavaScan(false)
-		}
-		if button(c, "java-deep", t.JavaDeepScanBtn, "folder", a.javaDeep, a.javaScanning && a.javaDeep) {
-			a.startJavaScan(true)
-		}
-		if a.javaScanning && button(c, "java-stop", t.JavaStopScanBtn, "cross", false, false) && a.javaScanCancel != nil {
-			a.javaScanCancel()
-		}
-	})
-	status := a.translatePhase(a.javaPhase)
-	if a.javaScanning {
-		status = a.formatJavaScanProgress(a.javaPhase, a.javaScanned, len(a.java))
-	}
-	statusLine(c, status, muted, a.javaScanning)
-	label(c, t.JavaScanHint).FontSize(typeCallout * s)
-	textField(c, &a.javaFilter).Label(t.JavaFilterAria).Placeholder(t.JavaFilterPlaceholder).FillWidth()
-	if button(c, "java-auto", t.JavaUseAutoBtn, "check", a.settings.JavaPath == "", false) {
-		a.settings.JavaPath = ""
-		a.persistSettings("")
-		a.closeDialog()
-	}
-	for _, item := range a.java {
-		j := item
-		if a.javaFilter != "" && !strings.Contains(strings.ToLower(j.Path+" "+j.Version+" "+j.Vendor), strings.ToLower(a.javaFilter)) {
-			continue
-		}
-		ui.Row(c.Key(j.Path)).FillWidth().Gap(14*s).Padding(14*s).Radius(16*s).Background(raised).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Clip().Gap(5 * s).Children(func() {
-				ui.Text(c, "Java "+j.Version).Bold().TextColor(ink)
-				meta := javaDisplay(j.Vendor)
-				if j.Architecture != "" {
-					meta += " / " + j.Architecture
-				}
-				if meta != "" {
-					label(c, meta)
-				}
-				label(c, j.Path).FillWidth().FontSize(typeCallout * s).SingleLine().Tooltip(j.Path)
-			})
-			if button(c, "pick-"+j.Path, t.JavaUseBtn, "check", a.settings.JavaPath == j.Path, false) {
-				a.settings.JavaPath = j.Path
-				a.persistSettings("")
-				a.closeDialog()
-				if a.javaDeep && a.javaScanCancel != nil {
-					a.javaScanCancel()
-				}
-			}
-		})
-	}
-	if len(a.java) == 0 && !a.javaScanning {
-		statusLine(c, t.JavaEmptyHint, muted, false)
-	}
 }

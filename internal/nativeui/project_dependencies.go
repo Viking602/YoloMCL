@@ -5,48 +5,82 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
+type resolveInstallFunc func(context.Context, string, string, string, string, func([]launcher.PlanItem)) ([]launcher.PlanItem, error)
+
+func (a *App) currentPlanKey() string {
+	if a.project == nil || a.root() == nil || a.form.VersionID == "" {
+		return ""
+	}
+	r, p := a.root(), a.project
+	return r.ID + "|" + r.SelectedVersion + "|" + p.Source + "|" + p.ID + "|" + a.form.VersionID
+}
+
+func (a *App) clearPlan() {
+	a.planRevision++
+	if a.planCancel != nil {
+		a.planCancel()
+		a.planCancel = nil
+	}
+	a.plan, a.planKey, a.planErr, a.planLoading, a.planOff = nil, "", "", false, nil
+	a.planErrUI = uiError{}
+}
+
 func (a *App) ensurePlan() {
 	p := a.project
 	r := a.root()
-	if p == nil || p.Type != "mod" || r == nil || a.form.VersionID == "" || a.service == nil {
+	if !a.dialogOpen {
 		return
 	}
-	key := r.ID + "|" + p.Source + "|" + p.ID + "|" + a.form.VersionID
+	if p == nil || p.Type != "mod" || r == nil || a.form.VersionID == "" || a.projLoading {
+		if a.planKey != "" {
+			a.clearPlan()
+		}
+		return
+	}
+	key := a.currentPlanKey()
 	if a.planKey == key {
 		return
 	}
-	if a.planCancel != nil {
-		a.planCancel()
+	a.clearPlan()
+	resolve := a.resolvePlan
+	if resolve == nil && a.service != nil {
+		resolve = a.service.ResolveInstall
+	}
+	if resolve == nil {
+		return
 	}
 	a.planKey, a.planErr, a.planLoading = key, "", true
 	a.plan = []launcher.PlanItem{{Key: p.Source + ":" + p.ID, Source: p.Source, ProjectID: p.ID, Title: p.Title, Icon: p.Icon, Role: "target", Status: "resolving"}}
 	a.planOff = map[string]bool{}
-	ctx, cancel := context.WithCancel(a.ctx)
+	ctx, cancel := context.WithTimeout(a.ctx, 60*time.Second)
 	a.planCancel = cancel
+	revision := a.planRevision
 	root, src, id, ver := r.ID, p.Source, p.ID, a.form.VersionID
 	a.bgWG.Add(1)
 	go func() {
 		defer a.bgWG.Done()
+		defer cancel()
 		emit := func(items []launcher.PlanItem) {
 			a.post(func() {
-				if a.planKey == key {
+				if a.planRevision == revision && a.currentPlanKey() == key && a.planKey == key {
 					a.plan = items
 				}
 			})
 		}
-		items, e := a.service.ResolveInstall(ctx, root, src, id, ver, emit)
+		items, e := resolve(ctx, root, src, id, ver, emit)
 		a.post(func() {
-			if a.planKey != key {
+			if a.planRevision != revision || a.currentPlanKey() != key || a.planKey != key {
 				return
 			}
-			a.planLoading = false
-			if e != nil && ctx.Err() == nil {
+			a.planLoading, a.planCancel = false, nil
+			if e != nil {
 				a.planErrUI = a.uiErr(e)
 				a.planErr = a.planErrUI.Text()
 			}
@@ -130,68 +164,106 @@ func (a *App) installDeps(c *ui.Context) {
 			deps = append(deps, a.plan[i])
 		}
 	}
-	if target != nil && target.File != "" {
-		ui.Row(c).FillWidth().Padding(10*s, 14*s).Radius(10 * s).Background(accentSoft).Gap(10 * s).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
-			msg := a.L("当前实例已安装此模组", "This mod is already installed")
-			if target.Note != "" {
-				msg += a.L("，版本 ", ", version ") + target.Note
-			}
-			ui.Text(c, msg).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).MinWidth(0)
-		})
-	}
-	ui.Column(c).FillWidth().Gap(10 * s).Children(func() {
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L("前置", "Dependencies")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
-			if len(deps) > 0 {
-				numText(c, fmt.Sprint(len(deps)), typeFootnote*s, muted)
-			}
-			if a.planLoading {
-				statusSpinner(c, 12*s)
-			}
-		})
-		if a.planErr != "" && a.planErrUI.Kind == "network" {
-			if a.loadFailed(c, "plan-failed", failCard, a.planLoading) {
-				a.planKey = ""
-			}
-			return
+	ui.Column(c.Key("install-dependencies")).Label("前置区域").FillWidth().Gap(12 * s).Children(func() {
+		note := ui.Box(c.Key("installed-mod-note-slot")).FillWidth().Clip()
+		noteH := float32(0)
+		if target != nil && target.File != "" {
+			noteH = 38 * s
 		}
-		if a.planErr != "" {
-			u := a.planErrUI
-			ui.Column(c).FillWidth().Padding(12*s, 14*s).Radius(10 * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).Children(func() {
-				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-					ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(warningInk).Shrink(0)
-					ui.Text(c, u.Title).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).Grow(1).MinWidth(0)
-				})
-				if u.Hint != "" {
-					ui.Text(c, u.Hint).FontSize(typeCaption * s).TextColor(inkSecondary).FillWidth()
-				}
-				ui.Row(c).Gap(8 * s).Children(func() {
-					if fixedButton(c, "plan-retry", a.L("重试", "Retry"), "refresh", 0, btnSm*s, false, false) {
-						a.planKey = ""
+		note.Height(note.AnimateTo("height", noteH, motionMove)).Children(func() {
+			if noteH > 0 {
+				ui.Row(c.Key("installed-mod-note")).FillWidth().Height(38 * s).PaddingX(14 * s).Radius(10 * s).Background(accentSoft).Gap(10 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
+					ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
+					msg := a.L("当前实例已安装此模组", "This mod is already installed")
+					if target.Note != "" {
+						msg += a.L("，版本 ", ", version ") + target.Note
 					}
-					if u.Path != "" && fixedButton(c, "plan-open", a.L("打开文件夹", "Open folder"), "folder", 0, btnSm*s, false, false) {
-						c.OpenURL("file:///" + filepath.ToSlash(u.Path))
+					ui.Text(c, msg).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0).SingleLine().Tooltip(msg)
+				})
+			}
+		})
+		ui.Column(c.Key("dependency-content")).FillWidth().Gap(10 * s).Children(func() {
+			ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.L("前置", "Dependencies")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
+				if len(deps) > 0 {
+					numText(c, fmt.Sprint(len(deps)), typeFootnote*s, muted)
+				}
+				if a.planLoading {
+					statusSpinner(c, 12*s)
+				}
+				ui.Spacer(c).Grow(1)
+				for _, v := range a.projectVersions {
+					if v.ID == a.form.VersionID {
+						ui.Text(c, a.L("所选版本 ", "Selected version ")+v.Number).Label("前置所选版本 " + v.Number).FontSize(typeCaption * s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0).Tooltip(v.Number)
+						break
+					}
+				}
+			})
+			if !a.selectedProjectVersionFits() {
+				ui.Row(c.Key("dependency-incompatible")).FillWidth().MinHeight(54 * s).Padding(12 * s).Radius(10 * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
+					ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(warningInk).Shrink(0)
+					ui.Text(c, a.L("此版本不兼容当前实例，请选择匹配的游戏版本和加载器。", "This version does not match the instance. Choose a compatible game version and loader.")).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0)
+				})
+				return
+			}
+			if a.planErr != "" && a.planErrUI.Kind == "network" {
+				if a.loadFailed(c, "plan-failed", failCard, a.planLoading) {
+					a.planKey = ""
+				}
+				return
+			}
+			if a.planErr != "" {
+				u := a.planErrUI
+				ui.Column(c).FillWidth().Padding(12*s, 14*s).Radius(10 * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).Children(func() {
+					ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
+						ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(warningInk).Shrink(0)
+						ui.Text(c, u.Title).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).Grow(1).MinWidth(0)
+					})
+					if u.Hint != "" {
+						ui.Text(c, u.Hint).FontSize(typeCaption * s).TextColor(inkSecondary).FillWidth()
+					}
+					ui.Row(c).Gap(8 * s).Children(func() {
+						if fixedButton(c, "plan-retry", a.L("重试", "Retry"), "refresh", 0, btnSm*s, false, false) {
+							a.planKey = ""
+						}
+						if u.Path != "" && fixedButton(c, "plan-open", a.L("打开文件夹", "Open folder"), "folder", 0, btnSm*s, false, false) {
+							c.OpenURL("file:///" + filepath.ToSlash(u.Path))
+						}
+					})
+				})
+				return
+			}
+			// Reserve one row while checking; grow the viewport as rows arrive.
+			// Text and icons stay at native size, with only opacity/position animated.
+			box := ui.Box(c.Key("dependency-list")).Label("前置列表").FillWidth().Radius(12*s).Border(1, line).Clip()
+			h := float32(max(1, len(deps))*55+2) * s
+			box.Height(box.AnimateTo("height", h, motionMove)).Children(func() {
+				ui.Column(c.Key("dependency-rows-" + a.planKey)).FillWidth().Shrink(0).Transition(heroSwap(c)).Children(func() {
+					if len(deps) == 0 {
+						key, txt, icon := "empty", a.L("无需前置", "No dependencies"), "check"
+						if a.planLoading {
+							key, txt = "loading", a.L("正在检查前置", "Checking dependencies")
+						}
+						ui.Row(c.Key("dependency-" + key)).Label("前置状态").FillWidth().Height(54 * s).PaddingX(14 * s).Gap(10 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
+							if a.planLoading {
+								statusSpinner(c, 14*s)
+							} else {
+								ui.Icon(c, icons[icon]).Size(14*s, 14*s).TextColor(successInk)
+							}
+							ui.Text(c, txt).FontSize(typeFootnote * s).TextColor(muted)
+						})
+						return
+					}
+					for i, it := range deps {
+						ui.Column(c.Key("dep-slot-" + it.Key)).FillWidth().Shrink(0).Transition(heroSwap(c)).Children(func() {
+							if i > 0 {
+								ui.Box(c).FillWidth().Height(s).Background(line).Margin(0, 0, 0, 56*s)
+							}
+							a.depRow(c, it)
+						})
 					}
 				})
 			})
-			return
-		}
-		if len(deps) == 0 {
-			txt := a.L("无需前置", "No dependencies")
-			if a.planLoading {
-				txt = a.L("正在检查前置", "Checking dependencies")
-			}
-			ui.Text(c, txt).FontSize(typeFootnote * s).TextColor(muted)
-			return
-		}
-		ui.Column(c).FillWidth().Radius(12*s).Border(1, line).Clip().Children(func() {
-			for i, it := range deps {
-				if i > 0 {
-					ui.Box(c).FillWidth().Height(1).Background(line).Margin(0, 0, 0, 56*s)
-				}
-				a.depRow(c, it)
-			}
 		})
 	})
 }

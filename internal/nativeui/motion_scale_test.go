@@ -24,8 +24,8 @@ func TestDialogEasesInAndOut(t *testing.T) {
 	}
 	tt.Advance(400 * time.Millisecond)
 	end, _ := tt.Find("活动弹窗")
-	if mid.W >= end.W || end.W-mid.W > end.W*.05 {
-		t.Errorf("dialog should scale up slightly: mid %+v end %+v", mid, end)
+	if math.Abs(float64(mid.W-end.W)) > .01 || math.Abs(float64(mid.H-end.H)) > .01 || mid.Y <= end.Y || mid.Y-end.Y > 12 {
+		t.Errorf("dialog should slide into place at its native size: mid %+v end %+v", mid, end)
 	}
 	// closing midway keeps drawing it (no pop), interrupting reopens smoothly
 	a.closeDialog()
@@ -38,7 +38,7 @@ func TestDialogEasesInAndOut(t *testing.T) {
 	tt.Frame()
 	tt.Advance(16 * time.Millisecond)
 	back, ok := tt.Find("活动弹窗")
-	if !ok || back.W < mid.W {
+	if !ok || back.W != end.W {
 		t.Errorf("reopening should continue from the current value: %+v", back)
 	}
 	a.closeDialog()

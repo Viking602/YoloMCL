@@ -1,6 +1,6 @@
-# MCL startup plugin
+# YoloMCL startup plugin
 
-This plugin lives in the MCL repository and registers through `mygo.Use` as
+This plugin lives in the YoloMCL repository and registers through `mygo.Use` as
 `mcl-startup`. It does not modify, replace or vendor the MyGo Go module. There
 are no `github.com/egoist/mygo/internal/...` imports or fabricated module paths.
 
@@ -52,6 +52,39 @@ disables the plugin for diagnostics. The first frame's temporary `MYGO_GPU`
 override is restored synchronously on the UI thread, including after a panic.
 Window closure cancels pending handoffs and idle timers. Driver calls may not
 be cancellable, but they never hold the UI thread during warmup.
+
+## Building and cgo
+
+The plugin itself has no `import "C"` or `#cgo` directives. On Windows,
+[`graphics_windows.go`](graphics_windows.go) calls system DLLs and D3D11 COM
+methods through Go's `syscall.NewLazyDLL` and `syscall.SyscallN`. The embedded
+DXBC shaders are already compiled. These paths require no C compiler; system
+graphics libraries and drivers are used at runtime.
+
+Build the launcher from the repository root using the shared Makefile and
+Shell scripts:
+
+```sh
+make build
+make check CHECK_ARGS="--no-tests --cross"
+```
+
+[`scripts/build.sh`](../../scripts/build.sh) defaults to
+`CGO_ENABLED="${CGO_ENABLED:-0}"`. With the pinned dependencies, the plugin's
+complete dependency graph has no active cgo files on Windows, macOS or Linux,
+on either AMD64 or ARM64, when `CGO_ENABLED=0`. The cross-platform check
+explicitly sets `CGO_ENABLED=0` for all six targets and compiles both development
+and release modes.
+
+The build script honors an existing `CGO_ENABLED` environment variable. Setting
+it to `1` can enable cgo in indirect dependencies: the current macOS dependency
+graph includes `runtime/cgo`; Linux also includes cgo paths in
+`github.com/ebitengine/purego/internal/cgo`, `net` and `os/user`. To explicitly
+keep cgo disabled regardless of the surrounding environment, use:
+
+```sh
+CGO_ENABLED=0 make build
+```
 
 ## Platforms
 

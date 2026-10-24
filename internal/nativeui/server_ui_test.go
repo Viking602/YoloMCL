@@ -29,14 +29,14 @@ func TestRecentServerOnlineAndUnreachableCards(t *testing.T) {
 					Version:     "NeoForge 1.21.1", PlayersKnown: true, Online: 8, Max: 20, Latency: 42 * time.Millisecond,
 				}}}
 				tt := ui.NewTester(func(c *ui.Context) {
-					ui.Row(c).Width(float32(width-420) / 3).Height(260).Children(func() { a.ovServer(c, st) })
-				}, max(390, (width-420)/3), 280)
-				// At narrow window sizes the overview stacks full-width cards.
-				if width == 900 {
-					tt = ui.NewTester(func(c *ui.Context) { ui.Row(c).Width(470).Height(260).Children(func() { a.ovServer(c, st) }) }, 490, 280)
-				}
+					c.SetTheme(theme)
+					s := uiScale(c)
+					ui.Box(c).Fill().Background(bg).Padding(20 * s).Children(func() {
+						ui.Row(c).Width(360 * s).Height(260 * s).Children(func() { a.ovServer(c, st) })
+					})
+				}, width, 1024)
 				tt.Advance(400 * time.Millisecond)
-				if !tt.HasText("42 ms") || !tt.HasText("NeoForge 1.21.1") || !tt.HasText(a.L("8 / 20 在线", "8 / 20 online")) {
+				if !tt.HasText("42 ms") || !tt.HasText("NeoForge 1.21.1") || !tt.HasText("8 / 20") || !tt.HasText(a.L("在线玩家", "Players online")) {
 					t.Fatalf("missing server information: %v", tt.Texts())
 				}
 				card, _ := tt.Find(a.L("最近服务器", "Recent server"))
@@ -45,6 +45,11 @@ func TestRecentServerOnlineAndUnreachableCards(t *testing.T) {
 				if info.Y+info.H > copy.Y || copy.Y+copy.H > card.Y+card.H {
 					t.Fatalf("card content overlaps: %+v %+v %+v", card, info, copy)
 				}
+				clickUI(t, tt, a.L("复制地址", "Copy address"))
+				if tt.Clipboard() != strings.TrimSuffix(address, ":25565") {
+					t.Fatal("copy did not match the displayed server address")
+				}
+				a.message, a.errorMessage = previousMessage, previousError
 				for i := 0; i < 3; i++ {
 					tt.Frame()
 				}

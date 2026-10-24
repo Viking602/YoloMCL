@@ -94,7 +94,7 @@ func addonGridWindow(rows int, rowH float32, grid, view ui.Rect, height float32)
 }
 
 // addonCard is one mod / pack card. The whole card is the toggle: hover
-// tints all of it, a click enables or disables it at once (toggleAsync),
+// tints all of it, a click requests a toggle (mods confirm before disabling),
 // and an off card dims with a 已禁用 chip. Version, size and other facts
 // are separate chips; the remove action floats at the bottom-right.
 func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions func()) {
@@ -131,10 +131,7 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 			}
 			header.Children(func() {
 				size := 40 * s
-				icon := a.addonIcon(a.root().ID, it.kind, it.file)
-				if icon == nil && it.iconURL != "" && a.localIconMissed(a.root().ID, it.kind, it.file) {
-					icon = a.remoteImage(it.iconURL)
-				}
+				icon := a.addonIcon(a.root().ID, a.root().SelectedVersion, it.kind, it.file, it.iconURL)
 				ui.Box(c).Size(size, size).Shrink(0).Children(func() {
 					if icon != nil {
 						ui.Box(c).Size(size, size).Radius(size * .22).Clip().Background(panel).Center().Children(func() {

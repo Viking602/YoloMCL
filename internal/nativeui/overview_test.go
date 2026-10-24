@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/ui"
+
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -84,21 +86,50 @@ func TestOverviewFitsViewportWithoutScrolling(t *testing.T) {
 }
 
 func TestOverviewUnrecordedTimeAndLoadingAreHonest(t *testing.T) {
-	a, tt := homeTester(t, "en-US")
-	a.statusGen++
-	a.instStatusKey = a.root().ID + "|" + a.root().SelectedVersion
-	a.instStatus = launcher.InstanceStatus{Dir: a.root().Path}
-	tt.Frame()
-	tt.Advance(400 * time.Millisecond)
-	if !tt.HasText("No recorded sessions") || !tt.HasText("Tracked when launched here") || !tt.HasText("Your next world starts here") {
-		t.Fatalf("missing empty states: %v", tt.Texts())
-	}
-	a.instStatus = launcher.InstanceStatus{}
-	a.instStatusErr = ""
-	a.overviewDisplay = overviewPresentation{}
-	a.contentSwaps = nil
-	tt.Frame()
-	if !tt.HasText("概览加载占位") || tt.HasText("Your next world starts here") {
-		t.Fatal("unloaded save counts were presented as an empty world list")
+	for _, lang := range []string{LangZH, LangEN} {
+		t.Run(lang, func(t *testing.T) {
+			a, tt := homeTester(t, lang)
+			a.bgWG.Wait()
+			tt.Frame()
+			a.service = nil
+			a.statusGen++
+			a.instStatusErr, a.message, a.noticeShown = "", "", ""
+			a.instStatusKey = a.root().ID + "|" + a.root().SelectedVersion
+			a.instStatus = launcher.InstanceStatus{Dir: a.root().Path}
+			a.contentSwaps = nil
+			for _, size := range [][2]int{{1536, 1024}, {900, 540}} {
+				tt.SetSize(size[0], size[1])
+				tt.Frame()
+				tt.Advance(400 * time.Millisecond)
+				if !tt.HasText(a.L("尚无游玩记录", "No recorded sessions")) || !tt.HasText(a.L("从这里启动后记录时长", "Tracked when launched here")) {
+					t.Fatalf("missing unrecorded play state: %v", tt.Texts())
+				}
+				var artwork ui.Rect
+				for i, item := range [][3]string{
+					{"world-empty", a.L("还没有存档", "No worlds yet"), a.L("最近世界", "Recent world")},
+					{"server-empty", a.L("还没有连接记录", "No connections yet"), a.L("最近服务器", "Recent server")},
+					{"screenshot-empty", a.L("还没有游戏截图", "No screenshots yet"), a.L("游戏截图", "Screenshots")},
+				} {
+					art, ok := tt.Find("空状态插画 " + item[0])
+					title, titleOK := tt.Find(item[1])
+					panel, _ := tt.Find(item[2])
+					if !ok || !titleOK || art.Y+art.H > title.Y || title.Y+title.H > panel.Y+panel.H || title.X < panel.X || title.X+title.W > panel.X+panel.W {
+						t.Fatalf("empty content is clipped or overlaps in %s: art %+v title %+v panel %+v", item[0], art, title, panel)
+					}
+					if i > 0 && (art.Y != artwork.Y || art.H != artwork.H) {
+						t.Fatalf("empty cards are not aligned: %+v vs %+v", artwork, art)
+					}
+					artwork = art
+				}
+				snapshotUI(t, tt, fmt.Sprintf("empty-overview-%s-%d", lang, size[0]))
+			}
+			a.instStatus = launcher.InstanceStatus{}
+			a.overviewDisplay = overviewPresentation{}
+			a.contentSwaps = nil
+			tt.Frame()
+			if !tt.HasText("概览加载占位") || tt.HasText(a.L("还没有存档", "No worlds yet")) {
+				t.Fatal("unloaded save counts were presented as an empty world list")
+			}
+		})
 	}
 }

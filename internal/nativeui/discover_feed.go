@@ -3,11 +3,29 @@ package nativeui
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
+
+func (a *App) search() { a.searchAt(0) }
+
+func (a *App) searchAt(offset int) {
+	kind := normalizeResourceType(a.resourceType)
+	loader := loaderKey(a.filterLoader)
+	if loader == "vanilla" || (kind != "mod" && kind != "modpack") {
+		loader = ""
+	}
+	sortKey := normalizeSortKey(a.searchSort)
+	sort := ""
+	if sortKey == "downloads" || sortKey == "updated" {
+		sort = sortKey
+	}
+	q := launcher.SearchQuery{Source: a.provider, Query: a.query, Type: kind, Minecraft: a.filterMC, Loader: loader, Offset: offset, Sort: sort, Categories: append([]string(nil), a.selectedCats()...)}
+	a.startDiscoverRequest(q, false)
+}
 
 type discoverSearchFunc func(context.Context, launcher.SearchQuery) (launcher.SearchResult, error)
 
@@ -39,6 +57,14 @@ func (a *App) startDiscoverRequest(q launcher.SearchQuery, more bool) {
 	a.searchLoading, f.loading, f.err = !more, more, ""
 	if !more {
 		a.searchError = ""
+		m := &a.discoverMotion
+		if m.hasQuery && (m.query.Source != q.Source || m.query.Type != q.Type) {
+			// The sidebar already shows the new scope. Drop the old cards and
+			// count now, so they cannot be mistaken for (or opened as) its results.
+			a.searchResult = launcher.SearchResult{}
+			m.cards, m.cardProjects = nil, nil
+			m.scroll.st.ScrollTo(0, 0, ui.Animation{Duration: time.Nanosecond})
+		}
 	}
 	a.discoverMotion.request = q
 	a.bgWG.Add(1)

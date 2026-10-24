@@ -180,7 +180,7 @@ func (s *Service) javaHints() ([]string, []string) {
 	return explicit, roots
 }
 
-// Both modes detect registered system Java installations and inspect the
+// ScanJava detects registered system Java installations and inspects the
 // known runtime folders. Deeper mode adds nesting only inside Minecraft and
 // launcher runtime folders; neither mode enumerates local disks.
 func (s *Service) ScanJava(ctx context.Context, deep bool, notify func(JavaScanProgress)) ([]JavaInfo, error) {

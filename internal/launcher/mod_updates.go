@@ -129,7 +129,7 @@ func (s *Service) checkModsIn(ctx context.Context, r Root, vDir string, p progre
 		p("正在识别 "+m.Name, i+1, len(mods))
 	}
 	report(batch)
-	if s.distribution.HasCurseForge() {
+	if s.publisher.HasCurseForge() {
 		fps := []uint32{}
 		byFP := map[uint32]string{}
 		for _, m := range mods {

@@ -31,23 +31,60 @@ func pageHeader(c *ui.Context, crumb func(), text, description string, actions f
 	})
 }
 
-func empty(c *ui.Context, titleText, description string) {
-	emptyState(c, "empty", "folder", titleText, description, nil)
-}
-
-// emptyState is the one placeholder used by every list: a frosted card with
-// a tinted squircle, a headline, a muted explanation and optional actions.
-func emptyState(c *ui.Context, key, icon, titleText, description string, actions func()) {
-	s := uiScale(c)
-	glass(ui.Column(c.Key(key)).FillWidth().Gap(space2*s).Padding(space8*s+space4*s, space8*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
-		appleSoftIconBox(c, 52*s, icon, accent, accentIndigo, panel)
-		ui.Box(c).Height(space1 * s)
-		ui.Text(c, titleText).FontSize(typeTitle * s).Bold().TextColor(ink).SingleLine()
-		label(c, description).MaxWidth(560 * s).TextAlign(ui.Center)
-		if actions != nil {
-			ui.Row(c).Gap(space2 * s).PaddingY(space2 * s).AlignItems(ui.Center).Children(actions)
+func appleSoftIconBox(c *ui.Context, size float32, iconName string, from, to, fg ui.Color) {
+	ui.Box(c).Size(size, size).Radius(size*.3).Shrink(0).LinearGradient(tintGradient(from, to)).InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, .35)).Shadow(0, size*.08, size*.25, -size*.06, from.Alpha(.35)).Center().Children(func() {
+		if icons[iconName] != nil {
+			ui.Icon(c, icons[iconName]).Size(size*.52, size*.52).TextColor(fg)
 		}
 	})
+}
+
+// Apple Pill Badge with soft gradient fill
+func badge(c *ui.Context, s string, color ui.Color) {
+	scale := uiScale(c)
+	from, to := ui.Hex("#f1f5f9"), ui.Hex("#e8eef6")
+	fg := color
+	switch color {
+	case accent, blue:
+		from, to = ui.Hex("#eaf3ff"), ui.Hex("#dcebff")
+		fg = accent
+	case success, successInk:
+		from, to = ui.Hex("#e8faed"), ui.Hex("#d3f5dd")
+		fg = successInk
+	case danger:
+		from, to = ui.Hex("#ffeceb"), ui.Hex("#ffdfdd")
+		fg = danger
+	case warning, warningInk:
+		from, to = ui.Hex("#fff6e5"), ui.Hex("#ffebcc")
+		fg = warningInk
+	}
+	ui.Row(c).Shrink(0).Padding(3*scale, 9*scale).Radius(999).LinearGradient(tintGradient(from, to)).Border(1, ui.RGBA(255, 255, 255, .7)).Children(func() {
+		ui.Text(c, s).FontSize(typeCaption * scale).FontWeight(600).TextColor(fg).NoWrap().Shrink(0)
+	})
+}
+
+func tagChip(c *ui.Context, s string) {
+	scale := uiScale(c)
+	ui.Row(c).Shrink(0).Padding(3*scale, 9*scale).Radius(999).Background(fieldColor).Children(func() {
+		ui.Text(c, s).FontSize(typeCaption2 * scale).FontWeight(500).TextColor(inkSecondary).NoWrap().Shrink(0)
+	})
+}
+
+func card(c *ui.Context, key string, fn func()) {
+	s := uiScale(c)
+	glass(ui.Column(c.Key(key)).FillWidth().Clip().Gap(14*s).Padding(18*s, 22*s), radiusCard*s, s).Children(fn)
+}
+
+// textField is the one single-line input: a fixed control height with no
+// vertical padding, so the toolkit centers the line box and mono/CJK text
+// sit on the same middle line in every field; 13-DIP side insets.
+func textField(c *ui.Context, value *string) ui.Element {
+	s := uiScale(c)
+	return ui.TextInput(c, value).Height(btnMd*s).Padding(0, 13*s).FontSize(typeCallout * s)
+}
+
+func empty(c *ui.Context, titleText, description string) {
+	emptyState(c, "empty", "folder", titleText, description, nil)
 }
 
 // loadingState is the shared in-progress placeholder: a frosted card whose

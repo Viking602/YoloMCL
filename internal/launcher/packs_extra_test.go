@@ -48,7 +48,7 @@ func TestArchiveKindAndPreviews(t *testing.T) {
 	if e != nil || cfp.Unavailable == "" {
 		t.Errorf("CurseForge without API must be flagged: %+v %v", cfp, e)
 	}
-	s.distribution.CurseForgeAPIKey = "test-key"
+	s.publisher.CurseForgeAPIKey = "test-key"
 	if cfp, _ := s.InspectPack(filepath.Join(dir, "cf.zip")); cfp.Unavailable != "" {
 		t.Error("configured CurseForge must stay importable")
 	}

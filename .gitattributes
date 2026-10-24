@@ -3,10 +3,13 @@
 *.mod text eol=lf
 *.sum text eol=lf
 *.sh text eol=lf
-*.ps1 text eol=lf
+*.awk text eol=lf
+Makefile text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 *.md text eol=lf
+*.txt text eol=lf
+staticcheck.conf text eol=lf
 .editorconfig text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf

@@ -90,6 +90,103 @@ func replyFeedTest(t *testing.T, a *App, tt *ui.Tester, request feedTestRequest,
 	tt.Frame()
 }
 
+func assertDiscoverSwitchLoading(t *testing.T, a *App, tt *ui.Tester) {
+	t.Helper()
+	if !a.searchLoading || !tt.HasText("资源加载提示") || !tt.HasText(a.tr().DiscoverLoading) || tt.HasText("搜索结果列表") || len(a.searchResult.Projects) != 0 {
+		t.Fatal("switch did not immediately replace the old results with a visible loading state")
+	}
+	if a.discoverMotion.scroll.st.Y != 0 || a.numberRolls["discover-total"].target != "—" {
+		t.Fatal("loading kept the previous result count or scroll position")
+	}
+}
+
+func TestDiscoverTypeSwitchShowsLoadingImmediately(t *testing.T) {
+	for _, source := range []string{"modrinth", "curseforge"} {
+		for _, lang := range []string{LangZH, LangEN} {
+			for _, kind := range []string{"modpack", "mod", "resourcepack", "shader"} {
+				t.Run(source+"-"+lang+"-"+kind, func(t *testing.T) {
+					previousKind := "mod"
+					if kind == previousKind {
+						previousKind = "resourcepack"
+					}
+					a, tt, requests := discoverFeedTester(t, source, previousKind)
+					a.OverrideLanguage(lang)
+					if lang == LangEN {
+						tt.SetSize(900, 540)
+					} else {
+						tt.SetPreferences(ui.Preferences{})
+					}
+					first := nextFeedTestRequest(t, tt, requests)
+					replyFeedTest(t, a, tt, first, 0, 18, 18)
+					tt.Advance(time.Second)
+					tt.Scroll(800, 450, 0, 500)
+					tt.Advance(400 * time.Millisecond)
+					a.query, a.filterMC = "tw", "1.20.1"
+					tr := a.tr()
+					labels := map[string]string{"modpack": tr.DiscoverTypeModpack, "mod": tr.DiscoverTypeMod, "resourcepack": tr.DiscoverTypeRP, "shader": tr.DiscoverTypeShader}
+					clickUI(t, tt, labels[kind])
+					assertDiscoverSwitchLoading(t, a, tt)
+					next := nextFeedTestRequest(t, tt, requests)
+					if next.query.Source != source || next.query.Type != kind || next.query.Query != "tw" || next.query.Minecraft != "1.20.1" || next.query.Offset != 0 {
+						t.Fatalf("switch lost its selected scope or filters: %+v", next.query)
+					}
+					tt.Advance(150 * time.Millisecond)
+					snapshotUI(t, tt, "discover-switch-loading-"+source+"-"+lang+"-"+kind)
+					replyFeedTest(t, a, tt, next, 100, 6, 6)
+					if tt.HasText("资源加载提示") || !tt.HasText("搜索结果 探索整合包 100") {
+						t.Fatal("latest response did not replace the loading state")
+					}
+					tt.Advance(90 * time.Millisecond)
+					motion := a.discoverMotion.cards[source+"|100"]
+					if lang == LangZH && (motion.progress <= 0 || motion.progress >= 1) {
+						t.Fatal("new results skipped their entrance animation")
+					}
+					tt.Advance(600 * time.Millisecond)
+					if motion.progress != 1 {
+						t.Fatal("new results did not finish appearing")
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestDiscoverProviderSwitchRejectsStaleResultsAndRetriesCurrentType(t *testing.T) {
+	a, tt, requests := discoverFeedTester(t, "modrinth", "mod")
+	first := nextFeedTestRequest(t, tt, requests)
+	replyFeedTest(t, a, tt, first, 0, 18, 18)
+	clickUI(t, tt, "CurseForge")
+	assertDiscoverSwitchLoading(t, a, tt)
+	old := nextFeedTestRequest(t, tt, requests)
+	oldRevision := a.searchRevision
+	clickUI(t, tt, a.tr().DiscoverTypeRP)
+	assertDiscoverSwitchLoading(t, a, tt)
+	latest := nextFeedTestRequest(t, tt, requests)
+	if old.ctx.Err() == nil || latest.query.Source != "curseforge" || latest.query.Type != "resourcepack" {
+		t.Fatal("rapid switching did not cancel the previous provider/type request")
+	}
+	a.finishDiscoverRequest(oldRevision, old.query, false, launcher.SearchResult{Projects: discoverMotionProjects(50, 3), Total: 3}, nil)
+	tt.Frame()
+	assertDiscoverSwitchLoading(t, a, tt)
+	latest.reply <- feedTestReply{err: errors.New("connection reset")}
+	waitUI(t, tt, func() bool { return !a.searchLoading })
+	if !tt.HasText("加载失败") || tt.HasText("搜索结果列表") || tt.HasText("资源加载提示") || len(a.searchResult.Projects) != 0 {
+		t.Fatal("failed switch restored results from the previous type")
+	}
+	clickUI(t, tt, "重试")
+	assertDiscoverSwitchLoading(t, a, tt)
+	retry := nextFeedTestRequest(t, tt, requests)
+	if !sameDiscoverQuery(retry.query, latest.query) || retry.query.Offset != 0 {
+		t.Fatal("retry did not use the currently selected provider and type")
+	}
+	replyFeedTest(t, a, tt, retry, 100, 3, 3)
+	a.finishDiscoverRequest(oldRevision, old.query, false, launcher.SearchResult{}, errors.New("stale failure"))
+	tt.Frame()
+	if a.searchError != "" || !tt.HasText("搜索结果 探索整合包 100") || tt.HasText("搜索结果 探索整合包 50") {
+		t.Fatal("a stale failure replaced the current successful response")
+	}
+}
+
 func TestDiscoverFeedAppendsDeduplicatesAndPreservesScroll(t *testing.T) {
 	for _, tc := range []struct{ source, kind string }{
 		{"modrinth", "mod"}, {"curseforge", "mod"},

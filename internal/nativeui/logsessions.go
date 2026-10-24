@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
@@ -173,9 +174,13 @@ func openLogFile(c *ui.Context, p string) {
 	}
 }
 
-func openLogFolder(c *ui.Context, path string) {
+var revealLogPath = mygo.Shell.ShowItemInFolder
+
+func openLogFolder(path string) {
 	if path != "" {
-		openLogFile(c, filepath.Dir(path))
+		// Pass the file itself to the native file manager so it is selected.
+		// A file:// URL to its parent only opens the directory.
+		revealLogPath(filepath.Clean(path))
 	}
 }
 

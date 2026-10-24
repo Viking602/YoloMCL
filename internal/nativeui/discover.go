@@ -3,7 +3,6 @@ package nativeui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -29,6 +28,7 @@ func (a *App) discoverView(c *ui.Context) {
 			})
 		})
 	})
+	a.settleDiscoverCategories(c)
 }
 
 func (a *App) discoverRail(c *ui.Context) {
@@ -118,6 +118,7 @@ func (a *App) discoverRail(c *ui.Context) {
 					ui.Text(c, fmt.Sprintf(a.L("用当前实例的版本 %s", "Use this instance's %s"), v.Minecraft)).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
 				}).Clicked() {
 					a.filterMC = v.Minecraft
+					a.discoverMCText = v.Minecraft
 					if kind == "mod" {
 						a.filterLoader = a.loaderDisplay(v.Loader)
 					}
@@ -153,10 +154,26 @@ func (a *App) discoverToolbar(c *ui.Context) {
 	t := a.tr()
 	ui.Row(c.Key("discover-toolbar")).Label("搜索栏").FillWidth().Padding(18*s, pageGutter*s, 12*s).Gap(10 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 		in := textField(c.Key("discover-query"), &a.query).Placeholder(t.DiscoverSearchHint).Label(t.DiscoverSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
-		if in.Submitted() {
-			a.search()
+		submit := in.Submitted()
+		if in.Shortcut(0, ui.KeyEnter) {
+			submit = true
 		}
-		if fixedButton(c, "search-now", t.DiscoverSearchBtn, "search", 0, btnSm*s+4*s, true, a.searchLoading) {
+		if strings.TrimSpace(a.query) != "" {
+			cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("清空搜索", "Clear search")).Size(24*s, 24*s).Radius(999).Center().Shrink(0)
+			if cb.Hovered() {
+				cb.Background(ui.RGBA(120, 130, 160, .14))
+			}
+			if cb.Children(func() {
+				ui.Icon(c, icons["cross"]).Size(10*s, 10*s).TextColor(muted)
+			}).Clicked() {
+				a.query = ""
+				submit = true
+			}
+		}
+		if fixedButton(c, "search-now", t.DiscoverSearchBtn, "search", 0, btnSm*s+4*s, true, false) {
+			submit = true
+		}
+		if submit {
 			a.search()
 		}
 		ui.Box(c.Key("search-activity")).Label("搜索加载指示").Size(14*s, 14*s).Shrink(0).Children(func() {
@@ -165,10 +182,10 @@ func (a *App) discoverToolbar(c *ui.Context) {
 			}
 		})
 		count := "—"
-		if !a.searchLoading || len(a.searchResult.Projects) > 0 {
+		if len(a.searchResult.Projects) > 0 || (!a.searchLoading && a.searchError == "") {
 			count = a.formatResultCount(int64(a.searchResult.Total))
 		}
-		a.flipNumber(c, "discover-total", count, typeFootnote*s, 400, muted, true).Width(98 * s).Shrink(0)
+		a.rollNumber(c, "discover-total", count, typeFootnote*s, 400, muted, true).Width(98 * s).Shrink(0)
 	})
 }
 
@@ -196,6 +213,7 @@ func (a *App) installedProject(p launcher.Project) bool {
 
 func (a *App) discoverResults(c *ui.Context) {
 	t := a.tr()
+	a.discoverMotion.revealing = false
 	a.syncDiscoverCards(c, a.searchResult.Projects)
 	if a.searchError != "" {
 		style := failPanel
@@ -218,7 +236,7 @@ func (a *App) discoverResults(c *ui.Context) {
 		return
 	}
 	// One grid parent preserves card identity across rows and column counts.
-	// Keep existing results fully visible while their replacement is fetched.
+	// Same-scope refreshes keep their cards; provider/type switches show loading.
 	grid := ui.Box(c.Key("discover-grid")).Label("搜索结果列表").FillWidth()
 	cols := discoverColumns(c)
 	ps := a.searchResult.Projects
@@ -287,8 +305,8 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 				ui.Icon(c, icons["download"]).Size(11*s, 11*s).TextColor(muted)
 				numText(c, compactCount(p.Downloads), typeCaption*s, muted)
 			})
-			if tm, e := time.Parse(time.RFC3339, p.Updated); e == nil {
-				numText(c, updatedAgo(a.isEN(), tm, time.Now()), typeCaption*s, muted).Shrink(0)
+			if relative, exact := a.resourceTime(c, p.Updated); relative != "" {
+				numText(c, relative, typeCaption*s, muted).Shrink(0).Tooltip(fmt.Sprintf(a.L("更新时间：%s", "Updated: %s"), exact))
 			}
 			ui.Spacer(c).Grow(1)
 			if installed {

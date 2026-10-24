@@ -87,7 +87,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 				if u, ok := units[p.sub]; ok {
 					key := "storage-count-" + p.sub
 					text := fmt.Sprintf(a.L(u[0], u[1]), n)
-					a.flipNumber(c, key, text, typeCallout*s, 600, ink).FillWidth()
+					a.rollNumber(c, key, text, typeCallout*s, 600, ink).FillWidth()
 				}
 				if p.sub == "mods" && updates > 0 {
 					quietTag(c, fmt.Sprintf(a.L("%d 个可更新", "%d updates"), updates), accent)
@@ -96,7 +96,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 			ui.Box(c).Width(80 * s).Shrink(0).Children(func() {
 				key := "storage-size-" + p.sub
 				text := sizeOrDash(size)
-				a.flipNumber(c, key, text, typeFootnote*s, 400, inkSecondary, true).FillWidth()
+				a.rollNumber(c, key, text, typeFootnote*s, 400, inkSecondary, true).FillWidth()
 			})
 			ui.Box(c).Width(44 * s).Shrink(0).AlignItems(ui.End).Children(func() {
 				text := ""
@@ -108,7 +108,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 					}
 				}
 				key := "storage-percent-" + p.sub
-				a.flipNumber(c, key, text, typeFootnote*s, 400, muted, true).FillWidth()
+				a.rollNumber(c, key, text, typeFootnote*s, 400, muted, true).FillWidth()
 			})
 			ui.Icon(c, icons["chevron"]).Size(10*s, 10*s).TextColor(muted).Shrink(0)
 		}).Clicked() && a.overviewActionReady("ov-dir") {

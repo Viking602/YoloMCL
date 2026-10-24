@@ -3,14 +3,10 @@ package launcher
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
-	"sort"
 	"strings"
 )
 
@@ -67,31 +63,33 @@ func (s *Service) AddRoot(path, name string) (Root, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, existing := range s.cfg.Roots {
+	draft := s.cfg.clone()
+	for _, existing := range draft.Roots {
 		if existing.ID == id {
-			return existing, nil
+			return existing.clone(), nil
 		}
 	}
-	s.cfg.Roots = append(s.cfg.Roots, r)
-	s.cfg.ActiveRoot = id
-	return r, s.saveLocked()
+	draft.Roots = append(draft.Roots, r)
+	draft.ActiveRoot = id
+	return r, s.saveConfigLocked(draft)
 }
 func (s *Service) RemoveRoot(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	draft := s.cfg.clone()
 	if s.rootLocks[id] || s.rootRunningLocked(id) {
 		return errors.New("此目录还有运行中的任务")
 	}
-	for i, r := range s.cfg.Roots {
+	for i, r := range draft.Roots {
 		if r.ID == id {
-			s.cfg.Roots = append(s.cfg.Roots[:i], s.cfg.Roots[i+1:]...)
-			if s.cfg.ActiveRoot == id {
-				s.cfg.ActiveRoot = ""
-				if len(s.cfg.Roots) > 0 {
-					s.cfg.ActiveRoot = s.cfg.Roots[0].ID
+			draft.Roots = append(draft.Roots[:i], draft.Roots[i+1:]...)
+			if draft.ActiveRoot == id {
+				draft.ActiveRoot = ""
+				if len(draft.Roots) > 0 {
+					draft.ActiveRoot = draft.Roots[0].ID
 				}
 			}
-			return s.saveLocked()
+			return s.saveConfigLocked(draft)
 		}
 	}
 	return errors.New("目录不存在")
@@ -99,14 +97,15 @@ func (s *Service) RemoveRoot(id string) error {
 func (s *Service) Select(rootID, accountID, version string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	draft := s.cfg.clone()
 	if rootID != "" {
 		found := false
-		for i, r := range s.cfg.Roots {
+		for i, r := range draft.Roots {
 			if r.ID == rootID {
 				found = true
-				s.cfg.ActiveRoot = rootID
+				draft.ActiveRoot = rootID
 				if version != "" {
-					s.cfg.Roots[i].SelectedVersion = version
+					draft.Roots[i].SelectedVersion = version
 				}
 				break
 			}
@@ -117,10 +116,10 @@ func (s *Service) Select(rootID, accountID, version string) error {
 	}
 	if accountID != "" {
 		found := false
-		for _, a := range s.cfg.Accounts {
+		for _, a := range draft.Accounts {
 			if a.ID == accountID {
 				found = true
-				s.cfg.ActiveAccount = accountID
+				draft.ActiveAccount = accountID
 				break
 			}
 		}
@@ -128,76 +127,7 @@ func (s *Service) Select(rootID, accountID, version string) error {
 			return errors.New("账号不存在")
 		}
 	}
-	return s.saveLocked()
-}
-func ParseJVMArgs(raw string) ([]string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil, nil
-	}
-	if strings.ContainsRune(raw, 0) {
-		return nil, errors.New("JVM 参数包含无效字符")
-	}
-	var out []string
-	var cur strings.Builder
-	var quote rune
-	inToken := false
-	for _, r := range raw {
-		switch {
-		case quote != 0:
-			if r == quote {
-				quote = 0
-			} else {
-				cur.WriteRune(r)
-			}
-		case r == '"' || r == '\'':
-			quote = r
-			inToken = true
-		case r == ' ' || r == '\t' || r == '\r' || r == '\n':
-			if inToken {
-				out = append(out, cur.String())
-				cur.Reset()
-				inToken = false
-			}
-		default:
-			cur.WriteRune(r)
-			inToken = true
-		}
-	}
-	if quote != 0 {
-		return nil, errors.New("JVM 参数引号未闭合")
-	}
-	if inToken {
-		out = append(out, cur.String())
-	}
-	for _, tok := range out {
-		low := strings.ToLower(tok)
-		if low == "-cp" || low == "-classpath" || low == "--class-path" || low == "-jar" {
-			return nil, fmt.Errorf("不支持在附加 JVM 参数中覆盖类路径或主 JAR: %s", tok)
-		}
-	}
-	return out, nil
-}
-func (r Root) ResolveRuntime(versionID string, settings Settings) (string, int, []string, error) {
-	vc := r.VersionConfigs[versionID]
-	javaPath := strings.TrimSpace(vc.JavaPath)
-	if javaPath == "" && settings.UseRootSettings {
-		javaPath = strings.TrimSpace(r.JavaPath)
-	}
-	if javaPath == "" {
-		javaPath = strings.TrimSpace(settings.JavaPath)
-	}
-	// memoryMB 0 means automatic (see MemoryPlan / AutoMemoryFor).
-	_, memoryMB := r.MemoryPlan(versionID, settings)
-	rawJVM := strings.TrimSpace(vc.JVMArgs)
-	if rawJVM == "" && settings.UseRootSettings {
-		rawJVM = strings.TrimSpace(r.JVMArgs)
-	}
-	if rawJVM == "" {
-		rawJVM = strings.TrimSpace(settings.JVMArgs)
-	}
-	jvmArgs, err := ParseJVMArgs(rawJVM)
-	return javaPath, memoryMB, jvmArgs, err
+	return s.saveConfigLocked(draft)
 }
 func (r Root) VersionDir() string {
 	if r.SelectedVersion != "" {
@@ -213,18 +143,6 @@ func (r Root) VersionDir() string {
 		}
 	}
 	return r.Path
-}
-func validateOptionalMemory(memoryMB int) error {
-	if memoryMB == 0 {
-		return nil
-	}
-	if memoryMB < 512 || memoryMB > 131072 {
-		return errors.New("内存设置无效")
-	}
-	if info, e := SystemMemory(); e == nil && memoryMB > info.MaxMB {
-		return fmt.Errorf("设置内存超过系统内存上限 %d MB", info.MaxMB)
-	}
-	return nil
 }
 
 // UpdateRoot saves directory defaults; memoryMB −1 selects automatic
@@ -246,18 +164,19 @@ func (s *Service) UpdateRoot(rootID, name, javaPath string, memoryMB int, jvmArg
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for i, r := range s.cfg.Roots {
+	draft := s.cfg.clone()
+	for i, r := range draft.Roots {
 		if r.ID == rootID {
 			if strings.TrimSpace(name) != "" {
-				s.cfg.Roots[i].Name = strings.TrimSpace(name)
+				draft.Roots[i].Name = strings.TrimSpace(name)
 			}
-			s.cfg.Roots[i].JavaPath = strings.TrimSpace(javaPath)
-			s.cfg.Roots[i].MemoryMB = memoryMB
-			s.cfg.Roots[i].MemoryAuto = auto
+			draft.Roots[i].JavaPath = strings.TrimSpace(javaPath)
+			draft.Roots[i].MemoryMB = memoryMB
+			draft.Roots[i].MemoryAuto = auto
 			if len(jvmArgs) > 0 {
-				s.cfg.Roots[i].JVMArgs = rawJVM
+				draft.Roots[i].JVMArgs = rawJVM
 			}
-			return s.saveLocked()
+			return s.saveConfigLocked(draft)
 		}
 	}
 	return errors.New("目录不存在")
@@ -284,16 +203,17 @@ func (s *Service) UpdateVersionConfig(rootID, versionID, javaPath string, memory
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for i, r := range s.cfg.Roots {
+	draft := s.cfg.clone()
+	for i, r := range draft.Roots {
 		if r.ID == rootID {
-			if s.cfg.Roots[i].VersionConfigs == nil {
-				s.cfg.Roots[i].VersionConfigs = map[string]VersionConfig{}
+			if draft.Roots[i].VersionConfigs == nil {
+				draft.Roots[i].VersionConfigs = map[string]VersionConfig{}
 			}
-			name := s.cfg.Roots[i].VersionConfigs[versionID].DisplayName
+			name := draft.Roots[i].VersionConfigs[versionID].DisplayName
 			if javaPath == "" && memoryMB == 0 && !auto && jvmArgs == "" && name == "" {
-				delete(s.cfg.Roots[i].VersionConfigs, versionID)
+				delete(draft.Roots[i].VersionConfigs, versionID)
 			} else {
-				s.cfg.Roots[i].VersionConfigs[versionID] = VersionConfig{
+				draft.Roots[i].VersionConfigs[versionID] = VersionConfig{
 					JavaPath:    javaPath,
 					MemoryMB:    memoryMB,
 					MemoryAuto:  auto,
@@ -301,202 +221,30 @@ func (s *Service) UpdateVersionConfig(rootID, versionID, javaPath string, memory
 					DisplayName: name,
 				}
 			}
-			return s.saveLocked()
+			return s.saveConfigLocked(draft)
 		}
 	}
 	return errors.New("目录不存在")
 }
-func findVersionJSON(root, dirName string) (string, error) {
-	p, e := safeJoin(root, "versions/"+dirName+"/"+dirName+".json")
-	if e == nil {
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
-		}
-	}
-	vDir, e := safeJoin(root, "versions/"+dirName)
+
+// InstanceFolder returns (creating it if needed) a sub folder of the
+// selected version's game folder: mods, saves, screenshots, ...
+func (s *Service) InstanceFolder(rootID, versionID, sub string) (string, error) {
+	r, e := s.rootAt(rootID, versionID)
 	if e != nil {
 		return "", e
 	}
-	files, e := os.ReadDir(vDir)
-	if e != nil {
-		return "", e
+	switch sub {
+	case "", "mods", "saves", "screenshots", "resourcepacks", "shaderpacks", "logs", "crash-reports", "config":
+	default:
+		return "", errors.New("unsupported folder")
 	}
-	for _, f := range files {
-		if f.IsDir() || !strings.HasSuffix(strings.ToLower(f.Name()), ".json") {
-			continue
-		}
-		cand, err := safeJoin(root, "versions/"+dirName+"/"+f.Name())
-		if err != nil {
-			continue
-		}
-		b, err := os.ReadFile(cand)
-		if err != nil {
-			continue
-		}
-		var gv gameVersion
-		if json.Unmarshal(b, &gv) == nil && (gv.MainClass != "" || gv.InheritsFrom != "" || len(gv.Libraries) > 0) {
-			return cand, nil
+	p := r.VersionDir()
+	if sub != "" {
+		p = filepath.Join(p, sub)
+		if e := os.MkdirAll(p, 0755); e != nil {
+			return "", e
 		}
 	}
-	return "", os.ErrNotExist
-}
-func scanVersions(root string) []VersionSummary {
-	versions, _ := scanVersionsWithFiles(root)
-	return versions
-}
-
-// Return the exact metadata paths with the result so the inventory can watch
-// them without enumerating the same version directories a second time.
-func scanVersionsWithFiles(root string) ([]VersionSummary, []string) {
-	var files []string
-	out := []VersionSummary{}
-	metadata := map[string]gameVersion{}
-	versionsDir, err := safeJoin(root, "versions")
-	if err != nil {
-		return out, files
-	}
-	entries, _ := os.ReadDir(versionsDir)
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		files = append(files, filepath.Join("versions", entry.Name()))
-		p, e := findVersionJSON(root, entry.Name())
-		if e != nil {
-			continue
-		}
-		if rel, err := filepath.Rel(root, p); err == nil {
-			files = append(files, rel)
-		}
-		b, e := os.ReadFile(p)
-		if e != nil {
-			continue
-		}
-		var v gameVersion
-		if json.Unmarshal(b, &v) != nil {
-			continue
-		}
-		metadata[entry.Name()] = v
-	}
-	// Resolve only local parents: scanning a folder must never fetch or change
-	// its version files. Bounds and a per-chain set handle missing/cyclic parents.
-	var resolve func(string, map[string]bool) gameVersion
-	resolve = func(id string, seen map[string]bool) gameVersion {
-		v := metadata[id]
-		seen[id] = true
-		if parent := v.InheritsFrom; parent != "" && !seen[parent] && len(seen) < 12 {
-			if _, present := metadata[parent]; present {
-				v = mergeVersion(resolve(parent, seen), v)
-			}
-		}
-		v.ClientVersion = minecraftVersionOf(v)
-		return v
-	}
-	for id := range metadata {
-		v := resolve(id, map[string]bool{})
-		loader, mc := detectLoader(v), minecraftVersionOf(v)
-		out = append(out, VersionSummary{ID: id, Minecraft: mc, Loader: loader, LoaderVersion: loaderVersion(v, loader, mc), Snapshot: isSnapshotID(mc), JavaVersion: v.JavaVersion.MajorVersion})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
-	return out, files
-}
-func readPack(root string) *PackLock {
-	path, e := safeJoin(root, ".mcl/pack-lock.json")
-	if e != nil {
-		return nil
-	}
-	b, e := os.ReadFile(path)
-	if e != nil {
-		return nil
-	}
-	var p PackLock
-	if json.Unmarshal(b, &p) != nil {
-		return nil
-	}
-	upgradeLock(&p)
-	return &p
-}
-func (s *Service) Snapshot() Snapshot {
-	s.mu.Lock()
-	cfg := s.cfg
-	cfg.Roots = make([]Root, len(s.cfg.Roots))
-	for i, r := range s.cfg.Roots {
-		if len(r.VersionConfigs) > 0 {
-			copied := make(map[string]VersionConfig, len(r.VersionConfigs))
-			for k, v := range r.VersionConfigs {
-				copied[k] = v
-			}
-			r.VersionConfigs = copied
-		}
-		cfg.Roots[i] = r
-	}
-	cfg.Accounts = append([]Account{}, s.cfg.Accounts...)
-	authServers := s.authServersLocked()
-	sysMem, _ := SystemMemory()
-	jobs := s.jobListLocked()
-	running := map[string]bool{}
-	runVers := map[string][]string{}
-	for k := range s.running {
-		id, ver, _ := strings.Cut(k, "|")
-		ver, _, _ = strings.Cut(ver, "#") // a second copy of the same version
-		running[id] = true
-		if !slices.Contains(runVers[id], ver) {
-			runVers[id] = append(runVers[id], ver)
-		}
-	}
-	s.mu.Unlock()
-	out := Snapshot{Settings: cfg.Settings, Instances: []Instance{}, Accounts: cfg.Accounts, ActiveRoot: cfg.ActiveRoot, ActiveAccount: cfg.ActiveAccount, Jobs: jobs, AuthServers: authServers, DataDir: s.dir}
-	out.Services = ServiceAvailability{Microsoft: s.distribution.HasMicrosoft(), CurseForge: s.distribution.HasCurseForge()}
-	for _, r := range cfg.Roots {
-		index := s.rootInventory(r)
-		versions := index.versions()
-		for i := range versions {
-			if vc, ok := r.VersionConfigs[versions[i].ID]; ok {
-				versions[i].JavaPath = vc.JavaPath
-				versions[i].MemoryMB = vc.MemoryMB
-				versions[i].MemoryAutoSet = vc.MemoryAuto
-				versions[i].JVMArgs = vc.JVMArgs
-				versions[i].DisplayName = vc.DisplayName
-			}
-			versions[i].MemoryAuto, _ = r.MemoryPlan(versions[i].ID, cfg.Settings)
-			versions[i].AutoMemoryMB = AutoMemoryMB(AutoMemoryInput{TotalMB: sysMem.TotalMB, AvailableMB: sysMem.AvailableMB,
-				Minecraft: versions[i].Minecraft, Loader: versions[i].Loader, Mods: index.modCount(versions[i].ID).Enabled})
-		}
-		out.Instances = append(out.Instances, Instance{Root: r, Available: index.Available, Versions: versions, ModCount: index.modCount(r.SelectedVersion).Total, Pack: index.Pack, Running: running[r.ID], RunningVersions: runVers[r.ID], PackUpdate: index.PackUpdate, PackBackups: slices.Clone(index.PackBackups)})
-	}
-	return out
-}
-
-// detectLoader classifies a version JSON. Libraries are checked by
-// priority rather than order: NeoForge versions also ship helper libraries
-// under net.minecraftforge (e.g. srgutils), so NeoForge must win over Forge.
-func detectLoader(v gameVersion) string {
-	found := map[string]bool{}
-	for _, lib := range v.Libraries {
-		switch {
-		case strings.HasPrefix(lib.Name, "net.fabricmc:fabric-loader:"):
-			found["fabric"] = true
-		case strings.HasPrefix(lib.Name, "org.quiltmc:quilt-loader:"):
-			found["quilt"] = true
-		case strings.HasPrefix(lib.Name, "net.neoforged"):
-			found["neoforge"] = true
-		case strings.HasPrefix(lib.Name, "net.minecraftforge:"):
-			found["forge"] = true
-		}
-	}
-	for _, l := range []string{"neoforge", "quilt", "fabric", "forge"} {
-		if found[l] {
-			return l
-		}
-	}
-	if strings.HasPrefix(v.MainClass, "net.neoforged.") || versionArgument(v, "--fml.neoForgeVersion", "-Dfml.neoForgeVersion") != "" {
-		return "neoforge"
-	}
-	low := strings.ToLower(v.ID + " " + v.InheritsFrom)
-	for _, l := range []string{"neoforge", "forge", "fabric", "quilt"} {
-		if strings.Contains(low, l) {
-			return l
-		}
-	}
-	return "vanilla"
+	return p, nil
 }

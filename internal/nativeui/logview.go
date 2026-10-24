@@ -6,221 +6,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-
-	"github.com/Viking602/YoloMCL/internal/launcher"
 )
-
-// logViewState holds at most logMaxLoaded parsed lines; the file is read
-// from its end in pages (launcher.TailLines) and only rows in view are laid
-// out.
-type logViewState struct {
-	compact      bool   // narrow pane: icon toolbar, fewer header columns
-	key          string // sess:<id> | file:<path>
-	lines        []logLine
-	start        int64 // file offset of lines[0]; >0 means older lines exist
-	path         string
-	file         string // a log file picked from the recent list
-	live         bool
-	dropped      int
-	loading      bool
-	loadingOlder bool
-	follow       bool
-	setY, maxY   float32
-	levels       map[string]bool // chips picked; none = all
-	query        string
-	match        int // current search hit, an index into hits
-	open         map[string]bool
-	clearAt      int // session lines before this global index are hidden
-	lastPoll     time.Time
-	gen, ver     int
-	err          string
-	// derived from lines, rebuilt when sig changes
-	sig                      string
-	vis                      []int
-	hits                     []int // positions in vis
-	counts                   map[string]int
-	offsets                  []float32
-	measured                 map[logMeasureKey]float32
-	layoutSig, layoutLang    string
-	layoutWidth, layoutScale float32
-	anchor                   *int // clicked stack heading to keep visible after expansion
-	prepended                bool
-	prependLine              int
-	prependOffset            float32
-	// recent files for the empty state
-	recent    []launcher.LogFile
-	recentKey string
-	recentAt  time.Time
-}
-
-const (
-	logPageLines = launcher.LogRingLines
-	logMaxLoaded = 4 * launcher.LogRingLines
-)
-
-// derive rebuilds visible rows, search hits and level counts when needed.
-func (lv *logViewState) derive() {
-	q := strings.ToLower(strings.TrimSpace(lv.query))
-	sig := fmt.Sprint(lv.ver, len(lv.lines), lv.dropped, lv.clearAt, q, len(lv.open), lv.levels)
-	if sig == lv.sig {
-		return
-	}
-	lv.sig = sig
-	all := len(lv.levels) == 0
-	var groupHit map[int]bool
-	if q != "" {
-		groupHit = map[int]bool{}
-		for i, l := range lv.lines {
-			if strings.Contains(strings.ToLower(l.raw), q) {
-				h := i
-				if l.cont && l.parent >= 0 {
-					h = l.parent
-				}
-				groupHit[h] = true
-			}
-		}
-	}
-	lv.counts = map[string]int{}
-	lv.vis, lv.hits = lv.vis[:0], lv.hits[:0]
-	for i, l := range lv.lines {
-		if i+lv.dropped < lv.clearAt {
-			continue
-		}
-		head := i
-		if l.cont && l.parent >= 0 {
-			head = l.parent
-		}
-		h := lv.lines[head]
-		if !l.cont {
-			lv.counts[levelKey(l.level)]++
-		}
-		if !all && !lv.levels[levelKey(h.level)] {
-			continue
-		}
-		if l.cont && h.stack && !lv.open[h.raw] && !groupHit[head] {
-			continue
-		}
-		if q != "" && strings.Contains(strings.ToLower(l.raw), q) {
-			lv.hits = append(lv.hits, len(lv.vis))
-		}
-		lv.vis = append(lv.vis, i)
-	}
-	if lv.match >= len(lv.hits) {
-		lv.match = max(0, len(lv.hits)-1)
-	}
-}
-
-// loadLogs reloads the newest page in the background; only the log view
-// changes (no busy state).
-func (a *App) loadLogs() {
-	r := a.root()
-	if r == nil || a.service == nil {
-		return
-	}
-	lv := &a.logView
-	id, ver := r.ID, r.SelectedVersion
-	scope := a.logScope()
-	sid, key, file := "", "", lv.file
-	if g := a.selectedSession(scope, a.scopedSessions(scope)); g != nil && file == "" {
-		sid, key = g.ID, "sess:"+g.ID
-	} else if file != "" {
-		key = "file:" + file
-	} else {
-		lv.key, lv.lines, lv.loading = "", nil, false
-		return // the empty state lists recent files instead
-	}
-	if lv.key != key {
-		// Each session keeps its own chips and search.
-		if a.logFilters == nil {
-			a.logFilters = map[string]logFilter{}
-		}
-		if lv.key != "" {
-			a.logFilters[lv.key] = logFilter{lv.levels, lv.query}
-		}
-		f := a.logFilters[key]
-		report := false
-		for _, item := range lv.recent {
-			if item.Path == file && item.Kind == "crash" {
-				report = true
-			}
-		}
-		*lv = logViewState{key: key, file: file, follow: !report, levels: f.levels, query: f.query, recent: lv.recent, recentKey: lv.recentKey, recentAt: lv.recentAt}
-		if report {
-			if tr := scrollTracks[a.logScrollKey()]; tr != nil {
-				tr.st.Y = 0
-			}
-		}
-	}
-	lv.gen++
-	gen := lv.gen
-	lv.loading = true
-	lv.lastPoll = time.Now()
-	go func() {
-		var chunk launcher.LogChunk
-		var e error
-		if sid != "" {
-			chunk, e = a.service.SessionTail(sid, logPageLines)
-			chunk.Start = 0 // the ring is all there is; no older pages
-		} else {
-			chunk, e = a.service.FileTail(id, ver, file, logPageLines, -1)
-		}
-		lines := parseLogLines(chunk.Lines, "")
-		a.post(func() {
-			if gen != lv.gen || lv.key != key {
-				return
-			}
-			lv.loading = false
-			if e != nil {
-				lv.err = a.friendlyErr(e)
-				return
-			}
-			lv.err = ""
-			lv.lines = lines
-			lv.ver++
-			lv.start, lv.path, lv.live, lv.dropped = chunk.Start, chunk.Path, chunk.Live, chunk.Dropped
-			a.logText = ""
-		})
-	}()
-}
-
-func (a *App) loadOlderLogs() {
-	lv := &a.logView
-	r := a.root()
-	if r == nil || lv.file == "" || lv.loadingOlder || lv.start <= 0 || len(lv.lines) >= logMaxLoaded {
-		return
-	}
-	lv.loadingOlder = true
-	id, ver, key, before, file := r.ID, r.SelectedVersion, lv.key, lv.start, lv.file
-	go func() {
-		chunk, e := a.service.FileTail(id, ver, file, 2000, before)
-		older := parseLogLines(chunk.Lines, "")
-		a.post(func() {
-			lv.loadingOlder = false
-			if e != nil || lv.key != key || lv.start != before {
-				return
-			}
-			oldLine := 0
-			if len(lv.vis) > 0 {
-				oldLine = lv.vis[0]
-			}
-			oldY := lv.lineOffset(oldLine)
-			for i := range lv.lines {
-				if lv.lines[i].parent >= 0 {
-					lv.lines[i].parent += len(older)
-				}
-			}
-			lv.lines = append(older, lv.lines...)
-			lv.start = chunk.Start
-			lv.ver++
-			// Rebase the current viewport on the same old line after the new
-			// variable-height prefix is measured on the next frame.
-			if tr := scrollTracks[a.logScrollKey()]; tr != nil {
-				lv.prependLine, lv.prependOffset = oldLine+len(older), tr.st.Y-oldY
-				lv.prepended = true
-			}
-		})
-	}()
-}
 
 var logRowHeight float32 = 24
 
@@ -269,29 +55,62 @@ func (a *App) logsDialog(c *ui.Context) {
 		paneW = min(1100*s, float32(ww)*.94) - 48*s
 	}
 	lv.compact = paneW < 900*s
-	if len(sess) > 1 && lv.file == "" {
-		a.sessionSwitcher(c, scope, sess, cur)
-	}
-	if r != nil && cur == nil && lv.file == "" {
-		a.logEmpty(c, r, scope)
-		return
-	}
+	page, dir := "session", float32(1)
 	if lv.file != "" {
-		a.fileHeader(c)
-	} else if cur != nil {
-		a.sessionHeader(c, cur, scope, sess)
-		if cur.State == "crashed" && cur.Insight != nil {
-			a.crashCard(c, cur)
+		page = "file"
+	} else if r != nil && cur == nil {
+		page, dir = "recent", -1
+	}
+	back := false
+	// Keep one viewport beneath the tabs. Only navigation changes this page's
+	// identity; incoming log lines and file-to-file reads keep their layout.
+	ui.Box(c.Key("log-navigation")).Label("日志切换区域").FillWidth().Grow(1).Basis(0).MinHeight(0).Clip().Children(func() {
+		body := ui.Column(c.Key("log-page-" + page)).Label("日志页面 " + page).Absolute().Left(0).Top(0).Right(0).Bottom(0).Gap(16 * s)
+		transition := ui.ElementTransition{Colors: true}
+		if !c.Preferences().ReduceMotion {
+			transition.Animation = &motionEnter
+			transition.Enter = &ui.Motion{Opacity: 0, X: dir * 20 * s}
+			transition.Exit = &ui.Motion{Opacity: 0, X: dir * 12 * s}
 		}
-	}
-	lv.derive()
-	a.logToolbar(c, cur, sk)
-	if lv.start > 0 && lv.file != "" {
-		ui.Row(c.Key("log-truncated")).FillWidth().Height(20 * s).Shrink(0).AlignItems(ui.Center).Children(func() {
-			label(c, fmt.Sprintf(a.L("已载入最近 %d 行，向上滚动可加载更早内容", "Latest %d lines loaded; scroll up for more"), len(lv.lines))).FontSize(typeFootnote * s).SingleLine().Shrink(1)
+		body.Children(func() {
+			if len(sess) > 1 && lv.file == "" {
+				a.sessionSwitcher(c, scope, sess, cur)
+			}
+			if page == "recent" {
+				a.logEmpty(c, r, scope)
+				return
+			}
+			if lv.file != "" {
+				back = a.fileHeader(c)
+			} else if cur != nil {
+				a.sessionHeader(c, cur, scope, sess)
+				if cur.State == "crashed" && cur.Insight != nil {
+					a.crashCard(c, cur)
+				}
+			}
+			lv.derive()
+			a.logToolbar(c, cur, sk)
+			if lv.start > 0 && lv.file != "" {
+				ui.Row(c.Key("log-truncated")).FillWidth().Height(20 * s).Shrink(0).AlignItems(ui.Center).Children(func() {
+					label(c, fmt.Sprintf(a.L("已载入最近 %d 行，向上滚动可加载更早内容", "Latest %d lines loaded; scroll up for more"), len(lv.lines))).FontSize(typeFootnote * s).SingleLine().Shrink(1)
+				})
+			}
+			a.logFrame(c, sk)
 		})
+		if back || (page == "recent" && lv.file != "") {
+			// Let the old text leave sooner than the new page arrives.
+			transition.Animation = &motionFast
+		}
+		body.Transition(transition)
+	})
+	if back {
+		// Finish building the outgoing page before clearing its contents. The
+		// native transition retains an inert copy while the list returns.
+		lv.gen++
+		lv.file, lv.key, lv.path, lv.err = "", "", "", ""
+		lv.lines, lv.loading, lv.loadingOlder = nil, false, false
+		c.AnimationFrame()
 	}
-	a.logFrame(c, sk)
 }
 
 // logFrame is the virtualized line list, with follow-latest.
@@ -325,9 +144,13 @@ func (a *App) logFrame(c *ui.Context, sk string) {
 			case len(lv.lines) > 0:
 				msg = a.L("没有符合筛选的行", "No lines match the filter")
 			}
-			ui.Column(c.Key("log-frame-empty")).Fill().Gap(10 * s).Center().Children(func() {
-				ui.Icon(c, icons["terminal"]).Size(22*s, 22*s).TextColor(muted)
-				label(c, msg).FontSize(typeCallout * s)
+			ui.Column(c.Key("log-frame-empty")).Font(uiSansFamily()).Fill().Padding(16*s, 24*s).Gap(12 * s).Center().Children(func() {
+				if lv.loading && len(lv.lines) == 0 {
+					statusSpinner(c, 22*s)
+				} else {
+					emptyArtwork(c, "log-lines", "terminal", .85*s)
+				}
+				label(c, msg).FillWidth().MaxWidth(520 * s).FontSize(typeCallout * s).TextAlign(ui.Center)
 				if lv.clearAt > 0 && fixedButton(c, "log-unclear", a.L("显示全部", "Show all"), "", 0, btnSm*s, false, false) {
 					lv.clearAt = 0
 				}
@@ -480,10 +303,10 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 	lv := &a.logView
 	l := lv.lines[i]
 	head := l
-	if l.cont && l.parent >= 0 {
-		head = lv.lines[l.parent]
+	if l.Cont && l.Parent >= 0 {
+		head = lv.lines[l.Parent]
 	}
-	fg, chip := levelTone(head.level)
+	fg, chip := levelTone(head.Level)
 	q := strings.TrimSpace(lv.query)
 	row := ui.Row(c.Key(fmt.Sprint("log-", i))).Label("日志行 "+fmt.Sprint(i)).FillWidth().Height(rowH).Padding(4*s, 14*s).Gap(10 * s).AlignItems(ui.Center)
 	switch {
@@ -491,52 +314,52 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 		row.Background(ui.Hex("#ff9f0a").Alpha(.16))
 	case mark == 1:
 		row.Background(ui.Hex("#ffd60a").Alpha(.10))
-	case levelRank(head.level) == 2:
+	case levelRank(head.Level) == 2:
 		row.Background(ui.Hex("#ff3b30").Alpha(.04))
 	}
 	msgFg := ink
-	if levelRank(head.level) > 0 {
+	if levelRank(head.Level) > 0 {
 		msgFg = fg
 	}
 	row.Children(func() {
-		if l.cont {
+		if l.Cont {
 			ui.Box(c).Width(2 * s).Height(rowH - 8*s).Background(chip).Shrink(0)
-			if levelRank(head.level) == 0 {
+			if levelRank(head.Level) == 0 {
 				msgFg = inkSecondary
 			}
-			ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 " + fmt.Sprint(i)).Grow(1).MinWidth(0).Tooltip(l.raw)
+			ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 " + fmt.Sprint(i)).Grow(1).MinWidth(0).Tooltip(l.Raw)
 			return
 		}
-		if l.structured() {
-			full := l.full
+		if l.Structured() {
+			full := l.Full
 			if full == "" {
-				full = l.time
+				full = l.Time
 			}
-			ui.Text(c, l.time).Width(84 * s).Shrink(0).FontSize(typeCaption * s).FontFeatures("tnum").TextColor(muted).SingleLine().Tooltip(full)
-			if l.level != "" {
+			ui.Text(c, l.Time).Width(84 * s).Shrink(0).FontSize(typeCaption * s).FontFeatures("tnum").TextColor(muted).SingleLine().Tooltip(full)
+			if l.Level != "" {
 				ui.Row(c).Width(52 * s).Height(16 * s).Shrink(0).Radius(4 * s).Background(chip).Center().Unselectable().Children(func() {
-					ui.Text(c, l.level).FontSize(typeCaption2 * s).FontWeight(700).TextColor(fg).NoWrap()
+					ui.Text(c, l.Level).FontSize(typeCaption2 * s).FontWeight(700).TextColor(fg).NoWrap()
 				})
 			} else {
 				ui.Box(c).Width(52 * s).Shrink(0)
 			}
-			who := l.logger
+			who := l.Logger
 			if who == "" {
-				who = l.thread
+				who = l.Thread
 			}
-			ui.Text(c, who).Width(140 * s).Shrink(0).FontSize(typeCaption * s).TextColor(muted).SingleLine().Tooltip(strings.TrimSpace(l.thread + "  " + l.logger))
+			ui.Text(c, who).Width(140 * s).Shrink(0).FontSize(typeCaption * s).TextColor(muted).SingleLine().Tooltip(strings.TrimSpace(l.Thread + "  " + l.Logger))
 		}
-		text := ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 " + fmt.Sprint(i)).Grow(1).MinWidth(0).Tooltip(l.raw)
-		if l.structured() {
+		text := ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 " + fmt.Sprint(i)).Grow(1).MinWidth(0).Tooltip(l.Raw)
+		if l.Structured() {
 			text.SingleLine()
 		}
-		if l.repeat > 1 {
+		if l.Repeat > 1 {
 			ui.Row(c).Height(18 * s).PaddingX(7 * s).Radius(999).Background(ui.RGBA(120, 130, 160, .12)).AlignItems(ui.Center).Shrink(0).Unselectable().Children(func() {
-				ui.Text(c, fmt.Sprintf("×%d", l.repeat)).FontSize(typeCaption2 * s).FontWeight(700).FontFeatures("tnum").TextColor(inkSecondary).NoWrap()
+				ui.Text(c, fmt.Sprintf("×%d", l.Repeat)).FontSize(typeCaption2 * s).FontWeight(700).FontFeatures("tnum").TextColor(inkSecondary).NoWrap()
 			})
 		}
-		if l.stack && l.kids > 0 {
-			open := lv.open[l.raw]
+		if l.Stack && l.Kids > 0 {
+			open := lv.open[l.Raw]
 			text := a.logStackLabel(l)
 			b := ui.ButtonBase(c.Key(fmt.Sprint("log-stack-", i))).Label(text).Height(18 * s).PaddingX(8 * s).Gap(4 * s).Radius(999).AlignItems(ui.Center).Shrink(0).Background(chip).Unselectable()
 			if b.Children(func() {
@@ -551,9 +374,9 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 					lv.open = map[string]bool{}
 				}
 				if open {
-					delete(lv.open, l.raw)
+					delete(lv.open, l.Raw)
 				} else {
-					lv.open[l.raw] = true
+					lv.open[l.Raw] = true
 					line := i
 					lv.anchor, lv.follow = &line, false
 				}

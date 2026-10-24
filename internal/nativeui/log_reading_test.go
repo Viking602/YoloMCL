@@ -3,6 +3,7 @@ package nativeui
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -45,7 +46,7 @@ func TestCrashReportUsesFullWidthAndShowsCause(t *testing.T) {
 			t.Fatalf("report retained metadata gutter: %+v / %+v", body, frame)
 		}
 	}
-	if a.logView.lines[4].cont || a.logView.lines[4].kids != 2 {
+	if a.logView.lines[4].Cont || a.logView.lines[4].Kids != 2 {
 		t.Fatal("root cause hidden under a blank line")
 	}
 	row, _ := tt.Find("日志行 4")
@@ -117,12 +118,16 @@ func TestExpandedStackWrapsAndKeepsItsStartVisible(t *testing.T) {
 }
 
 func TestLogFolderActionsKeepTheFileListOpen(t *testing.T) {
+	var revealed []string
+	previousReveal := revealLogPath
+	revealLogPath = func(path string) { revealed = append(revealed, path) }
+	t.Cleanup(func() { revealLogPath = previousReveal })
 	a, tt := homeTester(t, LangZH)
 	defer func() { a.cancel(); a.bgWG.Wait() }()
 	a.instTab = "logs"
 	a.logSess = logSessions{polled: time.Now().Add(time.Hour)}
 	root := a.root()
-	base := filepath.Join(t.TempDir(), "My Pack #1 中文")
+	base := filepath.Join(t.TempDir(), "My Pack #1 中文, 100% & friends")
 	files := []launcher.LogFile{
 		{Name: "latest.log", Path: filepath.Join(base, "logs", "latest.log"), Kind: "log"},
 		{Name: "crash-test.txt", Path: filepath.Join(base, "crash-reports", "crash-test.txt"), Kind: "crash"},
@@ -131,25 +136,33 @@ func TestLogFolderActionsKeepTheFileListOpen(t *testing.T) {
 	tt.Frame()
 	tt.Advance(300 * time.Millisecond)
 	for i, f := range files {
-		clickUI(t, tt, "打开所在目录："+f.Name)
-		opened := tt.OpenedURLs()
-		if len(opened) != i+1 {
-			t.Fatal("folder action did not open a URL")
-		}
-		u, err := url.Parse(opened[i])
-		wantPath := filepath.ToSlash(filepath.Dir(f.Path))
-		if !strings.HasPrefix(wantPath, "/") { // file:///C:/... on Windows
-			wantPath = "/" + wantPath
-		}
-		if err != nil || u.Scheme != "file" || u.Path != wantPath || a.logView.file != "" {
-			t.Fatalf("wrong folder or row also opened the log: %v, %s", opened, a.logView.file)
+		clickUI(t, tt, "在文件夹中显示："+f.Name)
+		if len(revealed) != i+1 || revealed[i] != f.Path || len(tt.OpenedURLs()) != 0 || a.logView.file != "" {
+			t.Fatalf("folder action must reveal the exact file and leave the list open: %v, %s", revealed, a.logView.file)
 		}
 	}
-	a.logView = logViewState{key: "file:" + files[1].Path, file: files[1].Path, path: files[1].Path, lines: parseLogLines([]string{"Crash report"}, "")}
-	tt.Frame()
-	clickUI(t, tt, "打开所在目录")
-	if len(tt.OpenedURLs()) != 3 {
-		t.Fatal("viewer missing folder action")
+	// A selected report takes precedence over an older tail path, including
+	// while its text is still loading and in the compact toolbar.
+	a.logView = logViewState{key: "file:" + files[1].Path, file: files[1].Path, path: files[0].Path, lines: parseLogLines([]string{"Crash report"}, "")}
+	for i, width := range []int{1536, 900} {
+		tt.SetSize(width, 1024)
+		clickUI(t, tt, "在文件夹中显示")
+		if len(revealed) != i+3 || revealed[i+2] != files[1].Path || len(tt.OpenedURLs()) != 0 {
+			t.Fatalf("viewer revealed a different file or used a URL: %v", revealed)
+		}
+	}
+	clickUI(t, tt, "打开文件")
+	opened := tt.OpenedURLs()
+	if len(opened) != 1 {
+		t.Fatal("opening a file must remain separate from showing it in a folder")
+	}
+	u, err := url.Parse(opened[0])
+	wantPath := filepath.ToSlash(files[1].Path)
+	if !strings.HasPrefix(wantPath, "/") {
+		wantPath = "/" + wantPath
+	}
+	if err != nil || u.Scheme != "file" || u.Path != wantPath || len(revealed) != 4 {
+		t.Fatalf("opening the report targeted a different file: %v", opened)
 	}
 	snapshotUI(t, tt, "log-folder-action")
 }
@@ -177,4 +190,107 @@ func TestOpeningLogAnimatesOnlyTheBody(t *testing.T) {
 			t.Fatalf("opening another file has no animation: %+v", firstBody)
 		}
 	}
+}
+
+func logNavigationTester(t *testing.T) (*App, *ui.Tester) {
+	t.Helper()
+	a, tt := logReadingTester(t, []string{"Initial file"})
+	a.bgWG.Wait()
+	tt.Frame()
+	a.service = nil // drive disk completion explicitly, independently of motion
+	r := a.root()
+	a.logView = logViewState{recentKey: r.ID + "|" + r.SelectedVersion, recentAt: time.Now(), recent: []launcher.LogFile{
+		{Name: "latest.log", Path: "latest.log", Kind: "log", Size: 1024},
+		{Name: "crash-report.txt", Path: "crash-report.txt", Kind: "crash", Size: 2048},
+	}}
+	tt.Frame()
+	tt.Advance(400 * time.Millisecond)
+	return a, tt
+}
+
+func TestLogNavigationAnimatesOpenAndBack(t *testing.T) {
+	for _, width := range []int{900, 1536} {
+		for _, reduce := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%d-reduced-%v", width, reduce), func(t *testing.T) {
+				a, tt := logNavigationTester(t)
+				tt.SetSize(width, 1024)
+				tt.SetPreferences(ui.Preferences{ReduceMotion: reduce})
+				tt.Advance(400 * time.Millisecond)
+				tabs, _ := tt.Find("实例标签")
+				tabPixels := overviewRegionPixels(tt.Image(), tabs)
+				for _, name := range []string{"latest.log", "crash-report.txt"} {
+					clickUI(t, tt, name)
+					a.logView.key, a.logView.loading = "file:"+name, true
+					tt.Move(0, 0)
+					tt.Frame()
+					if a.logView.file != name || !tt.HasText("正在读取日志") {
+						t.Fatal("opening a file did not enter the reader before its data arrived")
+					}
+					tt.Advance(70 * time.Millisecond)
+					mid, _ := tt.Find("日志页面 file")
+					midMarker, _ := tt.Find("按钮文字 log-file-back")
+					snapshotUI(t, tt, fmt.Sprintf("log-open-%d-%v-%s", width, reduce, name))
+					tt.Advance(300 * time.Millisecond)
+					end, _ := tt.Find("日志页面 file")
+					endMarker, _ := tt.Find("按钮文字 log-file-back")
+					if mid.H != end.H || math.Abs(float64(midMarker.W-endMarker.W)) > .1 || midMarker.H != endMarker.H || (!reduce && midMarker.X <= endMarker.X) || (reduce && mid != end) {
+						t.Fatalf("opening must slide in at native size, unless motion is reduced: %+v -> %+v", mid, end)
+					}
+					// Late disk data animates only the lines, not the reader again.
+					a.logView.loading = false
+					a.logView.lines = parseLogLines([]string{"Contents of " + name}, "")
+					a.logView.ver++
+					tt.Frame()
+					if now, _ := tt.Find("日志页面 file"); now != end {
+						t.Fatal("disk completion replayed navigation")
+					}
+					tt.Advance(200 * time.Millisecond)
+					clickUI(t, tt, a.L("返回", "Back"))
+					tt.Move(0, 0)
+					tt.Advance(70 * time.Millisecond)
+					mid, _ = tt.Find("日志页面 recent")
+					midMarker, _ = tt.Find(a.L("现在没有运行中的游戏", "No game is running"))
+					snapshotUI(t, tt, fmt.Sprintf("log-back-%d-%v-%s", width, reduce, name))
+					tt.Advance(300 * time.Millisecond)
+					end, _ = tt.Find("日志页面 recent")
+					endMarker, _ = tt.Find(a.L("现在没有运行中的游戏", "No game is running"))
+					if mid.H != end.H || math.Abs(float64(midMarker.W-endMarker.W)) > .1 || midMarker.H != endMarker.H || (!reduce && midMarker.X >= endMarker.X) || (reduce && mid != end) || a.logView.file != "" || !tt.HasText("日志文件列表") {
+						t.Fatalf("returning must animate the list from the opposite direction: %+v -> %+v", mid, end)
+					}
+					if now, _ := tt.Find("实例标签"); now != tabs || !bytes.Equal(tabPixels, overviewRegionPixels(tt.Image(), tabs)) {
+						t.Fatal("log navigation moved or repainted the instance tabs")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestLogNavigationCanReverseWhileReading(t *testing.T) {
+	a, tt := logNavigationTester(t)
+	for _, name := range []string{"latest.log", "crash-report.txt", "latest.log"} {
+		clickUI(t, tt, name)
+		a.logView.key, a.logView.loading, a.logView.loadingOlder = "file:"+name, true, true
+		generation := a.logView.gen
+		tt.Frame()
+		tt.Advance(35 * time.Millisecond)
+		clickUI(t, tt, a.L("返回", "Back"))
+		tt.Advance(35 * time.Millisecond)
+		if a.logView.file != "" || a.logView.key != "" || a.logView.loading || a.logView.loadingOlder || a.logView.gen <= generation {
+			t.Fatal("returning left a pending read attached to the closed file")
+		}
+	}
+	clickUI(t, tt, "crash-report.txt")
+	a.logView.key = "file:crash-report.txt"
+	a.logView.lines = parseLogLines([]string{"Final report"}, "")
+	a.logView.ver++
+	tt.Frame()
+	tt.Move(0, 0)
+	tt.Advance(400 * time.Millisecond)
+	reader, ok := tt.Find("日志页面 file")
+	viewport, _ := tt.Find("日志切换区域")
+	if !ok || reader != viewport || tt.HasText("日志文件列表") || a.logView.file != "crash-report.txt" || !tt.HasText("日志正文 0") {
+		t.Fatalf("rapid navigation left a stale or displaced view: reader=%+v viewport=%+v", reader, viewport)
+	}
+	snapshotUI(t, tt, "log-navigation-interrupted")
 }

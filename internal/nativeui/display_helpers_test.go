@@ -19,8 +19,8 @@ func TestFriendlyTime(t *testing.T) {
 		{now.Add(-3 * time.Hour), "今天 19:00", "Today 19:00"},
 		{now.Add(-24 * time.Hour), "昨天 22:00", "Yesterday 22:00"},
 		{now.Add(-72 * time.Hour), "3 天前", "3 days ago"},
-		{time.Date(2026, 8, 30, 9, 0, 0, 0, time.Local), "8月30日", "Aug 30"},
-		{time.Date(2025, 8, 30, 9, 0, 0, 0, time.Local), "2025年8月30日", "Aug 30, 2025"},
+		{time.Date(2026, 8, 30, 9, 0, 0, 0, time.Local), "08月30日", "Aug 30"},
+		{time.Date(2025, 8, 9, 9, 0, 0, 0, time.Local), "2025年08月09日", "Aug 09, 2025"},
 	}
 	for _, c := range cases {
 		if g := friendlyTime(false, c.at, now); g != c.zh {
@@ -48,5 +48,20 @@ func TestModWindowVirtualizes(t *testing.T) {
 	list.Y = 200 - 237*60 + 100 // at the very end
 	if _, l := modWindow(237, 60, list, view); l != 237 {
 		t.Fatalf("end window last = %d", l)
+	}
+}
+
+func TestJavaDisplayCapitalises(t *testing.T) {
+	for in, want := range map[string]string{
+		"java-runtime-delta": "Java-runtime-delta",
+		"java-21-openjdk":    "Java-21-openjdk",
+		"JAVA vendor":        "Java vendor",
+		"javaw":              "javaw",
+		"jdk-21.0.4+7":       "jdk-21.0.4+7",
+		"Oracle java SE":     "Oracle Java SE",
+	} {
+		if got := javaDisplay(in); got != want {
+			t.Errorf("%q -> %q want %q", in, got, want)
+		}
 	}
 }

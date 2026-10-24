@@ -3,6 +3,7 @@ package nativeui
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"runtime"
 	"slices"
 	"strings"
@@ -52,14 +53,6 @@ func (a *App) projectInstallDialog(c *ui.Context, maxH float32) {
 	if p == nil {
 		return
 	}
-	if a.form.VersionID == "" && len(a.projectVersions) > 0 {
-		if rec := a.recommendedVersion(); rec != "" {
-			a.form.VersionID = rec
-		} else if a.projShowAll {
-			a.form.VersionID = a.projectVersions[0].ID
-		}
-	}
-	a.ensurePlan()
 	if j := a.planJobState(); j != nil && j.State != "running" && !a.planFinished {
 		a.planFinished = true
 		a.loadMods()
@@ -73,6 +66,7 @@ func (a *App) projectInstallDialog(c *ui.Context, maxH float32) {
 					a.inlineNotice(c, "error", a.message, "")
 				}
 				a.installVersions(c)
+				a.ensurePlan()
 				if p.Type == "mod" && a.form.VersionID != "" {
 					a.installDeps(c)
 				}
@@ -129,9 +123,10 @@ func (a *App) installHeader(c *ui.Context) {
 					shown++
 				}
 				if p.Downloads > 0 {
-					ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+					hint := fmt.Sprintf(a.L("项目总下载量：%s 次", "Total project downloads: %s"), exactDownloadCount(p.Downloads))
+					ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Tooltip(hint).Children(func() {
 						ui.Icon(c, icons["download"]).Size(10*s, 10*s).TextColor(muted)
-						numText(c, compactCount(p.Downloads), typeCaption*s, muted)
+						numText(c, downloadCountText(p.Downloads, a.isEN()), typeCaption*s, muted)
 					})
 				}
 			})
@@ -160,7 +155,7 @@ func (a *App) installHeader(c *ui.Context) {
 	})
 }
 
-const verRowH, verRows = 44, 5
+const verRowH, verRows = 52, 5
 
 func (a *App) installFooter(c *ui.Context) {
 	s := uiScale(c)
@@ -168,41 +163,35 @@ func (a *App) installFooter(c *ui.Context) {
 	t := a.tr()
 	ui.Row(c).FillWidth().Padding(14*s, 24*s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 		r := a.root()
-		if r != nil && p.Type != "modpack" {
-			ui.Text(c, a.L("安装到", "Install to")).FontSize(typeFootnote * s).TextColor(muted).Shrink(0)
-			ui.Row(c).Height(28 * s).PaddingX(6 * s).Gap(7 * s).Radius(8 * s).Background(ui.RGBA(120, 130, 160, .10)).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
-				a.instIcon(c, *r, a.gameVersion(), 18*s)
-				name := r.Name
-				if v := a.gameVersion(); v != nil {
-					name, _ = a.cardText(*r, *v)
-				}
-				ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
-			})
-		}
 		job := a.planJobState()
-		if job != nil && job.State == "running" {
-			ui.Row(c).Grow(1).MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				statusSpinner(c, 14*s)
-				ui.Text(c, job.Message).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
-				if job.Total > 0 {
-					numText(c, fmt.Sprintf("%d/%d", job.Done, job.Total), typeFootnote*s, muted)
-				}
-			})
-		} else if job != nil && job.State == "failed" {
-			ui.Text(c, classifyError(a.isEN(), job.Message, nil).Title).FontSize(typeFootnote * s).TextColor(danger).Grow(1).MinWidth(0).MaxLines(2).Ellipsis("…").Tooltip(classifyError(a.isEN(), job.Message, nil).Hint)
-		} else if job != nil && job.State == "completed" {
-			ui.Row(c).Grow(1).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(successInk)
-				ui.Text(c, a.L("已安装完成", "Installed")).FontSize(typeFootnote * s).TextColor(successInk)
-			})
-		} else if sum := a.packSummary(); sum != "" {
-			ui.Row(c).Grow(1).MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, icons["download"]).Size(11*s, 11*s).TextColor(muted)
-				numText(c, sum, typeFootnote*s, inkSecondary)
-			})
-		} else {
-			ui.Spacer(c).Grow(1)
-		}
+		// Reserve the remaining footer width for the target; status messages
+		// belong below it so a long download name cannot squeeze it away.
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(6 * s).Children(func() {
+			if r != nil && p.Type != "modpack" {
+				a.installTarget(c, *r)
+			}
+			if job != nil && job.State == "running" {
+				ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+					statusSpinner(c, 14*s)
+					ui.Text(c, job.Message).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(job.Message)
+					if job.Total > 0 {
+						numText(c, fmt.Sprintf("%d/%d", job.Done, job.Total), typeFootnote*s, muted)
+					}
+				})
+			} else if job != nil && job.State == "failed" {
+				ui.Text(c, classifyError(a.isEN(), job.Message, nil).Title).FontSize(typeFootnote * s).TextColor(danger).FillWidth().MinWidth(0).MaxLines(2).Ellipsis("…").Tooltip(classifyError(a.isEN(), job.Message, nil).Hint)
+			} else if job != nil && job.State == "completed" {
+				ui.Row(c).FillWidth().Gap(6 * s).AlignItems(ui.Center).Children(func() {
+					ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(successInk)
+					ui.Text(c, a.L("已安装完成", "Installed")).FontSize(typeFootnote * s).TextColor(successInk)
+				})
+			} else if sum := a.packSummary(); sum != "" {
+				ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+					ui.Icon(c, icons["download"]).Size(11*s, 11*s).TextColor(muted)
+					numText(c, sum, typeFootnote*s, inkSecondary)
+				})
+			}
+		})
 		if job != nil && job.State != "running" {
 			if fixedButton(c, "install-done", a.L("完成", "Done"), "", 0, btnMd*s, true, false) {
 				a.closeDialog()
@@ -219,6 +208,25 @@ func (a *App) installFooter(c *ui.Context) {
 		if fixedButton(c, "install-confirm", label, "download", 0, btnMd*s, true, disabled || a.pendingOp("installGame", "importPack", "installMod", "installAssetPack", "installPlanned") || job != nil) && run != nil {
 			run()
 		}
+	})
+}
+
+func (a *App) installTarget(c *ui.Context, r launcher.Instance) {
+	s := uiScale(c)
+	v, name := a.gameVersion(), r.Name
+	if v != nil {
+		name, _ = a.cardText(r, *v)
+	}
+	w, _ := c.MeasureText(0, ui.Span{Text: name, Font: uiSansFamily(), Size: typeFootnote * s, Weight: 600})
+	// A single-line, shrinkable label needs an explicit preferred width;
+	// the parent limits it only when the name really exceeds the free space.
+	w = float32(math.Ceil(float64(w + (18+7+6*2)*s)))
+	ui.Row(c).FillWidth().MinWidth(0).Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, a.L("安装到", "Install to")).FontSize(typeFootnote * s).TextColor(muted).Shrink(0)
+		ui.Row(c.Key("install-target")).Label("安装目标").Width(w).Height(28 * s).PaddingX(6 * s).Gap(7 * s).Radius(8 * s).Background(ui.RGBA(120, 130, 160, .10)).Font(uiSansFamily()).AlignItems(ui.Center).Shrink(1).MinWidth(0).Tooltip(name).Children(func() {
+			a.instIcon(c, r, v, 18*s)
+			ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0)
+		})
 	})
 }
 
@@ -247,7 +255,12 @@ func (a *App) installAction() (string, bool, func()) {
 		if n > 1 {
 			lbl = fmt.Sprintf(a.L("安装 %d 项", "Install %d items"), n)
 		}
-		disabled := noVer || r == nil || target.Status == "resolving" || target.Status == "none" || n == 0
+		disabled := noVer || r == nil || a.projLoading || a.planLoading || a.planErr != "" || a.planKey != a.currentPlanKey() || !a.selectedProjectVersionFits() || target.Status == "resolving" || target.Status == "none" || n == 0
+		for _, it := range a.plan {
+			if it.Status == "conflict" || (it.Role == "required" && (it.Status == "none" || it.Status == "resolving")) {
+				disabled = true
+			}
+		}
 		return lbl, disabled, func() {
 			b, _ := json.Marshal(map[string]any{"items": items, "enable": enable, "skip": skip})
 			a.planFinished = false

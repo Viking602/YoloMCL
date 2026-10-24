@@ -63,14 +63,14 @@ func TestOverviewColdAndWarmSwitchKeepPanelGeometry(t *testing.T) {
 	for _, name := range []string{"最近世界", "最近服务器", "游戏截图", "运行环境", "存储空间"} {
 		panels[name], _ = tt.Find(name)
 	}
-	if !tt.HasText("概览加载占位") || tt.HasText("下一个世界，等你创造") || tt.HasText("暂无连接记录") {
+	if !tt.HasText("概览加载占位") || tt.HasText("还没有存档") || tt.HasText("还没有连接记录") {
 		t.Fatal("cold overview passed through false empty states")
 	}
 	st := launcher.InstanceStatus{Dir: r.Path, Mods: 93, EnabledMods: 91, Screenshots: 4, Total: 1000, Sizes: map[string]int64{"screenshots": 100}}
 	a.instStatus = st
 	a.statusCache = map[string]launcher.InstanceStatus{a.instStatusKey: st}
 	tt.Frame()
-	tt.Advance(300 * time.Millisecond)
+	tt.Advance(motionNumber.Duration + 3*numberStagger + 50*time.Millisecond)
 	for name, want := range panels {
 		if got, _ := tt.Find(name); got != want {
 			t.Fatalf("summary arrival moved %s: %+v -> %+v", name, want, got)

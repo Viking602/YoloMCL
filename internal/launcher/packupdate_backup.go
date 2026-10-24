@@ -176,17 +176,14 @@ func (s *Service) RollbackPack(rootID, backupID string) (string, error) {
 		}
 		if lock := readPack(r.Path); lock != nil {
 			lock.History = append(lock.History, PackHistory{Version: lock.Version, At: nowStamp(), Action: "rollback"})
-			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "pack-lock.json"), lock)
+			if e := atomicJSON(filepath.Join(r.Path, ".mcl", "pack-lock.json"), lock); e != nil {
+				return fmt.Errorf("回滚记录保存失败，备份已保留：%w", e)
+			}
 		}
 		if m.SelectedVersion != "" {
-			s.mu.Lock()
-			for i := range s.cfg.Roots {
-				if s.cfg.Roots[i].ID == r.ID {
-					s.cfg.Roots[i].SelectedVersion = m.SelectedVersion
-				}
+			if e := s.setRootVersion(r.ID, m.SelectedVersion); e != nil {
+				return fmt.Errorf("回滚版本选择保存失败，备份已保留：%w", e)
 			}
-			_ = s.saveLocked()
-			s.mu.Unlock()
 		}
 		_ = os.RemoveAll(dir)
 		_ = os.Remove(filepath.Join(r.Path, ".mcl", "pack-update.json"))

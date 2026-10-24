@@ -88,3 +88,10 @@ func (a *App) importDialog(c *ui.Context) {
 		a.execute("importPack", launcher.ImportRequest{Path: a.form.Path, Parent: a.form.Parent, Name: a.form.Name}, a.taskAdded)
 	}
 }
+
+func (a *App) packPreviewUnavailable() string {
+	if a.packPreview == nil {
+		return ""
+	}
+	return a.packPreview.Unavailable
+}

@@ -187,7 +187,7 @@ func (a *App) worldsView(c *ui.Context, r launcher.Instance) {
 			label(c, a.L("正在读取存档", "Reading worlds"))
 			return
 		}
-		emptyState(c, "worlds-empty", "folder", a.L("还没有存档", "No worlds yet"), a.L("进入游戏创建世界后会显示在这里", "Worlds you create in game show up here"), nil)
+		emptyState(c, "worlds-empty", "world", a.L("还没有存档", "No worlds yet"), a.L("进入游戏创建世界后会显示在这里", "Worlds you create in game show up here"), nil)
 		return
 	}
 	ui.Column(c.Key("worlds-list")).FillWidth().Gap(10 * s).Children(func() {
@@ -297,13 +297,13 @@ func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.Wor
 			label(c, a.L("游戏正在运行，退出游戏后才能还原", "Close the game to restore")).FontSize(typeFootnote * s).TextColor(danger)
 		}
 		if len(a.wv.backups) == 0 {
-			ui.Row(c).FillWidth().Height(36 * s).AlignItems(ui.Center).Children(func() {
-				if a.wv.backupsLoading {
+			if a.wv.backupsLoading {
+				ui.Row(c).FillWidth().Height(36 * s).AlignItems(ui.Center).Children(func() {
 					label(c, a.L("正在读取备份", "Reading backups")).FontSize(typeFootnote * s)
-				} else {
-					label(c, a.L("还没有备份，点「备份」创建第一个", "No backups yet")).FontSize(typeFootnote * s)
-				}
-			})
+				})
+			} else {
+				emptyNote(c, "world-backups-empty", "folder", a.L("还没有备份", "No backups yet"), a.L("点上方的「备份」，保存当前世界的副本", "Choose Back up above to save a copy of this world"))
+			}
 			return
 		}
 		for _, b := range a.wv.backups {

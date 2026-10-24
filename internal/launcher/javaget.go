@@ -6,16 +6,13 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -37,29 +34,11 @@ const (
 	tunaAdoptium      = "https://mirrors.tuna.tsinghua.edu.cn/Adoptium/%d/jre/x64/windows/%s"
 )
 
-// NeedJavaError: no installed Java fits; the UI offers a one-click install.
+// NeedJavaError reports that no installed Java fits, allowing the UI to offer an install.
 type NeedJavaError struct{ Major int }
 
 func (e *NeedJavaError) Error() string {
 	return fmt.Sprintf("需要 Java %d，还没有安装", e.Major)
-}
-
-// JavaOffer is one installable runtime.
-type JavaOffer struct {
-	Major   int    `json:"major"`
-	Source  string `json:"source"` // mojang | temurin
-	Version string `json:"version"`
-	Size    int64  `json:"size,omitempty"` // download bytes, when known
-	LTS     bool   `json:"lts,omitempty"`
-}
-
-// InstalledJava is a found runtime, with what MCL knows about it.
-type InstalledJava struct {
-	JavaInfo
-	Home    string `json:"home"`
-	Size    int64  `json:"size"`
-	Managed bool   `json:"managed"`
-	Source  string `json:"source,omitempty"`
 }
 
 type javaMarkerFile struct {
@@ -69,135 +48,6 @@ type javaMarkerFile struct {
 }
 
 func (s *Service) runtimeDir() string { return filepath.Join(s.dir, "runtime") }
-
-type mojangRuntime struct {
-	Manifest struct {
-		SHA1 string `json:"sha1"`
-		Size int64  `json:"size"`
-		URL  string `json:"url"`
-	} `json:"manifest"`
-	Version struct {
-		Name string `json:"name"`
-	} `json:"version"`
-}
-
-// mojangComponents maps a Java major to Mojang's newest component for it.
-func (s *Service) mojangComponents(ctx context.Context) (map[int]string, map[string]mojangRuntime, error) {
-	var all map[string]map[string][]mojangRuntime
-	if e := s.getJSON(ctx, mojangJavaAll, &all); e != nil {
-		return nil, nil, e
-	}
-	comps := all["windows-x64"]
-	byMajor, info := map[int]string{}, map[string]mojangRuntime{}
-	names := make([]string, 0, len(comps))
-	for n := range comps {
-		names = append(names, n)
-	}
-	sort.Strings(names) // gamma after beta: the later component wins
-	for _, n := range names {
-		v := comps[n]
-		if len(v) == 0 || strings.Contains(n, "snapshot") || n == "minecraft-java-exe" {
-			continue
-		}
-		m := javaMajor(v[0].Version.Name)
-		if m == 0 {
-			continue
-		}
-		byMajor[m], info[n] = n, v[0]
-	}
-	return byMajor, info, nil
-}
-
-type adoptiumPkg struct {
-	Link     string `json:"link"`
-	Checksum string `json:"checksum"`
-	Size     int64  `json:"size"`
-	Name     string `json:"name"`
-}
-
-func (s *Service) temurinLatest(ctx context.Context, major int) (adoptiumPkg, string, error) {
-	var rel []struct {
-		Binary struct {
-			Package adoptiumPkg `json:"package"`
-		} `json:"binary"`
-		Version struct {
-			Semver string `json:"semver"`
-		} `json:"version"`
-	}
-	if e := s.getJSON(ctx, fmt.Sprintf(adoptiumLatest, major), &rel); e != nil {
-		return adoptiumPkg{}, "", e
-	}
-	if len(rel) == 0 {
-		return adoptiumPkg{}, "", fmt.Errorf("未找到 Temurin Java %d", major)
-	}
-	return rel[0].Binary.Package, rel[0].Version.Semver, nil
-}
-
-// zuluLatest is Azul's newest JRE zip for major, with its SHA-256.
-func (s *Service) zuluLatest(ctx context.Context, major int) (adoptiumPkg, string, error) {
-	var list []struct {
-		UUID string `json:"package_uuid"`
-	}
-	if e := s.getJSON(ctx, fmt.Sprintf(azulPackages, major), &list); e != nil {
-		return adoptiumPkg{}, "", e
-	}
-	if len(list) == 0 {
-		return adoptiumPkg{}, "", fmt.Errorf("未找到 Zulu Java %d", major)
-	}
-	var d struct {
-		URL     string `json:"download_url"`
-		Name    string `json:"name"`
-		SHA256  string `json:"sha256_hash"`
-		Size    int64  `json:"size"`
-		Version []int  `json:"java_version"`
-	}
-	if e := s.getJSON(ctx, fmt.Sprintf(azulPackage, list[0].UUID), &d); e != nil {
-		return adoptiumPkg{}, "", e
-	}
-	parts := make([]string, len(d.Version))
-	for i, v := range d.Version {
-		parts[i] = itoa(v)
-	}
-	return adoptiumPkg{Link: d.URL, Checksum: d.SHA256, Size: d.Size, Name: d.Name}, strings.Join(parts, "."), nil
-}
-
-// JavaOffers lists what can be installed: 8, 17, 21 and the newest LTS,
-// from Mojang first and Temurin as the alternative.
-func (s *Service) JavaOffers(ctx context.Context) ([]JavaOffer, error) {
-	lts := 25
-	var info struct {
-		MostRecentLTS int `json:"most_recent_lts"`
-	}
-	if s.getJSON(ctx, adoptiumReleases, &info) == nil && info.MostRecentLTS > 21 {
-		lts = info.MostRecentLTS
-	}
-	majors := []int{8, 17, 21, lts}
-	var out []JavaOffer
-	byMajor, comps, e1 := s.mojangComponents(ctx)
-	var e2 error
-	for _, m := range majors {
-		if n, ok := byMajor[m]; ok {
-			out = append(out, JavaOffer{Major: m, Source: javaSourceMojang, Version: comps[n].Version.Name, LTS: m == lts})
-		}
-		if pkg, ver, e := s.temurinLatest(ctx, m); e == nil {
-			out = append(out, JavaOffer{Major: m, Source: javaSourceTemurin, Version: ver, Size: pkg.Size, LTS: m == lts})
-		} else {
-			e2 = e
-		}
-		if pkg, ver, e := s.zuluLatest(ctx, m); e == nil {
-			out = append(out, JavaOffer{Major: m, Source: javaSourceZulu, Version: ver, Size: pkg.Size, LTS: m == lts})
-		} else {
-			e2 = e
-		}
-	}
-	if len(out) == 0 {
-		if e1 != nil {
-			return nil, e1
-		}
-		return nil, e2
-	}
-	return out, nil
-}
 
 // InstallJava starts a cancellable task that installs one runtime.
 func (s *Service) InstallJava(major int, source string) (string, error) {
@@ -507,97 +357,4 @@ func (s *Service) mojangInstall(ctx context.Context, rt mojangRuntime, dir strin
 		return first
 	}
 	return ctx.Err()
-}
-
-var dirSizes sync.Map // home -> int64
-
-func dirSize(ctx context.Context, p string) int64 {
-	if v, ok := dirSizes.Load(p); ok {
-		return v.(int64)
-	}
-	var n int64
-	err := filepath.WalkDir(p, func(_ string, d fs.DirEntry, e error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if e == nil && !d.IsDir() {
-			if i, e := d.Info(); e == nil {
-				n += i.Size()
-			}
-		}
-		return nil
-	})
-	if err == nil && ctx.Err() == nil {
-		dirSizes.Store(p, n)
-	}
-	return n
-}
-
-func javaHome(exe string) string { return filepath.Dir(filepath.Dir(exe)) }
-
-// isManagedJava: inside MCL's runtime folders and carrying the marker
-// (older auto-installs in runtimes/ count too).
-func (s *Service) isManagedJava(home string) (bool, string) {
-	for _, base := range []string{s.runtimeDir()} {
-		rel, e := filepath.Rel(base, home)
-		if e != nil || rel == "." || strings.HasPrefix(rel, "..") || strings.ContainsAny(rel, `/\`) {
-			continue
-		}
-		var m javaMarkerFile
-		if b, e := os.ReadFile(filepath.Join(home, javaMarker)); e == nil && json.Unmarshal(b, &m) == nil {
-			return true, m.Source
-		}
-	}
-	return false, ""
-}
-
-// InstalledJavas is the Java list with sizes and which ones MCL installed.
-func (s *Service) InstalledJavas(ctx context.Context) []InstalledJava {
-	return s.InstalledJavaDetails(ctx, s.JavaList(ctx))
-}
-
-// InstalledJavaDetails adds display metadata to an existing discovery result.
-// It does not inspect environment/registry paths or restart Java discovery.
-func (s *Service) InstalledJavaDetails(ctx context.Context, known []JavaInfo) []InstalledJava {
-	out := make([]InstalledJava, 0, len(known))
-	for _, j := range known {
-		if ctx.Err() != nil {
-			break
-		}
-		home := javaHome(j.Path)
-		m, src := s.isManagedJava(home)
-		out = append(out, InstalledJava{JavaInfo: j, Home: home, Size: dirSize(ctx, home), Managed: m, Source: src})
-	}
-	return out
-}
-
-// UninstallJava removes a runtime MCL installed; any other is refused.
-func (s *Service) UninstallJava(home string) error {
-	home = filepath.Clean(home)
-	if ok, _ := s.isManagedJava(home); !ok {
-		return errors.New("只能卸载 YoloMCL 安装的 Java")
-	}
-	s.mu.Lock()
-	for _, g := range s.running {
-		if g != nil && g.cmd != nil && g.cmd.Path != "" && strings.HasPrefix(strings.ToLower(filepath.Clean(g.cmd.Path)), strings.ToLower(home)) {
-			s.mu.Unlock()
-			return errors.New("这个 Java 正在运行游戏，请先关闭游戏")
-		}
-	}
-	s.mu.Unlock()
-	tmp := home + ".del-" + newID()[:6]
-	if e := os.Rename(home, tmp); e != nil {
-		return fmt.Errorf("卸载失败，Java 可能正在使用: %w", e)
-	}
-	dirSizes.Delete(home)
-	go os.RemoveAll(tmp)
-	_, _ = s.ScanJava(context.Background(), false, nil)
-	return nil
-}
-
-func javaFileName(p string) string {
-	if strings.HasPrefix(filepath.Base(p), ".download") {
-		return "Java 压缩包"
-	}
-	return filepath.Base(p)
 }

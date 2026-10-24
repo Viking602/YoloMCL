@@ -166,6 +166,15 @@ func (a *App) rootPicker(c *ui.Context) {
 	})
 }
 
+func (a *App) hasRootPath(p string) bool {
+	for _, r := range a.snapshot.Instances {
+		if p == "" || strings.EqualFold(filepath.Clean(r.Path), filepath.Clean(p)) {
+			return true
+		}
+	}
+	return p == ""
+}
+
 // dirLabel is a directory's display name: its label, or the folder name
 // when the label is empty or just "MC".
 func dirLabel(r launcher.Instance) string {

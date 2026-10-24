@@ -41,6 +41,54 @@ func TestDiscoverVersionDropdownCommitsAndClearsFilter(t *testing.T) {
 	}
 }
 
+func TestDiscoverSearchInputButtonAndVersionClearButton(t *testing.T) {
+	a, tt, requests := discoverFeedTester(t, "curseforge", "modpack")
+	a.minecraftVersions = []launcher.MinecraftVersion{{ID: "26.2", Type: "release"}, {ID: "1.21.1", Type: "release"}}
+	first := nextFeedTestRequest(t, tt, requests)
+	replyFeedTest(t, a, tt, first, 0, 15, 15)
+
+	// Select 26.2 via the dropdown arrow, then verify the inline clear button resets filterMC.
+	clickUI(t, tt, "展开版本列表")
+	if !tt.HasText("26.2") || !tt.HasText("1.21.1") {
+		t.Fatal("chevron click did not open version choices")
+	}
+	clickUI(t, tt, "26.2")
+	byVer := nextFeedTestRequest(t, tt, requests)
+	if byVer.query.Minecraft != "26.2" {
+		t.Fatalf("expected Minecraft filter 26.2, got %+v", byVer.query)
+	}
+	replyFeedTest(t, a, tt, byVer, 0, 15, 15)
+
+	clickUI(t, tt, "清除版本筛选")
+	clearedVer := nextFeedTestRequest(t, tt, requests)
+	if clearedVer.query.Minecraft != "" {
+		t.Fatalf("inline version clear button did not clear filterMC: %+v", clearedVer.query)
+	}
+	replyFeedTest(t, a, tt, clearedVer, 0, 18, 100)
+
+	// Type in search box and submit via Enter, then re-search while a request is in flight, then clear query.
+	typeUI(t, tt, a.tr().DiscoverSearchAria, "all the mods 11")
+	tt.Key(0, ui.KeyEnter)
+	searched := nextFeedTestRequest(t, tt, requests)
+	if searched.query.Query != "all the mods 11" {
+		t.Fatalf("Enter in search input did not submit query: %+v", searched.query)
+	}
+	// While searched is still in flight (a.searchLoading == true), clicking Search must still work and cancel the old request.
+	clickUI(t, tt, a.tr().DiscoverSearchBtn)
+	reSearched := nextFeedTestRequest(t, tt, requests)
+	if searched.ctx.Err() == nil || reSearched.query.Query != "all the mods 11" {
+		t.Fatalf("clicking search button during loading did not trigger replacement search: %+v", reSearched.query)
+	}
+	replyFeedTest(t, a, tt, reSearched, 0, 5, 5)
+
+	clickUI(t, tt, "清空搜索")
+	clearedQuery := nextFeedTestRequest(t, tt, requests)
+	if clearedQuery.query.Query != "" {
+		t.Fatalf("clear search button did not reset query: %+v", clearedQuery.query)
+	}
+	replyFeedTest(t, a, tt, clearedQuery, 0, 18, 100)
+}
+
 func TestDiscoverVersionChoicesWorkOfflineAndKeepCurrentSnapshot(t *testing.T) {
 	a := &App{filterMC: "24w14a"}
 	a.settings.Language = LangEN

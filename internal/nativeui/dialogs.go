@@ -10,16 +10,19 @@ import (
 
 var lastDialogPrimary string
 
-// dialogView shows the active dialog. Opening eases it in (fade, slight
-// rise and scale-up); closing eases it out faster while the last dialog is
-// still drawn, so neither direction pops. host keeps the animated value.
+// Keep the panel at its native size: scaling the whole tree makes the software
+// renderer resample every glyph, rounded clip and large shadow.
+// Layout margins provide a small slide without resampling its contents.
 func (a *App) dialogView(c *ui.Context, host ui.Element) {
-	target, anim := float32(0), motionExit
+	target, anim := float32(0), motionDialogExit
 	if a.dialogOpen {
-		target, anim = 1, motionEnter
+		target, anim = 1, motionDialogEnter
 		a.dialogShown = a.dialog
 	}
 	presence := host.AnimateTo("dialog-presence", target, anim)
+	if c.Preferences().ReduceMotion {
+		presence = target
+	}
 	if !a.dialogOpen {
 		if presence <= 0.01 || a.dialogShown == "" {
 			a.dialogShown = ""
@@ -29,7 +32,7 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 		a.dialog = a.dialogShown
 		defer func() { a.dialog = "" }()
 	}
-	if a.device != nil && a.dialog == "account" {
+	if a.device != nil && a.dialog == "accountAdd" {
 		a.pollDevice()
 	}
 	t := a.tr()
@@ -53,21 +56,24 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 			enterFired = lastDialogPrimary
 		}
 		backdrop.Background(ui.RGBA(20, 24, 48, .30*presence))
-		box.Opacity(presence).TransformOrigin(.5, .5).Scale(.96+.04*presence, .96+.04*presence).Translate(0, (1-presence)*10*s)
+		y := (1 - presence) * 12 * s
+		box.Opacity(presence).Margin(y, 0, -y, 0)
 		width := float32(680)
 		switch a.dialog {
+		case "disableMod":
+			width = 520
 		case "logs":
 			width = 1100
 		case "packReport", "java", "root", "install", "project", "packUpdate":
 			width = 780
 		}
 		if a.dialog == "project" {
-			backdrop.Background(ui.RGBA(16, 20, 40, .42*presence))
-			popover(box.Label("活动弹窗").Width(max(560, 820*s)).MaxWidthPercent(92).MaxHeight(height-42-24*s).Padding(0), 20*s, s).Background(panel).Clip()
+			backdrop.Background(ui.RGBA(16, 20, 40, .28*presence))
+			dialogSurface(box.Label("活动弹窗").Width(max(560, 820*s)).MaxWidthPercent(92).MaxHeight(height-42-24*s).Padding(0), s).Clip()
 			a.projectInstallDialog(c, height-42-24*s)
 			return
 		}
-		popover(box.Label("活动弹窗").Width(max(480, width*s)).MaxWidthPercent(94).MaxHeight(height-42-24*s).Padding(24*s), 22*s, s)
+		dialogSurface(box.Label("活动弹窗").Width(max(480, width*s)).MaxWidthPercent(94).MaxHeight(height-42-24*s).Padding(24*s), s)
 		body := ui.Column(c).FillWidth().Gap(16 * s)
 		if a.dialog == "logs" {
 			box.Height(min(820*s, height-42-24*s))
@@ -79,7 +85,8 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 					tone := navTones["settings"]
 					appleSoftIconBox(c, 30*s, "settings", tone[0], tone[1], panel)
 				}
-				ui.Text(c, a.dialogTitle(a.dialog)).FontSize(typeTitle2 * s).Bold().TextColor(ink).Grow(1).MinWidth(0).Shrink(1).SingleLine()
+				title := a.dialogTitle(a.dialog)
+				ui.Text(c, title).Label("弹窗标题 " + title).FontSize(typeTitle2 * s).Bold().TextColor(ink).Grow(1).MinWidth(0).Shrink(1).SingleLine()
 				if button(c, "close-dialog", t.DialogCloseBtn, "cross", false, false) {
 					a.closeDialog()
 				}
@@ -106,8 +113,12 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 					a.removeRootDialog(c)
 				case "removeMod":
 					a.removeModDialog(c)
+				case "disableMod":
+					a.disableModDialog(c)
 				case "account":
 					a.accountDialog(c)
+				case "accountAdd":
+					a.accountAddDialog(c)
 				case "import":
 					a.importDialog(c)
 				case "install":
@@ -158,8 +169,13 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 		})
 	})
 	if !closing && !open {
-		a.dialogOpen = false // backdrop click or Escape
+		a.closeDialog() // backdrop click or Escape uses the same cleanup as Cancel
 	}
+}
+
+func dialogSurface(e ui.Element, s float32) ui.Element {
+	return e.Radius(20*s).Background(panel).Border(1, glassEdge).
+		Shadow(0, 12*s, 28*s, -8*s, ui.RGBA(24, 32, 64, .18))
 }
 
 func (a *App) addDialog(c *ui.Context) {

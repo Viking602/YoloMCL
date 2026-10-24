@@ -26,7 +26,7 @@ func TestHeroHistoryFitsCompactAndWideLayouts(t *testing.T) {
 				tt.Frame()
 				tt.Advance(400 * time.Millisecond)
 				slot, ok := tt.Find(a.L("游玩记录", "Play history"))
-				date, found := tt.Find("数字翻牌 hero-history-date")
+				date, found := tt.Find("动态数字 hero-history-date")
 				if !ok || !found || date.X < slot.X-.5 || date.X+date.W > slot.X+slot.W+.5 || date.Y < slot.Y-.5 || date.Y+date.H > slot.Y+slot.H+.5 {
 					t.Fatalf("date does not fit history slot: date=%+v slot=%+v", date, slot)
 				}

@@ -4,18 +4,17 @@
 
 A native Minecraft: Java Edition launcher written in Go, powered by [MyGo](https://github.com/egoist/mygo). No WebView, HTML frontend, or local web server.
 
-[Download](https://github.com/Viking602/YoloMCL/releases/latest) · [中文介绍](README.zh-CN.md) · [Contributing](CONTRIBUTING.md) · [Release guide](docs/releases.md)
+[Download](https://github.com/Viking602/YoloMCL/releases/latest) · [中文介绍](docs/README.zh-CN.md) · [Development guidelines](docs/CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Release guide](docs/releases.md)
 
 ## Features
 
-- Manage vanilla, Fabric, Quilt, Forge, and NeoForge instances and modpacks.
-- Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks.
-- Import `.mrpack` and CurseForge `.zip` files, including drag and drop. Review pack updates and keep backups of overwritten files.
-- Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
-- Detect installed Java in the background after the first frame. Cache detection across instance switches and allocate memory based on pack size and available RAM.
-- Use offline accounts, Microsoft sign-in, or Yggdrasil/authlib-injector services, subject to the platform limits below.
-- Preview skins and capes. English and Simplified Chinese follow the system language by default.
-- Check for launcher updates through GitHub Releases. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
+- **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, and NeoForge instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), review pack updates, and keep backups of overwritten files.
+- **Content discovery**: Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks with automatic dependency resolution.
+- **Game management**: Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
+- **Java and memory**: Detect system Java installations, environment paths, registered locations, and known runtimes in the background after the first frame. Cache detection across instance switches and allocate memory based on pack size and available RAM.
+- **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services, subject to the platform limits below. Preview skins and switch capes.
+- **Native desktop UI**: Platform-adapted title bar, DPI-aware scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
+- **Verified updates**: Check for launcher updates through GitHub Releases. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
 Minecraft content scans stay within registered Minecraft directories and launcher configuration. Java detection separately checks system Java installations, environment paths, registered locations, and known runtimes; it does not traverse entire disks.
 
@@ -42,16 +41,17 @@ All six targets are built by the release workflow. Some existing features are no
 
 ## Build from source
 
-Use the Go version in [go.mod](go.mod), currently **Go 1.27.3**. No frontend toolchain is required.
+Use the Go version in [`go.mod`](go.mod), currently **Go 1.27.3**, GNU Make, and Bash. Checks and signed releases also require OpenSSL 3 and standard archive tools (tar, gzip, and zip; Windows uses its built-in tar for ZIP). Configuration, compilation, and packaging run in Shell scripts. No frontend toolchain or Python runtime is required. On Windows, run Make from Git Bash; install GNU Make separately if needed.
 
 ```sh
-go run .                       # development build
-go run ./cmd/check             # formatting, dependency boundaries, vet, staticcheck, tests
-go run ./cmd/check -cross       # also vet/build all six OS/architecture targets
-go run ./cmd/build -output build/YoloMCL
+make build                      # development executable in .cache/
+make check                      # formatting, dependency boundaries, vet, staticcheck, tests
+make check CHECK_ARGS="--cross" # also vet/build all six OS/architecture targets
+make fmt                        # format code and check import boundaries
+make build BUILD_ARGS="--goos linux --goarch arm64 --output build/YoloMCL-linux-arm64"
 ```
 
-On Windows, use `-output build/YoloMCL.exe`. The wrappers `scripts/build.ps1` and `scripts/build.sh` call the same Go build command. Use `-goos` and `-goarch` for cross-compilation. `-release` removes the MyGo inspector and requires publisher configuration; a modified or untagged checkout still identifies itself as `dev`.
+`make build` produces `.cache/MCL-dev.exe` on Windows and `.cache/MCL-dev` on macOS/Linux. Launch that file to run the application. `Makefile` is the common entry point; `scripts/build.sh` calls `go build` directly. `--release` removes the MyGo inspector and requires publisher configuration; a modified or untagged checkout still identifies itself as `dev`. Use `make build BUILD_ARGS="--release --output build/YoloMCL.exe"` for a Windows production build. Shell scripts can also be invoked directly with Bash.
 
 Publisher configuration is read from the environment or a local, ignored `.env`:
 
@@ -60,25 +60,27 @@ CURSEFORGE_API_KEY=
 MS_CLIENT_ID=
 ```
 
-Use your own CurseForge API key and Microsoft application client ID for forks. Never commit `.env` or publisher JSON. Actions receives these values through repository Secrets, not workflow literals. A Microsoft client ID is public application identity; an API key embedded in a distributed client can still be extracted. For a server-held CurseForge key, use the optional [catalog relay](cmd/catalog-relay).
+Use your own CurseForge API key and Microsoft application client ID for forks. Never commit `.env` or real publisher credentials. Actions receives these values through repository Secrets, not workflow literals. A Microsoft client ID is public application identity; an API key embedded in a distributed client can still be extracted. The launcher calls CurseForge directly.
 
 ## Tagged releases
 
 [Release](.github/workflows/release.yml) runs on `v*` tags. It checks the code on Windows, macOS, and Linux, builds amd64/arm64 packages, signs platform update archives, verifies all six sets, and publishes a complete GitHub Release. Failed checks or builds leave the release unpublished. The tag must be a valid version such as `v1.0.0` and point to a clean commit.
 
-See [docs/releases.md](docs/releases.md) for secret setup, signing-key backup, and publishing. The updater uses MyGo's public API; no MyGo source files are patched.
+See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup, and publishing. The updater uses MyGo's public API; no MyGo source files are patched.
 
 ## Project layout
 
-- `main.go`: native application entry point and startup coordination.
-- `internal/nativeui`: UI, interaction, and view state.
-- `internal/launcher`: Minecraft services, files, accounts, and background jobs.
+- `main.go`: the launcher's single executable entry point.
+- `internal/app`: command-line options, application assembly, startup coordination, and explicitly requested diagnostic reports.
+- `internal/nativeui`: native UI views, interaction state, and view helpers; translation tables live in `i18n`.
+- `internal/launcher`: Minecraft services, instances, accounts, and background jobs, with isolated platform packages `memory`, `proctree`, `textenc`, and `vault`.
+- `internal/config`: publisher service configuration, identity, and credential loading.
 - `internal/buildinfo`: version, commit, repository, and update verification key.
-- `cmd/build`, `cmd/release`, `cmd/check`: shared build, release, and validation tools.
+- `Makefile` → `scripts/*.sh`: build, checks, signed releases, and publisher setup.
 - `plugins/startup`: repository-owned MyGo startup integration.
 
-See [architecture](docs/architecture.md) for package boundaries. Formatting and import ordering are enforced by `gofmt`/`goimports` and `.editorconfig`, suitable for GoLand and other Go editors.
+See [Architecture](docs/architecture.md) for package boundaries and [Development guidelines](docs/CONTRIBUTING.md) for coding standards. Formatting and import ordering are enforced by `gofmt`/`goimports` and `.editorconfig`.
 
 ## License
 
-[MIT](LICENSE) © 2026 Viking602. Dependency and asset licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). YoloMCL is not affiliated with Mojang or Microsoft.
+[MIT](LICENSE) © 2026 Viking602. Dependency and asset licenses are listed in [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md). YoloMCL is not affiliated with Mojang or Microsoft.

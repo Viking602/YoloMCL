@@ -35,6 +35,8 @@ type discoverMotionState struct {
 	mode           discoverReveal
 	cards          map[string]*discoverCardMotion
 	cardProjects   []launcher.Project
+	revealing      bool
+	categories     discoverCategoryMotion
 	scroll         scrollTrack
 	viewport       ui.Rect
 }
@@ -45,8 +47,8 @@ func sameDiscoverQuery(a, b launcher.SearchQuery) bool {
 		slices.Equal(a.Categories, b.Categories)
 }
 
-// Called only for the latest successful request. In-flight and failed requests
-// keep the displayed cards, their scroll position and their animation state.
+// Called only for the latest successful request. Refreshing the same scope
+// keeps existing cards; changing provider or type clears them when it starts.
 func (a *App) acceptDiscoverResults(q launcher.SearchQuery, result launcher.SearchResult) {
 	m := &a.discoverMotion
 	m.mode = discoverLift
@@ -127,6 +129,7 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 		_, y := card.LocalToWindow(0, 0)
 		view := a.discoverMotion.viewport
 		if bounds.W <= 0 || view.H <= 0 {
+			a.discoverMotion.revealing = true
 			card.Opacity(0)
 			c.AnimationFrame()
 			return
@@ -142,6 +145,9 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 	}
 	p := card.AnimateTo("reveal", 1, ui.Animation{Duration: 420 * time.Millisecond, Delay: state.delay, Ease: ui.CubicBezier(.22, 1, .36, 1)})
 	state.progress = p
+	if p < 1 {
+		a.discoverMotion.revealing = true
+	}
 	card.Opacity(min(1, p*1.3))
 	switch state.mode {
 	case discoverExpand:
@@ -195,7 +201,11 @@ func (a *App) discoverIcon(c *ui.Context, p launcher.Project, state *discoverCar
 
 func (a *App) discoverSkeleton(c *ui.Context) {
 	s := uiScale(c)
-	grid := ui.Grid(c.Key("discover-skeleton")).Label(a.tr().DiscoverLoading).FillWidth().Gap(14 * s)
+	ui.Row(c.Key("discover-loading-status")).Label("资源加载提示").FillWidth().Height(26 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+		ui.Spinner(c).Size(14*s, 14*s).TextColor(accent).Shrink(0)
+		ui.Text(c, a.tr().DiscoverLoading).Font(uiSansFamily()).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().MinWidth(0)
+	})
+	grid := ui.Grid(c.Key("discover-skeleton")).Label("资源加载占位").FillWidth().Gap(14 * s)
 	cols := discoverColumns(c)
 	grid.Columns(cols).Children(func() {
 		for i := range cols * 3 {

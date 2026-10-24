@@ -93,3 +93,24 @@ func TestPerVersionRuntimePrecedenceAndJVMArgs(t *testing.T) {
 		t.Fatal("expected -cp override in custom JVM args to be rejected")
 	}
 }
+
+func TestAutomaticLanguageModeSurvivesReload(t *testing.T) {
+	t.Setenv("MCL_LANG", "zh-CN")
+	dir := t.TempDir()
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := s.Snapshot().Settings
+	settings.Language = "system"
+	if err = s.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reloaded.Snapshot().Settings.Language; got != "" {
+		t.Fatalf("automatic mode replaced by environment default: %q", got)
+	}
+}

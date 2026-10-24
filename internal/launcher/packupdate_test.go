@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -275,6 +276,82 @@ func TestPackUpdateFaultMidApplyRestores(t *testing.T) {
 	}
 }
 
+func TestPackUpdateConfigFailureRestoresFiles(t *testing.T) {
+	f := newUpdFixture(t)
+	if err := f.s.Select(f.root.ID, "", "user-selection"); err != nil {
+		t.Fatal(err)
+	}
+	before := treeSnapshot(t, f.root.Path)
+	plan, err := f.s.PlanPackUpdate(context.Background(), f.root.ID, f.v2, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blockConfigWrite(t, f.s)
+	id, err := f.s.ApplyPackUpdate(plan.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j := waitJob(t, f.s, id)
+	if j.State != "failed" || !strings.Contains(j.Message, "已恢复原状") {
+		t.Fatalf("expected rollback after config failure: %+v", j)
+	}
+	if !reflect.DeepEqual(before, treeSnapshot(t, f.root.Path)) {
+		t.Fatal("failed config save left updated game files")
+	}
+	r, err := f.s.getRoot(f.root.ID)
+	if err != nil || r.SelectedVersion != "user-selection" || readPack(f.root.Path).Version != "1.0.0" {
+		t.Fatalf("failed update changed version: %+v, %v", r, err)
+	}
+}
+
+func TestPackRollbackConfigFailureRetainsBackupForRetry(t *testing.T) {
+	f := newUpdFixture(t)
+	plan, err := f.s.PlanPackUpdate(context.Background(), f.root.ID, f.v2, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := f.s.ApplyPackUpdate(plan.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := waitJob(t, f.s, id)
+	if updated.State != "completed" {
+		t.Fatalf("update: %+v", updated)
+	}
+	blockConfigWrite(t, f.s)
+	id, err = f.s.RollbackPack(f.root.ID, updated.ResultRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j := waitJob(t, f.s, id); j.State != "failed" || !strings.Contains(j.Message, "备份已保留") {
+		t.Fatalf("rollback should report persistence error: %+v", j)
+	}
+	if len(listPackBackups(f.root.Path)) == 0 {
+		t.Fatal("backup deleted before configuration was saved")
+	}
+	if err := os.Remove(filepath.Join(f.s.dir, "config.json")); err != nil {
+		t.Fatal(err)
+	}
+	id, err = f.s.RollbackPack(f.root.ID, updated.ResultRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j := waitJob(t, f.s, id); j.State != "completed" {
+		t.Fatalf("retry: %+v", j)
+	}
+}
+
+func blockConfigWrite(t *testing.T, s *Service) {
+	t.Helper()
+	path := filepath.Join(s.dir, "config.json")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPackUpdateRejectsSamePackAndOtherPack(t *testing.T) {
 	f := newUpdFixture(t)
 	if _, e := f.s.PlanPackUpdate(context.Background(), f.root.ID, f.v1, ""); e == nil {
@@ -416,7 +493,7 @@ func TestCurseForge403IsExplained(t *testing.T) {
 
 func TestCurseForgeManualKeepsOldFile(t *testing.T) {
 	f := newUpdFixture(t)
-	f.s.distribution.CurseForgeAPIKey = "test-key"
+	f.s.publisher.CurseForgeAPIKey = "test-key"
 	cf := func(pid, fid int, name, body string, open bool) map[string]any {
 		sha, _ := hashes([]byte(body))
 		u := ""

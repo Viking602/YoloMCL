@@ -117,21 +117,22 @@ func (s *Service) SetVersionDisplayName(rootID, versionID, name string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for i, r := range s.cfg.Roots {
+	draft := s.cfg.clone()
+	for i, r := range draft.Roots {
 		if r.ID != rootID {
 			continue
 		}
-		if s.cfg.Roots[i].VersionConfigs == nil {
-			s.cfg.Roots[i].VersionConfigs = map[string]VersionConfig{}
+		if draft.Roots[i].VersionConfigs == nil {
+			draft.Roots[i].VersionConfigs = map[string]VersionConfig{}
 		}
-		vc := s.cfg.Roots[i].VersionConfigs[versionID]
+		vc := draft.Roots[i].VersionConfigs[versionID]
 		vc.DisplayName = name
 		if vc == (VersionConfig{}) {
-			delete(s.cfg.Roots[i].VersionConfigs, versionID)
+			delete(draft.Roots[i].VersionConfigs, versionID)
 		} else {
-			s.cfg.Roots[i].VersionConfigs[versionID] = vc
+			draft.Roots[i].VersionConfigs[versionID] = vc
 		}
-		return s.saveLocked()
+		return s.saveConfigLocked(draft)
 	}
 	return errors.New("目录不存在")
 }
