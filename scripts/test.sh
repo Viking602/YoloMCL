@@ -78,7 +78,10 @@ mkdir -p "$fixture/internal/launcher"
 printf 'package launcher\nimport "github.com/egoist/mygo/ui"\n' > "$fixture/internal/launcher/check.go"
 if (cd "$fixture"; awk -v module=github.com/Viking602/YoloMCL -f "$mcl_root/scripts/check-imports.awk" internal/launcher/check.go) >/dev/null 2>&1; then fail 'Backend UI dependency accepted.'; fi
 printf 'package launcher\nimport "github.com/Viking602/YoloMCL/internal/config"\n' > "$fixture/internal/launcher/check.go"
-(cd "$fixture"; awk -v module=github.com/Viking602/YoloMCL -f "$mcl_root/scripts/check-imports.awk" internal/launcher/check.go)
+printf 'package main\nimport "github.com/Viking602/YoloMCL/internal/app"\n' > "$fixture/main.go"
+for path in main.go ./main.go internal/launcher/check.go ./internal/launcher/check.go; do
+  (cd "$fixture"; awk -v module=github.com/Viking602/YoloMCL -f "$mcl_root/scripts/check-imports.awk" "$path")
+done
 # Comments and embedded source examples are not imports of the enclosing file.
 cat > "$fixture/internal/launcher/check.go" <<'EOF'
 /*

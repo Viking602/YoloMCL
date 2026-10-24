@@ -89,7 +89,7 @@ func (s *Service) resolveAuthIcon(ctx context.Context, api string) ([]byte, erro
 		candidates = append(candidates, o+"/favicon.ico")
 	}
 	seen := map[string]bool{}
-	var last error = errors.New("认证服务器没有可用图标")
+	last := errors.New("认证服务器没有可用图标")
 	for _, c := range candidates {
 		if seen[c] || validateURL(c) != nil {
 			continue

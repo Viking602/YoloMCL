@@ -65,7 +65,7 @@ func (s *Service) ApplyPackUpdate(planID string) (string, error) {
 					return e
 				}
 				p(fmt.Sprintf("下载新版本文件 (%d/%d): %s", i+1, len(writes), filepath.Base(f.Path)), i+1, len(writes))
-				var last error = errors.New("整合包文件缺少下载地址")
+				last := errors.New("整合包文件缺少下载地址")
 				for _, raw := range f.URLs {
 					if last = s.download(ctx, DownloadFile{Name: f.Path, URL: raw, SHA1: f.SHA1, SHA512: f.SHA512}, dst); last == nil {
 						break

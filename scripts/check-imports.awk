@@ -29,7 +29,13 @@ function inspect(line, name, first, group, dep) {
     }
   }
 }
-FNR == 1 { block = 0; comment = 0; header = 1; previous = 0; pkg = FILENAME; sub(/^\.\//, "", pkg); if (pkg !~ /\//) pkg = "."; else sub(/\/[^/]*$/, "", pkg) }
+FNR == 1 {
+  block = 0; comment = 0; header = 1; previous = 0
+  pkg = FILENAME
+  sub(/^\.\//, "", pkg)
+  if (pkg !~ /\//) pkg = "."
+  else sub(/\/[^\/]*$/, "", pkg)
+}
 # goimports has normalized the source before this checker runs. Imports must
 # precede declarations; never interpret raw string contents as dependencies.
 !header { next }
