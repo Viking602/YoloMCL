@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"runtime"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -78,7 +79,14 @@ func TestSkinPreviewRasterOutput(t *testing.T) {
 	}
 	p.set(skin, skin.SubImage(image.Rect(3, 5, 67, 37)), false)
 	p.yaw = 2.5
-	if got := fmt.Sprintf("%x", sha256.Sum256(p.render(160, 180).Pix)); got != "6a15a4392b5518910298a12241419dec5d8c82e26bbd788dae25514196d7de5a" {
+	// ARM64 may fuse floating-point interpolation and alpha blending. Keep
+	// an exact baseline for each architecture instead of forcing the slower
+	// sequence of separately rounded operations in the renderer.
+	wantTransparent := "6a15a4392b5518910298a12241419dec5d8c82e26bbd788dae25514196d7de5a"
+	if runtime.GOARCH == "arm64" {
+		wantTransparent = "1c33111408d11aa186e18d560d6558195268c74a9bf4003e34cab64dd23efd04"
+	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(p.render(160, 180).Pix)); got != wantTransparent {
 		t.Fatalf("transparent skin/cape output changed: %s", got)
 	}
 }

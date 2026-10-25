@@ -87,8 +87,17 @@ func TestPackExportPreviewAndSelectedContents(t *testing.T) {
 			t.Fatal(err)
 		}
 		job := waitJob(t, s, id)
-		if job.State != "completed" || job.ResultRef != req.Path || job.TargetVersion != r.SelectedVersion {
+		if job.State != "completed" || job.TargetVersion != r.SelectedVersion {
 			t.Fatalf("export failed: %+v", job)
+		}
+		wantedFile, err := os.Stat(req.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The destination is canonicalized, including macOS /var aliases and
+		// Windows short names. Verify file identity instead of path spelling.
+		if resultFile, err := os.Stat(job.ResultRef); err != nil || !os.SameFile(wantedFile, resultFile) {
+			t.Fatalf("export result points to a different file: %q (%v)", job.ResultRef, err)
 		}
 		z, lock := readExport(t, req.Path)
 		if lock.Minecraft != preview.Minecraft || lock.Loader != preview.Loader || lock.LoaderVersion != preview.LoaderVersion {

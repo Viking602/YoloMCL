@@ -6,12 +6,16 @@ import (
 	"encoding/base64"
 	"image"
 	"image/png"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestAppearanceLoadsActiveAndSelectableLegacyCapes(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Microsoft account credentials require Windows DPAPI")
+	}
 	s := testService(t)
 	account := Account{ID: "cape-fixture", Kind: "microsoft"}
 	if err := s.saveAccount(account, tokenSecret{Access: "fixture-token", Expires: time.Now().Add(time.Hour)}); err != nil {
@@ -52,6 +56,30 @@ func TestAppearanceLoadsActiveAndSelectableLegacyCapes(t *testing.T) {
 		data, err := s.ResourceImage(context.Background(), cape.URL)
 		if err != nil || !bytes.Equal(data, texture.Bytes()) {
 			t.Fatalf("%s preview could not load: %v", cape.Name, err)
+		}
+	}
+}
+
+func TestLegacyTextureURLsLoadWithoutAccountStorage(t *testing.T) {
+	s := testService(t)
+	var texture bytes.Buffer
+	if err := png.Encode(&texture, image.NewRGBA(image.Rect(0, 0, 64, 32))); err != nil {
+		t.Fatal(err)
+	}
+	const secure = "https://textures.minecraft.net/texture/cape"
+	fakeHTTP(t, s, map[string][]byte{secure: texture.Bytes()})
+	wantData := "data:image/png;base64," + base64.StdEncoding.EncodeToString(texture.Bytes())
+	for _, raw := range []string{"http://textures.minecraft.net/texture/cape", secure} {
+		if got := textureURL(raw); got != secure {
+			t.Fatalf("texture URL = %q, want %q", got, secure)
+		}
+		data, err := s.imageData(context.Background(), raw)
+		if err != nil || data != wantData {
+			t.Fatalf("active texture failed to load: %v", err)
+		}
+		preview, err := s.ResourceImage(context.Background(), textureURL(raw))
+		if err != nil || !bytes.Equal(preview, texture.Bytes()) {
+			t.Fatalf("selectable cape preview failed to load: %v", err)
 		}
 	}
 }

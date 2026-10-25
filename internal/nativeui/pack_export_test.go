@@ -3,6 +3,7 @@ package nativeui
 import (
 	"archive/zip"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -82,6 +83,11 @@ func TestNativePackExportFlow(t *testing.T) {
 	savePackDialog = func(o mygo.SaveDialogOptions) (string, error) { options = o; return dest, nil }
 	clickUI(t, tt, "按钮文字 export-save")
 	waitUI(t, tt, func() bool {
+		// A small archive can finish before the command's completion is
+		// posted back to the UI. Wait for both halves of the operation.
+		if a.pendingOp("exportPack") || a.dialogOpen || a.page != "tasks" {
+			return false
+		}
 		a.snapshot = a.service.Snapshot()
 		for _, j := range a.snapshot.Jobs {
 			if j.TitleKey == "pack.export" {
@@ -112,9 +118,19 @@ func TestNativePackExportFlow(t *testing.T) {
 			t.Fatalf("native export missing %s", name)
 		}
 	}
+	wantedFile, err := os.Stat(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, j := range a.snapshot.Jobs {
-		if j.TitleKey == "pack.export" && (j.TargetRootID != r.ID || j.TargetVersion != r.SelectedVersion || j.ResultRef != dest) {
+		if j.TitleKey != "pack.export" {
+			continue
+		}
+		if j.TargetRootID != r.ID || j.TargetVersion != r.SelectedVersion {
 			t.Fatalf("wrong export target: %+v", j)
+		}
+		if resultFile, err := os.Stat(j.ResultRef); err != nil || !os.SameFile(wantedFile, resultFile) {
+			t.Fatalf("export result points to a different file: %q (%v)", j.ResultRef, err)
 		}
 	}
 	tt.Advance(300 * time.Millisecond)

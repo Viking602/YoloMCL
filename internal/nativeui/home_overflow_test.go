@@ -27,7 +27,7 @@ func homeTester(t *testing.T, lang string) (*App, *ui.Tester) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	t.Cleanup(a.cancel)
+	t.Cleanup(func() { a.cancel(); a.bgWG.Wait() })
 	before := a.settings.Language
 	a.SetLanguage(lang)
 	if a.settings.Language != before {
