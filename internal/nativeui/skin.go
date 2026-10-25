@@ -140,7 +140,21 @@ func (p *skinPreview) faces() []skinFace {
 		add(0, 0, -2, 4, 12, 4, 0, 48, true, skin)
 	}
 	if p.cape != nil {
+		start := len(faces)
 		add(-5, 7, -3.5, 10, 16, 1, 0, 0, false, cape)
+		// The cape's decorated face points away from the player's back (-Z),
+		// unlike the front of a skin cuboid. Orient all six atlas regions here
+		// once, keeping the outer artwork consistent with capeFront's thumbnail.
+		for i, uv := range [6][4][2]float64{
+			{{22, 1}, {12, 1}, {12, 17}, {22, 17}}, // lining (+Z)
+			{{11, 1}, {1, 1}, {1, 17}, {11, 17}},   // outside (-Z)
+			{{12, 1}, {11, 1}, {11, 17}, {12, 17}}, // right edge (-X)
+			{{1, 1}, {0, 1}, {0, 17}, {1, 17}},     // left edge (+X)
+			{{11, 1}, {11, 0}, {1, 0}, {1, 1}},     // top (+Y)
+			{{11, 1}, {11, 0}, {21, 0}, {21, 1}},   // bottom (-Y)
+		} {
+			faces[start+i].uv = uv
+		}
 	}
 	if len(p.mesh) > len(faces) {
 		clear(p.mesh[len(faces):])
@@ -179,13 +193,16 @@ func (p *skinPreview) render(w, h int) *image.RGBA {
 	scale := float64(h-60) / 32 * p.zoom
 	for _, f := range p.faces() {
 		var v [4]vertex
+		// Scale before interpolation and integer sampling: scaling an already
+		// rounded atlas coordinate discards texels from high-resolution capes.
+		textureScale := float64(f.texture.Bounds().Dx()) / 64
 		for i, pt := range f.p {
 			x := pt.x*cy + pt.z*sy
 			z := -pt.x*sy + pt.z*cy
 			yy := pt.y - 16
 			y := yy*cp - z*sp
 			z = yy*sp + z*cp
-			v[i] = vertex{float64(w)/2 + x*scale, float64(h)/2 - y*scale - 4, z, f.uv[i][0], f.uv[i][1]}
+			v[i] = vertex{float64(w)/2 + x*scale, float64(h)/2 - y*scale - 4, z, f.uv[i][0] * textureScale, f.uv[i][1] * textureScale}
 		}
 		rasterTriangle(out, depth, v[0], v[1], v[2], f)
 		rasterTriangle(out, depth, v[0], v[2], v[3], f)
@@ -217,8 +234,6 @@ func rasterTriangle(out *image.RGBA, depth []float64, a, b, c vertex, f skinFace
 				continue
 			}
 			tx, ty := int(a.u*u+b.u*v+c.u*t), int(a.v*u+b.v*v+c.v*t)
-			tx = tx * tw / 64
-			ty = ty * tw / 64
 			if tx < 0 || ty < 0 || tx >= tw || ty >= th {
 				continue
 			}
