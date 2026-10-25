@@ -3,6 +3,7 @@ package nativeui
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"math"
 	"time"
 
@@ -12,25 +13,67 @@ import (
 // The wardrobe uses the same native bitmap primitive as the rest of the UI.
 // Cuboid faces are textured on the CPU; no browser, canvas or JavaScript runs.
 type skinPreview struct {
-	skin, cape        image.Image
-	slim, dirty, spin bool
-	yaw, pitch, zoom  float64
-	zoomGoal          float64
-	last              time.Time
-	target            *float64 // eased yaw goal (front / back / cape turn)
-	bitmap            *ui.Bitmap
+	skin, cape         image.Image
+	slim, dirty, spin  bool
+	yaw, pitch, zoom   float64
+	zoomGoal           float64
+	last               time.Time
+	spinFrame          time.Time
+	target             *float64 // eased yaw goal (front / back / cape turn)
+	bitmap             *ui.Bitmap
+	frames             [2]*image.RGBA // keep the displayed frame intact until Bitmap.Update
+	frameIndex         int
+	depth              []float64
+	mesh               []skinFace
+	meshSkin, meshCape image.Image
+	meshSlim           bool
 }
 type point3 struct{ x, y, z float64 }
 type vertex struct{ x, y, z, u, v float64 }
 type skinFace struct {
 	p       [4]point3
 	uv      [4][2]float64
-	shade   float64
-	texture image.Image
+	shade   int
+	texture *image.NRGBA
+}
+
+// Shade each channel once, rather than converting colors and multiplying three
+// channels for every covered pixel on every animation frame.
+var skinShades = func() [6][256]uint8 {
+	var table [6][256]uint8
+	for face, shade := range [...]float64{1, .8, .72, .86, 1.05, .6} {
+		for channel := range table[face] {
+			table[face][channel] = uint8(math.Min(255, float64(channel)*shade))
+		}
+	}
+	return table
+}()
+
+func skinPixels(img image.Image) *image.NRGBA {
+	if img == nil {
+		return nil
+	}
+	if pixels, ok := img.(*image.NRGBA); ok {
+		return pixels
+	}
+	pixels := image.NewNRGBA(img.Bounds())
+	draw.Draw(pixels, pixels.Bounds(), img, img.Bounds().Min, draw.Src)
+	return pixels
 }
 
 func newSkinPreview() *skinPreview {
 	return &skinPreview{skin: builtinSkin(false), yaw: -.35, pitch: -.1, zoom: 1, zoomGoal: 1, dirty: true}
+}
+
+// Keep the last displayed bitmap and the user's pose, but release scratch
+// pixels and the depth buffer while the wardrobe is offscreen. The bitmap
+// owns its current pixels, so an outgoing transition remains intact. A still
+// preview can be shown again without rasterizing; motion rebuilds scratch
+// buffers once and then resumes the same allocation-free render loop.
+func (p *skinPreview) releaseScratch() {
+	p.frames = [2]*image.RGBA{}
+	p.depth = nil
+	p.last, p.spinFrame = time.Time{}, time.Time{}
 }
 
 func (p *skinPreview) zoomBy(delta float64) {
@@ -47,8 +90,12 @@ func (p *skinPreview) set(skin, cape image.Image, slim bool) {
 	p.dirty = true
 }
 func (p *skinPreview) faces() []skinFace {
-	var faces []skinFace
-	add := func(x, y, z, w, h, d float64, u, v int, overlay bool, tex image.Image) {
+	if p.mesh != nil && p.meshSkin == p.skin && p.meshCape == p.cape && p.meshSlim == p.slim {
+		return p.mesh
+	}
+	skin, cape := skinPixels(p.skin), skinPixels(p.cape)
+	faces := p.mesh[:0]
+	add := func(x, y, z, w, h, d float64, u, v int, overlay bool, tex *image.NRGBA) {
 		if tex == nil {
 			return
 		}
@@ -62,44 +109,61 @@ func (p *skinPreview) faces() []skinFace {
 		}
 		uu, vv := float64(u), float64(v)
 		faces = append(faces,
-			skinFace{[4]point3{{x1, y1, z1}, {x0, y1, z1}, {x0, y0, z1}, {x1, y0, z1}}, rect(uu+d, vv+d, w, h), 1, tex},
-			skinFace{[4]point3{{x0, y1, z0}, {x1, y1, z0}, {x1, y0, z0}, {x0, y0, z0}}, rect(uu+2*d+w, vv+d, w, h), .8, tex},
-			skinFace{[4]point3{{x0, y1, z1}, {x0, y1, z0}, {x0, y0, z0}, {x0, y0, z1}}, rect(uu, vv+d, d, h), .72, tex},
-			skinFace{[4]point3{{x1, y1, z0}, {x1, y1, z1}, {x1, y0, z1}, {x1, y0, z0}}, rect(uu+d+w, vv+d, d, h), .86, tex},
-			skinFace{[4]point3{{x0, y1, z0}, {x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}}, rect(uu+d, vv, w, d), 1.05, tex},
-			skinFace{[4]point3{{x1, y0, z0}, {x1, y0, z1}, {x0, y0, z1}, {x0, y0, z0}}, rect(uu+d+w, vv, w, d), .6, tex})
+			skinFace{[4]point3{{x1, y1, z1}, {x0, y1, z1}, {x0, y0, z1}, {x1, y0, z1}}, rect(uu+d, vv+d, w, h), 0, tex},
+			skinFace{[4]point3{{x0, y1, z0}, {x1, y1, z0}, {x1, y0, z0}, {x0, y0, z0}}, rect(uu+2*d+w, vv+d, w, h), 1, tex},
+			skinFace{[4]point3{{x0, y1, z1}, {x0, y1, z0}, {x0, y0, z0}, {x0, y0, z1}}, rect(uu, vv+d, d, h), 2, tex},
+			skinFace{[4]point3{{x1, y1, z0}, {x1, y1, z1}, {x1, y0, z1}, {x1, y0, z0}}, rect(uu+d+w, vv+d, d, h), 3, tex},
+			skinFace{[4]point3{{x0, y1, z0}, {x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}}, rect(uu+d, vv, w, d), 4, tex},
+			skinFace{[4]point3{{x1, y0, z0}, {x1, y0, z1}, {x0, y0, z1}, {x0, y0, z0}}, rect(uu+d+w, vv, w, d), 5, tex})
 	}
 	arm := 4.
 	if p.slim {
 		arm = 3
 	}
-	add(-4, 24, -4, 8, 8, 8, 0, 0, false, p.skin)
-	add(-4, 12, -2, 8, 12, 4, 16, 16, false, p.skin)
-	add(-4-arm, 12, -2, arm, 12, 4, 40, 16, false, p.skin)
-	add(-4, 0, -2, 4, 12, 4, 0, 16, false, p.skin)
+	add(-4, 24, -4, 8, 8, 8, 0, 0, false, skin)
+	add(-4, 12, -2, 8, 12, 4, 16, 16, false, skin)
+	add(-4-arm, 12, -2, arm, 12, 4, 40, 16, false, skin)
+	add(-4, 0, -2, 4, 12, 4, 0, 16, false, skin)
 	if p.skin.Bounds().Dy() >= 64 {
-		add(4, 12, -2, arm, 12, 4, 32, 48, false, p.skin)
-		add(0, 0, -2, 4, 12, 4, 16, 48, false, p.skin)
+		add(4, 12, -2, arm, 12, 4, 32, 48, false, skin)
+		add(0, 0, -2, 4, 12, 4, 16, 48, false, skin)
 	} else {
-		add(4, 12, -2, arm, 12, 4, 40, 16, false, p.skin)
-		add(0, 0, -2, 4, 12, 4, 0, 16, false, p.skin)
+		add(4, 12, -2, arm, 12, 4, 40, 16, false, skin)
+		add(0, 0, -2, 4, 12, 4, 0, 16, false, skin)
 	}
-	add(-4, 24, -4, 8, 8, 8, 32, 0, true, p.skin)
+	add(-4, 24, -4, 8, 8, 8, 32, 0, true, skin)
 	if p.skin.Bounds().Dy() >= 64 {
-		add(-4, 12, -2, 8, 12, 4, 16, 32, true, p.skin)
-		add(-4-arm, 12, -2, arm, 12, 4, 40, 32, true, p.skin)
-		add(4, 12, -2, arm, 12, 4, 48, 48, true, p.skin)
-		add(-4, 0, -2, 4, 12, 4, 0, 32, true, p.skin)
-		add(0, 0, -2, 4, 12, 4, 0, 48, true, p.skin)
+		add(-4, 12, -2, 8, 12, 4, 16, 32, true, skin)
+		add(-4-arm, 12, -2, arm, 12, 4, 40, 32, true, skin)
+		add(4, 12, -2, arm, 12, 4, 48, 48, true, skin)
+		add(-4, 0, -2, 4, 12, 4, 0, 32, true, skin)
+		add(0, 0, -2, 4, 12, 4, 0, 48, true, skin)
 	}
 	if p.cape != nil {
-		add(-5, 7, -3.5, 10, 16, 1, 0, 0, false, p.cape)
+		add(-5, 7, -3.5, 10, 16, 1, 0, 0, false, cape)
 	}
+	if len(p.mesh) > len(faces) {
+		clear(p.mesh[len(faces):])
+	}
+	p.mesh, p.meshSkin, p.meshCape, p.meshSlim = faces, p.skin, p.cape, p.slim
 	return faces
 }
+
+// render alternates two buffers: its result stays intact through the next call
+// so a displayed bitmap is never overwritten before its replacement is ready.
 func (p *skinPreview) render(w, h int) *image.RGBA {
-	out := image.NewRGBA(image.Rect(0, 0, w, h))
-	depth := make([]float64, w*h)
+	p.frameIndex ^= 1
+	out := p.frames[p.frameIndex]
+	if out == nil || out.Bounds().Dx() != w || out.Bounds().Dy() != h {
+		out = image.NewRGBA(image.Rect(0, 0, w, h))
+		p.frames[p.frameIndex] = out
+	} else {
+		clear(out.Pix)
+	}
+	if len(p.depth) != w*h {
+		p.depth = make([]float64, w*h)
+	}
+	depth := p.depth
 	for i := range depth {
 		depth[i] = math.Inf(-1)
 	}
@@ -136,6 +200,8 @@ func rasterTriangle(out *image.RGBA, depth []float64, a, b, c vertex, f skinFace
 	w, h := out.Bounds().Dx(), out.Bounds().Dy()
 	minX, maxX := max(0, int(math.Floor(min(a.x, b.x, c.x)))), min(w-1, int(math.Ceil(max(a.x, b.x, c.x))))
 	minY, maxY := max(0, int(math.Floor(min(a.y, b.y, c.y)))), min(h-1, int(math.Ceil(max(a.y, b.y, c.y))))
+	texture, shade := f.texture, &skinShades[f.shade]
+	tw, th := texture.Bounds().Dx(), texture.Bounds().Dy()
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
 			px, py := float64(x)+.5, float64(y)+.5
@@ -151,21 +217,25 @@ func rasterTriangle(out *image.RGBA, depth []float64, a, b, c vertex, f skinFace
 				continue
 			}
 			tx, ty := int(a.u*u+b.u*v+c.u*t), int(a.v*u+b.v*v+c.v*t)
-			bounds := f.texture.Bounds()
-			tx = tx * bounds.Dx() / 64
-			ty = ty * bounds.Dx() / 64
-			if tx < 0 || ty < 0 || tx >= bounds.Dx() || ty >= bounds.Dy() {
+			tx = tx * tw / 64
+			ty = ty * tw / 64
+			if tx < 0 || ty < 0 || tx >= tw || ty >= th {
 				continue
 			}
-			col := color.NRGBAModel.Convert(f.texture.At(tx+bounds.Min.X, ty+bounds.Min.Y)).(color.NRGBA)
-			if col.A < 16 {
+			src := texture.Pix[ty*texture.Stride+tx*4:][:4]
+			if src[3] < 16 {
 				continue
 			}
-			shade := func(n uint8) uint8 { return uint8(math.Min(255, float64(n)*f.shade)) }
-			alpha := float64(col.A) / 255
-			old := out.RGBAAt(x, y)
-			mix := func(n, o uint8) uint8 { return uint8(float64(n)*alpha + float64(o)*(1-alpha)) }
-			out.SetRGBA(x, y, color.RGBA{mix(shade(col.R), old.R), mix(shade(col.G), old.G), mix(shade(col.B), old.B), 255})
+			dst := out.Pix[idx*4:][:4]
+			if src[3] == 255 {
+				dst[0], dst[1], dst[2] = shade[src[0]], shade[src[1]], shade[src[2]]
+			} else {
+				alpha := float64(src[3]) / 255
+				for channel := range 3 {
+					dst[channel] = uint8(float64(shade[src[channel]])*alpha + float64(dst[channel])*(1-alpha))
+				}
+			}
+			dst[3] = 255
 			depth[idx] = z
 		}
 	}

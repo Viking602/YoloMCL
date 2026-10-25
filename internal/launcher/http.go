@@ -133,10 +133,40 @@ func (s *Service) getJSON(ctx context.Context, raw string, out any) error {
 	return s.jsonRequest(ctx, "GET", raw, nil, nil, out)
 }
 func (s *Service) download(ctx context.Context, f DownloadFile, dest string) error {
-	if checkHashes(dest, f.SHA1, f.SHA512) {
+	return s.downloadWithIdentity(ctx, f, dest, nil)
+}
+
+// downloadIdentity reuses work already done by the downloader. It is returned
+// only after checksums pass and the completed file replaces its staging part.
+type downloadIdentity struct {
+	SHA1     string
+	Size     int64
+	Filtered uint32
+}
+
+type verifiedModFile struct {
+	downloadIdentity
+	mtime int64
+}
+
+func (d *downloadIdentity) Write(b []byte) (int, error) {
+	d.Filtered += uint32(fingerprintLength(b))
+	return len(b), nil
+}
+
+func (s *Service) downloadWithIdentity(ctx context.Context, f DownloadFile, dest string, identity *downloadIdentity) error {
+	// Identity callers own a staging destination. An interrupted pack import
+	// can already have a complete file; verify it once and reuse that work too.
+	if identity != nil {
+		if verified, ok := verifiedDownload(ctx, f, dest); ok {
+			*identity = verified
+			return nil
+		}
+	}
+	if identity == nil && checkHashes(dest, f.SHA1, f.SHA512) {
 		return nil
 	}
-	if f.SHA256 != "" {
+	if identity == nil && f.SHA256 != "" {
 		if b, e := os.ReadFile(dest); e == nil {
 			sum := sha256.Sum256(b)
 			if strings.EqualFold(hex.EncodeToString(sum[:]), f.SHA256) {
@@ -155,7 +185,7 @@ func (s *Service) download(ctx context.Context, f DownloadFile, dest string) err
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		last = s.downloadOnce(ctx, f, dest)
+		last = s.downloadOnceIdentified(ctx, f, dest, identity)
 		if last == nil {
 			return nil
 		}
@@ -168,11 +198,48 @@ func (s *Service) download(ctx context.Context, f DownloadFile, dest string) err
 	return last
 }
 
-// downloadOnce fetches f into dest through dest+".mcl-part". A part left
+func verifiedDownload(ctx context.Context, want DownloadFile, path string) (downloadIdentity, bool) {
+	var result downloadIdentity
+	if want.SHA1 == "" && want.SHA512 == "" && want.SHA256 == "" {
+		return result, false
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return result, false
+	}
+	defer f.Close()
+	a, b, c := sha1.New(), sha512.New(), sha256.New()
+	buf := make([]byte, modReadChunk)
+	for {
+		if ctx.Err() != nil {
+			return downloadIdentity{}, false
+		}
+		n, err := f.Read(buf)
+		_, _ = a.Write(buf[:n])
+		_, _ = b.Write(buf[:n])
+		_, _ = c.Write(buf[:n])
+		result.Filtered += uint32(fingerprintLength(buf[:n]))
+		result.Size += int64(n)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return downloadIdentity{}, false
+		}
+	}
+	result.SHA1 = hex.EncodeToString(a.Sum(nil))
+	valid := (want.Size == 0 || want.Size == result.Size) &&
+		(want.SHA1 == "" || strings.EqualFold(want.SHA1, result.SHA1)) &&
+		(want.SHA512 == "" || strings.EqualFold(want.SHA512, hex.EncodeToString(b.Sum(nil)))) &&
+		(want.SHA256 == "" || strings.EqualFold(want.SHA256, hex.EncodeToString(c.Sum(nil))))
+	return result, valid && ctx.Err() == nil
+}
+
+// downloadOnceIdentified fetches f into dest through dest+".mcl-part". A part left
 // by an earlier attempt is resumed with an HTTP Range request when the
 // file has a checksum to prove the joined result; otherwise, or if the
 // server ignores the range, it starts over. A bad result drops the part.
-func (s *Service) downloadOnce(ctx context.Context, f DownloadFile, dest string) error {
+func (s *Service) downloadOnceIdentified(ctx context.Context, f DownloadFile, dest string, identity *downloadIdentity) error {
 	part := dest + ".mcl-part"
 	s.trackCreated(ctx, part)
 	var have int64
@@ -189,13 +256,18 @@ func (s *Service) downloadOnce(ctx context.Context, f DownloadFile, dest string)
 	}
 	defer res.Body.Close()
 	a, b, c := sha1.New(), sha512.New(), sha256.New()
+	var hashes io.Writer = io.MultiWriter(a, b, c)
+	var measured downloadIdentity
+	if identity != nil {
+		hashes = io.MultiWriter(hashes, &measured)
+	}
 	flag := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
 	if have > 0 && res.StatusCode == http.StatusPartialContent {
 		old, e := os.Open(part) // hash what is already there, then append
 		if e != nil {
 			return e
 		}
-		_, e = io.Copy(io.MultiWriter(a, b, c), old)
+		_, e = io.Copy(hashes, old)
 		old.Close()
 		if e != nil {
 			return e
@@ -216,7 +288,7 @@ func (s *Service) downloadOnce(ctx context.Context, f DownloadFile, dest string)
 		return e
 	}
 	addJobFileTotal(ctx, f.Size-have)
-	n, err := io.Copy(io.MultiWriter(out, a, b, c, jobMeter{ctx}), io.LimitReader(res.Body, (4<<30)+1))
+	n, err := io.Copy(io.MultiWriter(out, hashes, jobMeter{ctx}), io.LimitReader(res.Body, (4<<30)+1))
 	n += have
 	if err != nil {
 		if ctx.Err() != nil {
@@ -247,7 +319,14 @@ func (s *Service) downloadOnce(ctx context.Context, f DownloadFile, dest string)
 		return err
 	}
 	s.trackCreated(ctx, dest)
-	return os.Rename(part, dest)
+	if err = os.Rename(part, dest); err != nil {
+		return err
+	}
+	if identity != nil {
+		measured.SHA1, measured.Size = hex.EncodeToString(a.Sum(nil)), n
+		*identity = measured
+	}
+	return nil
 }
 
 // isNetErr is an interrupted transfer, worth resuming rather than redoing.

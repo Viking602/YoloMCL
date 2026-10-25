@@ -8,7 +8,6 @@ import (
 	"image/draw"
 	"image/png"
 	"math"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -36,10 +35,11 @@ func (a *App) capeImage(cape launcher.Cape) image.Image {
 	if cape.Active && a.appearance.Cape != "" {
 		if img := imageFromData(a.appearance.Cape); img != nil {
 			w.capeImgs[cape.URL] = img
+			delete(w.capeFailed, cape.URL)
 			return img
 		}
 	}
-	if cape.URL != "" && a.service != nil && !w.capeAsked[cape.URL] && !time.Now().Before(w.capeRetry[cape.URL]) {
+	if cape.URL != "" && a.service != nil && !w.capeAsked[cape.URL] && !w.capeFailed[cape.URL] {
 		w.capeAsked[cape.URL] = true
 		account := a.appearanceAccount
 		a.bgWG.Add(1)
@@ -75,17 +75,18 @@ func (a *App) finishCapeImage(w *wardrobeState, account string, cape launcher.Ca
 	delete(w.capeAsked, cape.URL)
 	if err != nil {
 		logUIError("cape image: " + err.Error())
-		if w.capeRetry == nil {
-			w.capeRetry = map[string]time.Time{}
+		if w.capeFailed == nil {
+			w.capeFailed = map[string]bool{}
 		}
-		w.capeRetry[cape.URL] = time.Now().Add(20 * time.Second)
+		w.capeFailed[cape.URL] = true
 		return
 	}
-	delete(w.capeRetry, cape.URL)
+	delete(w.capeFailed, cape.URL)
 	if w.capeRaw == nil {
 		w.capeRaw = map[string][]byte{}
 	}
 	w.capeRaw[cape.URL], w.capeImgs[cape.URL] = data, img
+	a.pruneCapes(w)
 	if a.wardrobeSt != w || a.appearanceAccount != account || a.preview == nil || a.selectedCape != cape.Name {
 		return
 	}
@@ -93,6 +94,22 @@ func (a *App) finishCapeImage(w *wardrobeState, account string, cape launcher.Ca
 		if current.Name == a.selectedCape && current.URL == cape.URL {
 			a.preview.cape, a.preview.dirty = img, true
 			return
+		}
+	}
+}
+
+const capeCacheLimit = 16
+
+func (a *App) pruneCapes(w *wardrobeState) {
+	keep := map[string]bool{}
+	for _, cape := range a.appearance.Capes {
+		keep[cape.URL] = true
+	}
+	for url := range w.capeRaw {
+		if !keep[url] && len(w.capeRaw) > capeCacheLimit {
+			delete(w.capeRaw, url)
+			delete(w.capeImgs, url)
+			delete(w.capeThumbs, url)
 		}
 	}
 }
@@ -159,7 +176,7 @@ func (a *App) wardrobeCapeCard(c *ui.Context) {
 		active := a.activeCapeName()
 		const tileW, tileH = 72, 100
 		ui.Row(c).FillWidth().Wrap().Gap(10 * s).Children(func() {
-			a.capeTile(c, noCapeKey, t.WardrobeCapeNone, nil, active == t.WardrobeCapeNone, tileW*s, tileH*s)
+			a.capeTile(c, launcher.Cape{ID: noCapeKey, Name: t.WardrobeCapeNone, Active: active == t.WardrobeCapeNone}, nil, tileW*s, tileH*s)
 			for _, cape := range a.appearance.Capes {
 				cp := cape
 				var thumb *ui.Bitmap
@@ -169,7 +186,7 @@ func (a *App) wardrobeCapeCard(c *ui.Context) {
 					thumb = ui.NewBitmap(capeFront(img)).Pixelated()
 					w.capeThumbs[cp.URL] = thumb
 				}
-				a.capeTile(c, cp.ID, cp.Name, thumb, cp.Active, tileW*s, tileH*s)
+				a.capeTile(c, cp, thumb, tileW*s, tileH*s)
 			}
 		})
 		if len(a.appearance.Capes) == 0 {
@@ -193,20 +210,20 @@ func (a *App) wardrobeCapeCard(c *ui.Context) {
 	})
 }
 
-func itoaN(n int) string {
-	b, _ := json.Marshal(n)
-	return string(b)
-}
-
-func (a *App) capeTile(c *ui.Context, key, name string, thumb *ui.Bitmap, inUse bool, w, h float32) {
+func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h float32) {
 	s := uiScale(c)
+	key, name := cape.ID, cape.Name
 	sel := a.selectedCape == name
+	failed := a.wd().capeFailed[cape.URL]
 	tip := name
-	if inUse {
+	if cape.Active {
 		tip = name + a.L("（使用中）", " (in use)")
 	}
+	if failed {
+		tip += a.L("\n加载失败，点击重试", "\nCouldn't load preview. Click to retry")
+	}
 	// Fixed box: thumbnail, one name line, nothing else, so rows align.
-	b := ui.ButtonBase(c.Key("cape-"+key)).Label(name).Tooltip(tip).Size(w, h).Shrink(0).Column().Gap(5 * s).AlignItems(ui.Center)
+	b := tooltip(c, ui.ButtonBase(c.Key("cape-"+key)).Label(name), tip).Size(w, h).Shrink(0).Column().Gap(5 * s).AlignItems(ui.Center)
 	edge := ui.Transparent
 	if sel {
 		edge = accent
@@ -219,10 +236,17 @@ func (a *App) capeTile(c *ui.Context, key, name string, thumb *ui.Bitmap, inUse 
 				ui.Icon(c, icons["cross"]).Size(16*s, 16*s).TextColor(muted)
 			} else if thumb != nil {
 				ui.Image(c, thumb).Size(30*s, 48*s)
+			} else if failed {
+				ui.Column(c).Label("披风加载失败 " + name).Gap(5 * s).AlignItems(ui.Center).Children(func() {
+					ui.Icon(c, icons["refresh"]).Size(16*s, 16*s).TextColor(muted)
+					ui.Text(c, a.L("重试", "Retry")).FontSize(typeCaption * s).TextColor(muted)
+				})
+			} else if a.wd().capeAsked[cape.URL] {
+				ui.Box(c).Label("披风正在加载 " + name).Children(func() { statusSpinner(c, 12*s) })
 			} else {
-				statusSpinner(c, 12*s)
+				ui.Icon(c, icons["skin"]).Size(20*s, 20*s).TextColor(muted)
 			}
-			if inUse {
+			if cape.Active {
 				ui.Box(c).Absolute().Top(5*s).Right(5*s).Size(16*s, 16*s).Radius(999).Background(successInk).Border(1.5, panel).Center().Children(func() {
 					ui.Icon(c, icons["check"]).Size(9*s, 9*s).TextColor(panel)
 				})
@@ -234,7 +258,10 @@ func (a *App) capeTile(c *ui.Context, key, name string, thumb *ui.Bitmap, inUse 
 		}
 		ui.Text(c, name).FontSize(typeCaption * s).TextColor(fg).SingleLine().Ellipsis("…").MaxWidth(w).Height(16 * s).Shrink(0)
 	})
-	if b.Clicked() && !sel {
+	if b.Clicked() && (!sel || failed) {
+		// A failed preview stays idle until explicitly retried or refreshed.
+		// Also allow retrying the selected tile without switching away first.
+		delete(a.wd().capeFailed, cape.URL)
 		a.previewCape(name)
 	}
 }

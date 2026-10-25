@@ -49,7 +49,7 @@ func microTag(c *ui.Context, tg verTag, tip string) {
 		ui.Text(c, midEllipsis(c, tg.text, tagMaxWidth*s, typeCaption2*s, 600)).FontSize(typeCaption2 * s).FontWeight(600).TextColor(tg.color).NoWrap()
 	})
 	if tip != "" {
-		e.Tooltip(tip)
+		tooltip(c, e, tip)
 	}
 }
 
@@ -59,7 +59,7 @@ func microTag(c *ui.Context, tg verTag, tip string) {
 func titleWithTags(c *ui.Context, title, tip string, size float32, weight int, tags []verTag, maxTags int) {
 	s := uiScale(c)
 	ui.Row(c).FillWidth().MinWidth(0).Gap(5 * s).AlignItems(ui.Start).Children(func() {
-		ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine().Tooltip(tip)
+		tooltip(c, ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine(), tip)
 		if len(tags) == 0 {
 			return
 		}

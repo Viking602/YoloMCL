@@ -133,13 +133,20 @@ func atomicBytes(path string, b []byte, mode os.FileMode) error {
 func (s *Service) settings() Settings { s.mu.Lock(); defer s.mu.Unlock(); return s.cfg.Settings }
 func (s *Service) getRoot(id string) (Root, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, r := range s.cfg.Roots {
-		if r.ID == id {
-			return r.clone(), nil
+	var found *Root
+	for i := range s.cfg.Roots {
+		if s.cfg.Roots[i].ID == id {
+			r := s.cfg.Roots[i].clone()
+			found = &r
+			break
 		}
 	}
-	return Root{}, errors.New("找不到 Minecraft 目录")
+	s.mu.Unlock()
+	if found == nil {
+		return Root{}, errors.New("找不到 Minecraft 目录")
+	}
+	s.cacheGameDir(found)
+	return *found, nil
 }
 func (s *Service) getAccount(id string) (Account, error) {
 	s.mu.Lock()

@@ -46,6 +46,7 @@ func (a *App) loadAppearance() {
 				return
 			}
 			a.appearanceErr = ""
+			clear(a.wd().capeFailed)
 			t := a.tr()
 			a.appearance = v
 			a.appearanceAccount = id

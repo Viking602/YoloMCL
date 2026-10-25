@@ -178,7 +178,7 @@ func (a *App) installDeps(c *ui.Context) {
 					if target.Note != "" {
 						msg += a.L("，版本 ", ", version ") + target.Note
 					}
-					ui.Text(c, msg).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0).SingleLine().Tooltip(msg)
+					tooltip(c, ui.Text(c, msg).FontSize(typeFootnote*s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0).SingleLine(), msg)
 				})
 			}
 		})
@@ -194,7 +194,7 @@ func (a *App) installDeps(c *ui.Context) {
 				ui.Spacer(c).Grow(1)
 				for _, v := range a.projectVersions {
 					if v.ID == a.form.VersionID {
-						ui.Text(c, a.L("所选版本 ", "Selected version ")+v.Number).Label("前置所选版本 " + v.Number).FontSize(typeCaption * s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0).Tooltip(v.Number)
+						tooltip(c, ui.Text(c, a.L("所选版本 ", "Selected version ")+v.Number).Label("前置所选版本 "+v.Number).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), v.Number)
 						break
 					}
 				}
@@ -328,7 +328,7 @@ func (a *App) depStatus(c *ui.Context, it launcher.PlanItem, job *launcher.Job) 
 				quietTag(c, a.L("完成", "Done"), successInk)
 			default:
 				quietTag(c, a.L("失败", "Failed"), danger)
-				ui.Box(c).Size(0, 0).Tooltip(classifyError(a.isEN(), strings.TrimPrefix(st, "failed: "), nil).Text())
+				tooltip(c, ui.Box(c).Size(0, 0), classifyError(a.isEN(), strings.TrimPrefix(st, "failed: "), nil).Text())
 			}
 			return
 		}
@@ -338,7 +338,7 @@ func (a *App) depStatus(c *ui.Context, it launcher.PlanItem, job *launcher.Job) 
 		statusSpinner(c, 14*s)
 	case "install":
 		if it.Unverified {
-			ui.Box(c).Shrink(0).Tooltip(a.L("模组文件夹暂时无法读取，未能确认是否已安装", "The mods folder could not be read, so presence is unconfirmed")).Children(func() { quietTag(c, a.L("待确认", "Unconfirmed"), warningInk) })
+			tooltip(c, ui.Box(c).Shrink(0), a.L("模组文件夹暂时无法读取，未能确认是否已安装", "The mods folder could not be read, so presence is unconfirmed")).Children(func() { quietTag(c, a.L("待确认", "Unconfirmed"), warningInk) })
 			return
 		}
 		quietTag(c, a.L("将安装", "Will install"), accent)

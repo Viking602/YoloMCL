@@ -6,12 +6,17 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+// Overview cards sit on the fixed content surface. Resolve their translucency
+// once, so software rendering can fill opaque spans instead of blending every
+// pixel on every frame. Content and navigation retain their own transitions.
+var overviewCardBackground = ui.RGBA(255, 255, 255, .76).Over(contentBackground)
+
 // ovRegion is a dashboard panel with a title and optional trailing actions.
 func ovRegion(c *ui.Context, key, title string, actions, fn func()) {
 	s := uiScale(c)
-	ui.Column(c.Key(key)).Label(title).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Clip().Padding(16*s, 20*s).Gap(4*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).Shadow(0, 1*s, 3*s, 0, ui.RGBA(40, 52, 110, .05)).Children(func() {
+	ui.Column(c.Key(key)).Label(title).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Clip().Padding(16*s, 20*s).Gap(4*s).Radius(radiusCard*s).Background(overviewCardBackground).Border(1, glassEdge).Shadow(0, 1*s, 3*s, 0, ui.RGBA(40, 52, 110, .05)).Children(func() {
 		ui.Row(c).FillWidth().Height(30 * s).Shrink(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, title).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink).SingleLine().Grow(1).MinWidth(0).Tooltip(title)
+			tooltip(c, ui.Text(c, title).FontSize(typeHeadline*s).FontWeight(700).TextColor(ink).SingleLine().Grow(1).MinWidth(0), title)
 			if actions != nil {
 				actions()
 			}
@@ -70,6 +75,6 @@ func kv(c *ui.Context, k, v string) {
 	s := uiScale(c)
 	ui.Row(c).FillWidth().Height(28 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(kvLabelW * s).Shrink(0).Clip().Children(func() { label(c, k).FontSize(typeCallout * s).NoWrap() })
-		ui.Text(c, v).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(v)
+		tooltip(c, ui.Text(c, v).FontSize(typeCallout*s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0), v)
 	})
 }

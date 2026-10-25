@@ -78,3 +78,99 @@ func TestInstanceNamesKeepDuplicateTitlesDistinct(t *testing.T) {
 		t.Fatal("renaming retained stale disambiguation")
 	}
 }
+
+func TestInstanceListRefreshesChangedValues(t *testing.T) {
+	a := &App{}
+	a.settings.Language = LangEN
+	r := launcher.Instance{Root: launcher.Root{ID: "root"}, Versions: []launcher.VersionSummary{
+		{ID: "pack", Minecraft: "1.21.1", Loader: "fabric", LoaderVersion: "0.16.14"},
+		{ID: "1.21.1", Minecraft: "1.21.1", Loader: "vanilla"},
+	}}
+	rows, names := a.instanceListItems(&r)
+	if len(rows) != 4 || names["1.21.1"].Title != "Vanilla 1.21.1" {
+		t.Fatalf("unexpected initial list: %+v", names)
+	}
+	r.SelectedVersion = "1.21.1"
+	selected, _ := a.instanceListItems(&r)
+	if &selected[0] != &rows[0] {
+		t.Fatal("changing only selection rebuilt the list")
+	}
+	r.Versions[0].DisplayName = "Renamed"
+	_, names = a.instanceListItems(&r)
+	if names["pack"].Title != "Renamed" {
+		t.Fatal("in-place rename retained the old title")
+	}
+	a.settings.Language = LangZH
+	rows, names = a.instanceListItems(&r)
+	if rows[0].heading != "整合包" || names["1.21.1"].Title != "原版 1.21.1" {
+		t.Fatal("language change retained old labels")
+	}
+	r.Versions[0].DisplayName = ""
+	r.Pack = &launcher.PackLock{Name: "Imported pack", Version: "2", GameVersion: "pack", LoaderVersion: "0.17"}
+	_, names = a.instanceListItems(&r)
+	if names["pack"].Title != "Imported pack" || !strings.Contains(names["pack"].Sub, "v2") {
+		t.Fatal("pack metadata did not refresh")
+	}
+	r.Pack.Version = "3"
+	_, names = a.instanceListItems(&r)
+	if !strings.Contains(names["pack"].Sub, "v3") {
+		t.Fatal("in-place pack update retained an old version")
+	}
+	a.instFilter = "Imported"
+	rows, _ = a.instanceListItems(&r)
+	if len(rows) != 2 || rows[1].version.ID != "pack" {
+		t.Fatal("name filter did not refresh")
+	}
+	a.instFilter, a.instLoader = "", "vanilla"
+	rows, _ = a.instanceListItems(&r)
+	if len(rows) != 2 || rows[1].version.ID != "1.21.1" {
+		t.Fatal("loader filter did not refresh")
+	}
+	a.instLoader = ""
+	r.ID = "other-root"
+	r.Versions = r.Versions[:1]
+	rows, _ = a.instanceListItems(&r)
+	if len(rows) != 2 || rows[1].key != "other-root/version/pack" {
+		t.Fatal("directory switch retained old rows")
+	}
+	rows, names = a.instanceListItems(nil)
+	if len(rows) != 0 || len(names) != 0 || a.instListData.versions != nil {
+		t.Fatal("removing the directory retained its list")
+	}
+}
+
+// Includes layout, software painting and selection animation, with the same
+// visible rows and a growing inventory. Icons are already decoded.
+func BenchmarkInstanceListFrames(b *testing.B) {
+	if err := loadAssets(); err != nil {
+		b.Fatal(err)
+	}
+	icon, err := ui.DecodeBitmap(BrandIconPNG())
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, n := range []int{60, 500} {
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			a := &App{images: map[string]ui.ImageSource{}}
+			r := launcher.Instance{Root: launcher.Root{ID: "bench"}, Versions: make([]launcher.VersionSummary, n)}
+			for i := range r.Versions {
+				id := fmt.Sprintf("Pack %03d", i)
+				r.Versions[i] = launcher.VersionSummary{ID: id, Loader: "neoforge", LoaderVersion: "21.1.250", Minecraft: "1.21.1"}
+				a.images["version:bench:"+id] = icon
+			}
+			frame := 0
+			tt := ui.NewTester(func(c *ui.Context) {
+				c.SetTheme(theme)
+				c.AnimationFrame()
+				ui.Column(c).Fill().Children(func() { a.instanceVirtualList(c, &r) })
+			}, 340, 800)
+			tt.Advance(time.Second)
+			b.ReportAllocs()
+			for b.Loop() {
+				frame++
+				r.SelectedVersion = r.Versions[(frame/15)%10].ID
+				tt.Advance(time.Second / 60)
+			}
+		})
+	}
+}

@@ -56,8 +56,7 @@ func matchingVersionOptions(options []string, query string) []string {
 
 func (a *App) discoverVersionFilter(c *ui.Context) {
 	s := uiScale(c)
-	options := a.discoverVersionOptions()
-	allLabel := options[0]
+	allLabel := a.L("全部游戏版本", "All game versions")
 	selected := a.filterMC
 	if selected == "" {
 		selected = allLabel
@@ -74,7 +73,7 @@ func (a *App) discoverVersionFilter(c *ui.Context) {
 		cb = ui.ComboboxBase(c.Key("discover-mc"), &a.discoverMCText)
 		cb.Input.Label(a.tr().DiscoverFilterMCAria).FontSize(typeBody * s).TextColor(ink).Grow(1).Shrink(1).Basis(0).MinWidth(0)
 		if a.filterMC != "" {
-			clr := ui.ButtonBase(c.Key("discover-mc-clear")).Label(a.L("清除版本筛选", "Clear version filter")).Tooltip(allLabel).Size(18*s, 18*s).Radius(999).Center().Shrink(0)
+			clr := tooltip(c, ui.ButtonBase(c.Key("discover-mc-clear")).Label(a.L("清除版本筛选", "Clear version filter")), allLabel).Size(18*s, 18*s).Radius(999).Center().Shrink(0)
 			if clr.Hovered() {
 				clr.Background(ui.RGBA(120, 130, 160, .16))
 			}
@@ -117,11 +116,13 @@ func (a *App) discoverVersionFilter(c *ui.Context) {
 	} else if cb.Input.Clicked() && !wasOpen && open && !cb.Filtering() {
 		cb.Input.SetTextSelection(0, len([]rune(a.discoverMCText)))
 	}
-	shown := options
-	if cb.Filtering() {
-		shown = matchingVersionOptions(options, a.discoverMCText)
-	}
 	cb.Popup(func(popupPanel ui.Element) {
+		// The closed control needs only its selected label, not the entire
+		// manifest rebuilt on every animation or scroll frame.
+		shown := a.discoverVersionOptions()
+		if cb.Filtering() {
+			shown = matchingVersionOptions(shown, a.discoverMCText)
+		}
 		popupPanel.AttachTo(row, ui.AnchorBottomStart, ui.AnchorTopStart).MinWidth(row.LayoutBounds().W)
 		popover(popupPanel.Margin(4*s, 0, 0, 0).Padding(6*s), 14*s, s)
 		popupPanel.TransformOrigin(.5, 0).Transition(ui.ElementTransition{Animation: &motionEnter, Colors: true, Enter: &ui.Motion{Opacity: 0, Y: -6 * s, Scale: .98}})

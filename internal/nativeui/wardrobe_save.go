@@ -137,7 +137,7 @@ func (a *App) saveNotice(c *ui.Context) {
 			col, icon = danger, "info"
 		}
 		ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(col).Shrink(0)
-		ui.Text(c, w.saveMsg).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Ellipsis("…").Grow(1).MinWidth(0).Tooltip(w.savePath)
+		tooltip(c, ui.Text(c, w.saveMsg).FontSize(typeFootnote*s).TextColor(inkSecondary).SingleLine().Ellipsis("…").Grow(1).MinWidth(0), w.savePath)
 		if w.savePath != "" && fixedButton(c, "save-open-folder", a.L("打开文件夹", "Open folder"), "folder", 0, btnSm*s, false, false) {
 			c.OpenURL("file:///" + filepath.ToSlash(filepath.Dir(w.savePath)))
 		}

@@ -129,6 +129,13 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		if err = json.Unmarshal([]byte(payload), &q); err == nil {
 			value, err = s.ImportPack(q)
 		}
+	case "previewPackExport":
+		value, err = s.PreviewPackExport(ctx, c.RootID, c.Version)
+	case "exportPack":
+		var q ExportPackRequest
+		if err = json.Unmarshal([]byte(payload), &q); err == nil {
+			value, err = s.ExportPack(q)
+		}
 	case "checkPackUpdate":
 		value, err = s.CheckPackUpdate(ctx, c.RootID)
 	case "planPackUpdate":

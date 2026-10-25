@@ -2,11 +2,98 @@ package launcher
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
+
+func TestJavaScopeOnlySchedulesExistingRuntimeDirectories(t *testing.T) {
+	s := testService(t)
+	r := inventoryFixture(t, s)
+	home := filepath.Join(r.Path, "versions", "pack", "runtime", "jdk21")
+	javaFixture(t, home, "21.0.10")
+	writeTestFile(t, filepath.Join(r.Path, "java"), []byte("not a runtime directory"))
+	_, roots, _ := s.javaScope()
+	if !slices.Contains(roots, filepath.Dir(home)) {
+		t.Fatal("existing per-instance runtime was not scheduled")
+	}
+	for _, path := range roots {
+		if path == s.runtimeDir() {
+			continue // the managed directory may be created by a later download
+		}
+		if info, err := os.Lstat(path); err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			t.Fatalf("scheduled absent or non-directory runtime: %s", path)
+		}
+	}
+}
+
+func TestCleanupProcessesMultipleBatchesAndHonorsCancellation(t *testing.T) {
+	s := testService(t)
+	r := inventoryFixture(t, s)
+	mods := filepath.Join(r.Path, "versions", "pack", "mods")
+	old := time.Now().Add(-48 * time.Hour)
+	var parts, keep []string
+	for i := range 300 {
+		path := filepath.Join(mods, fmt.Sprintf("mod-%03d.jar", i))
+		if i%37 == 0 {
+			path += ".mcl-part"
+			parts = append(parts, path)
+		} else {
+			keep = append(keep, path)
+		}
+		writeTestFile(t, path, []byte("fixture"))
+		if err := os.Chtimes(path, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fresh := filepath.Join(mods, "active.jar.mcl-part")
+	writeTestFile(t, fresh, []byte("active download"))
+	keep = append(keep, fresh)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s.sweepTemp(ctx)
+	for _, path := range parts {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("cancelled cleanup removed %s: %v", path, err)
+		}
+	}
+	s.sweepTemp(context.Background())
+	for _, path := range parts {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("old partial download survived: %s, %v", path, err)
+		}
+	}
+	for _, path := range keep {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("cleanup removed a normal mod or active download: %s, %v", path, err)
+		}
+	}
+}
+
+func BenchmarkCleanupLargeModDirectory(b *testing.B) {
+	s, err := New(b.TempDir())
+	if err != nil {
+		b.Fatal(err)
+	}
+	game := b.TempDir()
+	mods := filepath.Join(game, "mods")
+	if err := os.Mkdir(mods, 0755); err != nil {
+		b.Fatal(err)
+	}
+	for i := range 2000 {
+		if err := os.WriteFile(filepath.Join(mods, fmt.Sprintf("mod-%04d.jar", i)), nil, 0600); err != nil {
+			b.Fatal(err)
+		}
+	}
+	s.cfg.Roots = []Root{{ID: "qa", Path: game}}
+	b.ReportAllocs()
+	for b.Loop() {
+		s.sweepTemp(context.Background())
+	}
+}
 
 func TestRelativeLauncherDataKeepsManagedJavaInScope(t *testing.T) {
 	t.Chdir(t.TempDir())
@@ -95,7 +182,7 @@ func TestCleanupLeavesParentsAndUnrelatedFilesAlone(t *testing.T) {
 	fresh := filepath.Join(s.dir, "cache", "new-preview.pack")
 	writeTestFile(t, fresh, []byte("active preview"))
 	keep = append(keep, fresh)
-	s.sweepTemp()
+	s.sweepTemp(context.Background())
 	for _, p := range keep {
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("outside cleanup scope: %s", p)
@@ -126,7 +213,7 @@ func TestScanScopeRejectsEscapingDirectoryLinks(t *testing.T) {
 	if err != nil || len(items) != 0 {
 		t.Fatalf("followed runtime link: %+v, %v", items, err)
 	}
-	s.sweepTemp()
+	s.sweepTemp(context.Background())
 	if _, err := os.Stat(keep); err != nil {
 		t.Fatal("cleanup traversed outside link")
 	}

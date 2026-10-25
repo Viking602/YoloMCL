@@ -224,7 +224,7 @@ func (a *App) versionGameBadge(c *ui.Context, v launcher.ProjectVersion) {
 	if len(mcs) > 1 {
 		text += fmt.Sprintf(" +%d", len(mcs)-1)
 	}
-	ui.Box(c.Key("version-game-" + v.ID)).Label("版本适配 " + v.ID).Shrink(1).MinWidth(0).Tooltip(strings.Join(mcs, ", ")).Children(func() {
+	tooltip(c, ui.Box(c.Key("version-game-"+v.ID)).Label("版本适配 "+v.ID).Shrink(1).MinWidth(0), strings.Join(mcs, ", ")).Children(func() {
 		quietTag(c, text, inkSecondary)
 	})
 }

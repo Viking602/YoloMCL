@@ -119,7 +119,7 @@ func (a *App) accountTypeTag(c *ui.Context, ac launcher.Account) {
 	tagText := a.accountKindTag(ac)
 	ui.Row(c).Label("类型标签 "+kind).Shrink(1).MinWidth(0).Padding(2*s, 8*s, 2*s, 6*s).Gap(4*s).Radius(999).Background(col.Alpha(.12)).Border(1, col.Alpha(.22)).AlignItems(ui.Center).Children(func() {
 		accountTypeIconL(c, a, "类型图标 ", kind, ac.Server, 12*s, col)
-		ui.Text(c, midEllipsis(c, tagText, 240*s, typeCaption2*s, 600)).Label(tagText).FontSize(typeCaption2 * s).FontWeight(600).TextColor(col).Shrink(1).MinWidth(0).NoWrap().Tooltip(ac.Server)
+		tooltip(c, ui.Text(c, midEllipsis(c, tagText, 240*s, typeCaption2*s, 600)).Label(tagText).FontSize(typeCaption2*s).FontWeight(600).TextColor(col).Shrink(1).MinWidth(0).NoWrap(), ac.Server)
 	})
 }
 
@@ -159,7 +159,7 @@ func (a *App) accountList(c *ui.Context) {
 						if active {
 							fg = accent
 						}
-						ui.Text(c, ac.Name).FillWidth().MinWidth(0).FontSize(typeBody * s).FontWeight(700).TextColor(fg).SingleLine().Tooltip(ac.Name)
+						tooltip(c, ui.Text(c, ac.Name).FillWidth().MinWidth(0).FontSize(typeBody*s).FontWeight(700).TextColor(fg).SingleLine(), ac.Name)
 						ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
 							a.accountTypeTag(c, ac)
 							if active {
@@ -351,13 +351,16 @@ func (a *App) accountAddForm(c *ui.Context) {
 }
 
 func (a *App) pollDevice() {
-	if a.device == nil || a.polling || a.pendingOp("startMicrosoft") || time.Now().Before(a.nextDevicePoll) {
+	if a.device == nil || a.polling || a.pendingOp("startMicrosoft") {
 		return
 	}
 	if time.Now().After(a.deviceUntil) {
 		a.device = nil
 		a.message = a.tr().AccMSExpired
 		a.errorMessage = true
+		return
+	}
+	if time.Now().Before(a.nextDevicePoll) {
 		return
 	}
 	id := a.device.ID

@@ -67,12 +67,12 @@ func (a *App) versionMetrics(c *ui.Context, v launcher.ProjectVersion, selected 
 		}
 	}
 	ui.Column(c.Key("version-metrics")).Label(a.L("版本下载量", "Version downloads")).Width(172 * s).Shrink(0).Gap(4 * s).AlignItems(ui.End).Children(func() {
-		ui.Row(c.Key("version-downloads")).Gap(5 * s).AlignItems(ui.Center).Tooltip(hint).Children(func() {
+		tooltip(c, ui.Row(c.Key("version-downloads")).Gap(5*s).AlignItems(ui.Center), hint).Children(func() {
 			ui.Icon(c, icons["download"]).Size(11*s, 11*s).TextColor(color).Shrink(0)
 			numText(c, count, typeCallout*s, color).FontWeight(650)
 			ui.Text(c, a.L("下载", "downloads")).FontSize(typeCaption2 * s).TextColor(muted).NoWrap()
 		})
 		text := strings.Join(details, "  ")
-		numText(c, text, typeCaption*s, muted).SingleLine().FillWidth().TextAlign(ui.End).Tooltip(strings.Join(detailHints, "\n"))
+		tooltip(c, numText(c, text, typeCaption*s, muted).SingleLine().FillWidth().TextAlign(ui.End), strings.Join(detailHints, "\n"))
 	})
 }

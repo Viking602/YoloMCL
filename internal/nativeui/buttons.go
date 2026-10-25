@@ -92,7 +92,7 @@ func fixedButton(c *ui.Context, key, text, icon string, width, height float32, p
 func iconOnlyButton(c *ui.Context, key, icon, label string, size float32, disabled bool) bool {
 	s := uiScale(c)
 	fg := buttonForeground(false, disabled)
-	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(size, size).Shrink(0).Radius(min(radiusControl*s, size*.30)).AlignItems(ui.Center).Justify(ui.Center)
+	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(size, size).Shrink(0).Radius(min(radiusControl*s, size*.30)).AlignItems(ui.Center).Justify(ui.Center)
 	styleButton(b, s, false, disabled)
 	return b.Children(func() { ui.Icon(c, icons[icon]).Size(0.45*size, 0.45*size).TextColor(fg) }).Clicked() && !disabled
 }
@@ -121,7 +121,7 @@ func finishButton(c *ui.Context, b ui.Element, key, text, icon string, font floa
 		// announces itself and keeps focus, but does nothing.
 		b.Cursor(ui.CursorDefault)
 		if why := pendingWhy; why != "" {
-			b.Tooltip(why)
+			tooltip(c, b, why)
 		}
 	}
 	pendingWhy = ""

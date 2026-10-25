@@ -73,17 +73,17 @@ Keep small private helpers and constants beside the feature that owns them; do n
 Follow the package dependency direction defined in [`architecture.md`](architecture.md) and enforced by `scripts/check-imports.awk`:
 
 - `main` → `internal/app`
-- `internal/app` → `internal/buildinfo`, `internal/launcher`, `internal/nativeui`, `plugins/startup`
+- `internal/app` → `internal/buildinfo`, `internal/launcher`, `internal/nativeui`
 - `internal/nativeui` → `internal/launcher`, `internal/buildinfo`, `internal/nativeui/i18n`
 - `internal/launcher` → `internal/config`, `internal/launcher/{memory,proctree,textenc,vault}`
-- `internal/config`, `internal/buildinfo`, `plugins/startup`, and leaf sub-packages → no other internal package dependencies
+- `internal/config`, `internal/buildinfo`, and leaf sub-packages → no other internal package dependencies
 
 Platform and boundary rules:
 
-- **UI and worker isolation**: Only `internal/app`, `internal/nativeui`, and `plugins/startup` may import `github.com/egoist/mygo`. UI code must not directly implement game installation, file backup, or disk scanning; background workers must not mutate UI state directly and must post results via `App.post` with generation checks.
+- **UI and worker isolation**: Only `internal/app` and `internal/nativeui` may import `github.com/egoist/mygo`. UI code must not directly implement game installation, file backup, or disk scanning; background workers must not mutate UI state directly and must post results via `App.post` with generation checks.
 - **Configuration ownership**: Hold `Service.mu`, clone the configuration (including nested maps), mutate the draft, then call `saveConfigLocked`. Publish only after successful persistence. Never return shared mutable maps or change process-wide HTTP clients from package initialization.
 - **External input**: Bound decompressed sizes, image dimensions, collection lengths and nesting depth before allocation. Carry request cancellation into network and filesystem work, and preserve recoverable backups when persistence fails.
 - **Path and OS isolation**: Use `path/filepath` for local filesystem paths and `path` for URLs and protocol paths. Place OS-specific APIs in `*_windows.go`, `*_darwin.go`, `*_linux.go`, or build-constrained files rather than scattering platform branches across shared logic.
 - **Bounded disk scanning**: Modpack and instance scans only access registered Minecraft directories and isolated launcher configuration. Java detection checks installation directories, environment variables, and OS registries in the background after the first frame, and must not restart on every instance switch.
-- **MyGo dependency**: Keep the `github.com/egoist/mygo` version pinned and unmodified. All startup adaptation belongs in `plugins/startup`; never modify the Go module cache, vendor MyGo, or commit `replace` directives pointing to private forks. Run plugin compatibility tests before upgrading MyGo.
+- **MyGo dependency**: Keep the `github.com/egoist/mygo` version pinned and unmodified. Application startup belongs in `internal/app` and uses MyGo's public APIs; never modify the Go module cache, vendor MyGo, or commit `replace` directives pointing to private forks. Verify window startup, renderer settings and UI behavior before upgrading MyGo.
 - **Build artifacts**: Write build deliverables to `build/`, local temporary files to `.cache/`, and test artifacts to `t.TempDir()`. Keep `rsrc_windows_amd64.syso` in the repository root as the Windows `amd64` linker resource input; it is unused on macOS, Linux, and Windows `arm64`.

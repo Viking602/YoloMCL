@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"fmt"
+	"hash/maphash"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -9,10 +10,16 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+// logMeasureKey identifies a wrapped height by the content hashes of the
+// message and the search text, so the cache keeps no message strings and
+// stays valid when lines are replaced or prepended (indices shift, text
+// does not).
 type logMeasureKey struct {
-	text, query  string
+	text, query  uint64
 	width, scale float32
 }
+
+var logHashSeed = maphash.MakeSeed()
 
 func logMessage(l logLine) string {
 	if !l.Cont && !l.Structured() {
@@ -33,11 +40,14 @@ func (a *App) layoutLogRows(c *ui.Context, width float32) {
 		return
 	}
 	lv.layoutSig, lv.layoutWidth, lv.layoutScale, lv.layoutLang = lv.sig, width, s, a.settings.Language
-	if lv.measured == nil || len(lv.measured) > 2*logMaxLoaded {
+	// Only long lines are cached; a bounded multiple of the rows in play
+	// keeps scrolled-away measurements from accumulating.
+	if lv.measured == nil || len(lv.measured) > 64+4*len(lv.vis) {
 		lv.measured = make(map[logMeasureKey]float32)
 	}
 	lv.offsets = make([]float32, len(lv.vis)+1)
 	q := strings.TrimSpace(lv.query)
+	qh := maphash.String(logHashSeed, q)
 	for pos, index := range lv.vis {
 		l := lv.lines[index]
 		height := logRowHeight * s
@@ -59,7 +69,7 @@ func (a *App) layoutLogRows(c *ui.Context, width float32) {
 			// A short line fits even with wide glyphs. Long lines use the same
 			// shaping engine and spans as the actual text, including search hits.
 			if float32(utf8.RuneCountInString(msg))*typeCaption*s*1.2 > textWidth || strings.ContainsAny(msg, "\r\n") {
-				key := logMeasureKey{msg, q, textWidth, s}
+				key := logMeasureKey{maphash.String(logHashSeed, msg), qh, textWidth, s}
 				if h, ok := lv.measured[key]; ok {
 					height = h
 				} else {

@@ -20,7 +20,9 @@ func (a *App) Render(path string) error {
 
 func (a *App) ShowPage(page string) {
 	if tab, ok := strings.CutPrefix(page, "home/"); ok { // e.g. -page home/shader
-		a.goPage("home")
+		if a.page != "home" {
+			a.goPage("home")
+		}
 		a.setInstTab(tab)
 		return
 	}
@@ -68,7 +70,7 @@ func (a *App) RenderPage(path, page string, width, height int) error {
 			case "resourcepack", "shader":
 				a.addonTab = a.instTab
 				a.assetPacks, _ = a.service.ListAssetPacks(r.ID, a.instTab)
-			default:
+			case "mods":
 				a.addonTab = "mods"
 				a.mods, _ = a.service.ListMods(r.ID)
 			}
@@ -83,9 +85,10 @@ func (a *App) RenderPage(path, page string, width, height int) error {
 				// it asynchronously through localIcon.
 				if shot := st.LatestShot; shot != nil && (a.instTab == "" || a.instTab == "overview") {
 					if b, e := a.service.ScreenshotPreview(r.ID, r.SelectedVersion, shot.File); e == nil {
-						if img, e := decodeResourceImage(b); e == nil {
+						key := overviewShotKey(*r, *shot)
+						if img, e := decodeLocalImage(key, b); e == nil {
 							a.imageMu.Lock()
-							a.images[overviewShotKey(*r, *shot)] = img
+							a.cacheImageLocked(key, img, len(b))
 							a.imageMu.Unlock()
 						}
 					}

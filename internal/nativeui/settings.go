@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -54,6 +55,7 @@ func (a *App) preferences(c *ui.Context) {
 					a.versionAndLangSettings(c)
 					a.runtimeSettings(c)
 					a.javaSection(c)
+					a.modCacheSettings(c)
 					a.aboutSettings(c)
 				})
 			})
@@ -110,10 +112,10 @@ func (a *App) settingsHeader(c *ui.Context) {
 		a.settingsBack(c)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
 			ui.Text(c, t.SettingsTitle).Label("页面标题 " + t.SettingsTitle).FontSize(typeDisplay * s).FontWeight(700).TextColor(ink).SingleLine()
-			ui.Text(c, t.SettingsDesc).Label("设置简要说明").FontSize(typeFootnote * s).TextColor(muted).FillWidth().MinWidth(0).SingleLine().Tooltip(t.SettingsDesc)
+			tooltip(c, ui.Text(c, t.SettingsDesc).Label("设置简要说明").FontSize(typeFootnote*s).TextColor(muted).FillWidth().MinWidth(0).SingleLine(), t.SettingsDesc)
 		})
 		ui.Row(c.Key("settings-actions")).Label("设置操作栏").Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			ui.Row(c).Label("设置自动保存提示").Tooltip(t.SettingsDefaultHint).Padding(5*s, 9*s).Gap(5 * s).Radius(999).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
+			tooltip(c, ui.Row(c).Label("设置自动保存提示"), t.SettingsDefaultHint).Padding(5*s, 9*s).Gap(5 * s).Radius(999).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["check"]).Size(11*s, 11*s).TextColor(successInk)
 				ui.Text(c, a.L("自动保存", "Auto-save")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
 			})
@@ -198,7 +200,7 @@ func (a *App) javaRow(c *ui.Context) {
 	t := a.tr()
 	hint := t.SettingsJavaAutoHint
 	if a.settings.JavaPath != "" {
-		hint = a.settings.JavaPath
+		hint = a.L("使用所选的 Java 运行时启动游戏。", "Launch games with the selected Java runtime.")
 	} else if a.javaScanning {
 		hint = t.SettingsJavaScanningHint
 	}
@@ -236,7 +238,7 @@ func (a *App) javaRow(c *ui.Context) {
 			names = append(names, selected)
 			paths[selected] = a.settings.JavaPath
 		}
-		if selectBox(c, "java-selection", t.SettingsJavaAria, &selected, names).FillWidth().Height(btnMd * s).Changed() {
+		if a.javaSelectBox(c, "java-selection", t.SettingsJavaAria, &selected, names, paths).FillWidth().Height(btnMd * s).Changed() {
 			a.settings.JavaPath = paths[selected]
 			a.persistSettings("")
 		}
@@ -337,7 +339,7 @@ func (a *App) memoryRow(c *ui.Context) {
 func (a *App) versionAndLangSettings(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	settingsGroup(c, "游戏版本面板", t.SettingsPrefsTitle, "",
+	rows := []func(){
 		func() {
 			settingRow(c, rowIcon(c, "globe", [2]ui.Color{ui.Hex("#0a84ff"), ui.Hex("#5e5ce6")}), t.SettingsLanguageLabel, "", func() {
 				auto := a.L("跟随系统", "System")
@@ -367,5 +369,16 @@ func (a *App) versionAndLangSettings(c *ui.Context) {
 				}
 			}, nil)
 		},
-	)
+	}
+	if runtime.GOOS == "windows" {
+		rows = append(rows, func() {
+			settingRow(c, nil, a.L("界面硬件加速", "Interface hardware acceleration"),
+				a.L("默认使用低内存渲染并保留动画；高分辨率下可开启加速。重启启动器后生效。", "Off uses less memory and keeps animations. Enable for high-resolution displays. Restart to apply."), func() {
+					if nativeToggle(c, "hardware-acceleration", a.L("界面硬件加速开关", "Enable interface hardware acceleration"), &a.settings.HardwareAcceleration).Changed() {
+						a.persistSettings(a.L("已保存渲染设置，重启启动器后生效", "Rendering preference saved. Restart the launcher to apply."))
+					}
+				}, nil)
+		})
+	}
+	settingsGroup(c, "游戏版本面板", t.SettingsPrefsTitle, "", rows...)
 }

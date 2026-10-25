@@ -3,10 +3,6 @@ package nativeui
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -19,49 +15,23 @@ type launcherRelease struct {
 	install func(context.Context, func(int64, int64)) error
 }
 
+type launcherUpdateResult struct {
+	release *launcherRelease
+	policy  *buildinfo.UpdatePolicy
+}
+
 type launcherUpdateState struct {
 	phase             string // idle, checking, current, available, installing, ready, disabled, failed
 	release           *launcherRelease
 	downloaded, total int64
 	err               error
+	currentVersion    string
+	policy            *buildinfo.UpdatePolicy
+	prompt, locked    bool
 }
 
-// Only official archive layouts are compatible with the updater's relaunch
-// path. A renamed binary can still use the GitHub download link.
-func officialExecutable(path, goos string) bool {
-	if goos == "windows" {
-		return strings.EqualFold(filepath.Base(path), "YoloMCL.exe")
-	}
-	if filepath.Base(path) != "YoloMCL" {
-		return false
-	}
-	if goos == "darwin" {
-		return filepath.Base(filepath.Dir(path)) == "MacOS" &&
-			filepath.Base(filepath.Dir(filepath.Dir(path))) == "Contents" &&
-			strings.HasSuffix(filepath.Dir(filepath.Dir(filepath.Dir(path))), ".app")
-	}
-	return goos == "linux"
-}
-
-func checkOfficialRelease(ctx context.Context) (*launcherRelease, error) {
-	path, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
-	if real, err := filepath.EvalSymlinks(path); err == nil {
-		path = real
-	}
-	if !buildinfo.ValidTag(buildinfo.Current().Version) || !officialExecutable(path, runtime.GOOS) {
-		return nil, mygo.ErrUpdatesDisabled
-	}
-	update, err := mygo.Updater.Check(ctx)
-	if err != nil || update == nil {
-		return nil, err
-	}
-	if !buildinfo.ValidTag("v" + strings.TrimPrefix(update.Version, "v")) {
-		return nil, errors.New("invalid release version")
-	}
-	return &launcherRelease{version: update.Version, install: update.Install}, nil
+func (a *App) launcherUpdateRequired() bool {
+	return a.launcherUpdate.policy.RequiresUpdate(a.launcherUpdate.currentVersion)
 }
 
 func (a *App) startLauncherUpdates() {
@@ -76,7 +46,10 @@ func (a *App) checkLauncherUpdates() {
 	state.phase, state.err = "checking", nil
 	check := a.checkLauncherRelease
 	if check == nil {
-		check = checkOfficialRelease
+		version, cached, dir := state.currentVersion, state.policy, a.snapshot.DataDir
+		check = func(ctx context.Context) (launcherUpdateResult, error) {
+			return checkOfficialRelease(ctx, version, dir, cached)
+		}
 	}
 	a.bgWG.Add(1)
 	go func() {
@@ -86,18 +59,20 @@ func (a *App) checkLauncherUpdates() {
 		}
 		ctx, cancel := context.WithTimeout(a.ctx, 25*time.Second)
 		defer cancel()
-		release, err := check(ctx)
+		result, err := check(ctx)
 		a.post(func() {
-			state.release, state.err = release, err
+			state.policy = newerLauncherPolicy(state.policy, result.policy)
+			state.err = err
 			switch {
+			case result.release != nil:
+				state.release = result.release
+				state.phase, state.prompt = "available", true
 			case errors.Is(err, mygo.ErrUpdatesDisabled):
 				state.phase = "disabled"
 			case err != nil:
 				state.phase = "failed"
-			case release != nil:
-				state.phase = "available"
 			default:
-				state.phase = "current"
+				state.phase, state.release = "current", nil
 			}
 		})
 	}()

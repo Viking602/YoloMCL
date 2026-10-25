@@ -105,13 +105,17 @@ func statusLine(c *ui.Context, text string, color ui.Color, busy bool) {
 		if busy {
 			statusSpinner(c, 16*s)
 		}
-		ui.Text(c, text).FontSize(typeCallout * s).FontWeight(500).TextColor(color).TextAlign(ui.Center).MinWidth(0).Shrink(1).SingleLine().Tooltip(text)
+		tooltip(c, ui.Text(c, text).FontSize(typeCallout*s).FontWeight(500).TextColor(color).TextAlign(ui.Center).MinWidth(0).Shrink(1).SingleLine(), text)
 	})
 }
 
 // statusSpinner draws a ring with an accent arc that advances with the clock.
 func statusSpinner(c *ui.Context, size float32) {
-	phase := float32(time.Now().UnixMilli()%1200) / 1200
+	phase := float32(0)
+	if !c.Preferences().ReduceMotion {
+		phase = float32(c.Now().UnixMilli()%1200) / 1200
+		c.After(40 * time.Millisecond)
+	}
 	ui.Box(c).Size(size, size).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
 		cx, cy := r.X+r.W/2, r.Y+r.H/2
 		rad := min(r.W, r.H) / 2

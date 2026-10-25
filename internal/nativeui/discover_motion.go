@@ -119,7 +119,11 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 	s := uiScale(c)
 	// Stable grid identities let surviving cards move to their new cells without
 	// being faded out or replaying their entrance when filters or sorting change.
-	card.Transition(ui.ElementTransition{Animation: &motionMove, Position: true})
+	// The reveal already controls its lift. Only settled cards participate in
+	// layout reordering, so that lift is not eased a second time as it changes.
+	if state.progress == 1 {
+		card.Transition(ui.ElementTransition{Animation: &motionMove, Position: true})
+	}
 	if c.Preferences().ReduceMotion {
 		state.started, state.progress = true, card.Jump("reveal", 1)
 		return
@@ -138,6 +142,11 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 			card.Opacity(0)
 			return
 		}
+		if a.discoverMotion.scroll.st.Y > 0 {
+			// Filtering may expand the first screen, but rows first seen by
+			// scrolling should use the inexpensive lift, including that batch.
+			state.mode = discoverLift
+		}
 		state.started = true
 		row := max(0, int((y-view.Y)/(bounds.H+14*s)))
 		state.delay = max(0, state.afterMove.Sub(c.Now())) + time.Duration(min(150, row*38+(index%columns)*26))*time.Millisecond
@@ -154,7 +163,11 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 		scale := .92 + .08*p
 		card.Scale(scale, scale)
 	default:
-		card.Translate(0, 26*s*(1-p))
+		// Keep the lift in layout coordinates. Transforming the whole card
+		// sends its shadows, rounded clips and text through the software
+		// painter's per-pixel transform path throughout continuous scrolling.
+		y := 26 * s * (1 - p)
+		card.Margin(y, 0, -y, 0)
 	}
 }
 
@@ -162,7 +175,9 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 // over the fallback tile; neither the title nor the card replays its entrance.
 func (a *App) discoverIcon(c *ui.Context, p launcher.Project, state *discoverCardMotion) {
 	size := 44 * uiScale(c)
-	img := a.remoteImage(p.Icon)
+	// 96 px covers the 44-DIP tile at 2x density. A project dialog requests
+	// the larger shared thumbnail without retaining a second cached copy.
+	img := a.remoteImageSize(p.Icon, 96)
 	box := ui.Box(c.Key("discover-icon")).Label("项目封面 "+p.Title).Size(size, size).Radius(size * .22).Clip().Shrink(0)
 	if state.iconURL != p.Icon {
 		state.iconURL, state.iconReady = p.Icon, false

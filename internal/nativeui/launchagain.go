@@ -78,7 +78,7 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 						ui.Icon(c, icons["account"]).Size(13*s, 13*s).TextColor(accent)
 					})
 				})
-				ui.Text(c, ac.Name).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).MinWidth(0).Tooltip(ac.Name)
+				tooltip(c, ui.Text(c, ac.Name).FontSize(typeCallout*s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).MinWidth(0), ac.Name)
 				if used[ac.ID] {
 					ui.Text(c, a.L("游戏中", "Playing")).FontSize(typeCaption * s).TextColor(successInk).NoWrap()
 				}

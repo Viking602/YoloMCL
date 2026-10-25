@@ -66,7 +66,8 @@ func (p *logParser) push(l logLine) {
 				h.Repeat = 1
 			}
 			h.Repeat++
-			h.Time, h.Full = l.Time, l.Full
+			// The merged-in line is dropped; do not pin its text.
+			h.Time, h.Full = strings.Clone(l.Time), strings.Clone(l.Full)
 			return
 		}
 	}
@@ -85,13 +86,29 @@ func (p *logParser) push(l logLine) {
 	p.out = append(p.out, l)
 }
 
-// eventHead starts an XML event's line, normalized for copying.
+// eventHead starts an XML event's line, normalized for copying. Raw is the
+// only long string kept: Thread, Logger and Msg are slices of it, so the
+// event's source line is not retained.
 func (p *logParser) eventHead(msg string) {
 	e := *p.ev
-	e.Msg = msg
-	e.Raw = "[" + e.Time + "] [" + e.Thread + "/" + e.Level + "] [" + e.Logger + "]: " + msg
-	e.Logger = shortLogger(e.Logger)
+	raw := "[" + e.Time + "] [" + e.Thread + "/" + e.Level + "] [" + e.Logger + "]: " + msg
+	o := 1 + len(e.Time) + 3
+	thread := raw[o : o+len(e.Thread)]
+	o += len(e.Thread) + 1 + len(e.Level) + 3
+	logger := raw[o : o+len(e.Logger)]
+	e.Raw, e.Thread, e.Logger, e.Msg = raw, thread, shortLogger(logger), raw[len(raw)-len(msg):]
 	p.push(e)
+}
+
+// internLevel returns a constant for the usual log4j levels so a level
+// does not pin the XML line it was cut from.
+func internLevel(v string) string {
+	for _, l := range [...]string{"ALL", "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"} {
+		if v == l {
+			return l
+		}
+	}
+	return strings.Clone(v)
 }
 
 func (p *logParser) contLine(text string) {
@@ -122,13 +139,14 @@ func (p *logParser) line(r string) {
 			case "logger":
 				ev.Logger = v
 			case "level":
-				ev.Level = v
+				ev.Level = internLevel(v)
 			case "thread":
 				ev.Thread = v
 			case "timestamp":
 				if ms, e := strconv.ParseInt(v, 10, 64); e == nil {
 					t := time.UnixMilli(ms)
-					ev.Time, ev.Full = t.Format("15:04:05"), t.Format("2006-01-02 15:04:05.000")
+					full := t.Format("2006-01-02 15:04:05.000")
+					ev.Full, ev.Time = full, full[len(full)-12:len(full)-4]
 				}
 			}
 		}

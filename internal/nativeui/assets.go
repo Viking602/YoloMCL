@@ -25,6 +25,9 @@ var icons = map[string]*ui.SVG{}
 // keyed by loader key: vanilla, fabric, forge, neoforge, quilt.
 var loaderLogos = map[string]*ui.Bitmap{}
 
+// Java vendor marks are small, shared offline assets, never network thumbnails.
+var javaLogos = map[string]*ui.Bitmap{}
+
 var brandLogos = map[int]*ui.Bitmap{}
 
 // PreloadAssets overlaps immutable resource preparation with reading the
@@ -123,6 +126,19 @@ func loadAssets() error {
 				return
 			}
 			loaderLogos[key] = bmp
+		}
+		for _, key := range []string{"zulu", "temurin", "corretto", "liberica", "graalvm", "jbr", "oracle"} {
+			b, e := assets.ReadFile("assets/java/" + key + ".png")
+			if e != nil {
+				assetErr = e
+				return
+			}
+			bmp, e := ui.DecodeBitmap(b)
+			if e != nil {
+				assetErr = e
+				return
+			}
+			javaLogos[key] = bmp
 		}
 		loadEmptyArt()
 		for _, px := range []int{32, 64, 128} {

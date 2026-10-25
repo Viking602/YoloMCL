@@ -284,3 +284,87 @@ func TestAccountMenuReducedMotionAndLayout(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountMenuKeepsFollowingContentIdentity(t *testing.T) {
+	a, _, _ := accountMenuTester(t, LangZH, 1536)
+	var contentID uint64
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Fill().Children(func() {
+			ui.Row(c).FillWidth().Height(48).Children(func() { a.accountEntry(c) })
+			content := ui.Scroll(c).FillWidth().Grow(1)
+			contentID = content.ID()
+			content.Children(func() { ui.Text(c, "Page content") })
+		})
+	}, 1536, 1024)
+	want := contentID
+	clickUI(t, tt, a.tr().SideAccountManage)
+	if contentID != want {
+		t.Fatalf("opening the account menu recreated the following content: %d -> %d", want, contentID)
+	}
+	tt.Advance(250 * time.Millisecond)
+	tt.Key(0, ui.KeyEscape)
+	if contentID != want {
+		t.Fatal("closing the account menu recreated the following content")
+	}
+}
+
+func TestAccountMenuKeepsDiscoverPageStable(t *testing.T) {
+	for _, width := range []int{900, 1536} {
+		t.Run(fmt.Sprint(width), func(t *testing.T) {
+			a, _, _ := accountMenuTester(t, LangZH, width)
+			a.page, a.provider, a.resourceType = "discover", "modrinth", "modpack"
+			seedDiscoverCategories(a)
+			q := launcher.SearchQuery{Source: "modrinth", Type: "modpack"}
+			projects := discoverMotionProjects(0, 54)
+			a.acceptDiscoverResults(q, launcher.SearchResult{Projects: projects, Total: len(projects), Limit: len(projects)})
+			tt := ui.NewTester(a.View, width, 1024)
+			// Native caption buttons leave the account entry last in the bar.
+			// The default headless custom buttons previously hid the key leak.
+			tt.SetTitleBar(ui.TitleBar{Right: 138})
+			tt.Advance(time.Second)
+			tt.Scroll(float32(width)-100, 700, 0, 480)
+			tt.Advance(time.Second)
+			page, ok := tt.Find("发现视图")
+			if !ok || a.discoverMotion.scroll.st.Y <= 0 {
+				t.Fatal("discovery page did not load and scroll")
+			}
+			scrollY := a.discoverMotion.scroll.st.Y
+			// Stay below the account menu, its shadow and the title tooltip.
+			region := ui.Rect{X: page.X + 20, Y: 350, W: page.W - 40, H: 500}
+			pixels := overviewRegionPixels(tt.Image(), region)
+			assertStable := func(stage string) {
+				t.Helper()
+				if got, ok := tt.Find("发现视图"); !ok || got != page {
+					t.Fatalf("%s moved the page: before=%+v after=%+v", stage, page, got)
+				}
+				if a.discoverMotion.scroll.st.Y != scrollY {
+					t.Fatalf("%s reset the scroll position: %v -> %v", stage, scrollY, a.discoverMotion.scroll.st.Y)
+				}
+				if !bytes.Equal(pixels, overviewRegionPixels(tt.Image(), region)) {
+					snapshotUI(t, tt, "account-page-flash-"+stage+"-"+fmt.Sprint(width))
+					t.Fatalf("%s replayed or changed the underlying page", stage)
+				}
+			}
+			checkMotion := func(stage string) {
+				t.Helper()
+				assertStable(stage)
+				for _, elapsed := range []time.Duration{25, 45, 180} {
+					tt.Advance(elapsed * time.Millisecond)
+					assertStable(stage)
+				}
+			}
+			clickUI(t, tt, a.tr().SideAccountManage)
+			if !a.accountMenuOpen {
+				t.Fatal("account menu did not open")
+			}
+			checkMotion("opening")
+			tt.Key(0, ui.KeyEscape)
+			tt.Advance(45 * time.Millisecond)
+			assertStable("closing")
+			clickUI(t, tt, a.tr().SideAccountManage)
+			checkMotion("reopening")
+			clickUI(t, tt, a.tr().SideAccountManage)
+			checkMotion("closed")
+		})
+	}
+}

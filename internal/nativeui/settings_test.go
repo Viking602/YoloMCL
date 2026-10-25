@@ -3,6 +3,7 @@ package nativeui
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -31,6 +32,26 @@ func settingsTester(t *testing.T) (*App, *ui.Tester) {
 	a.page = "settings"
 	a.settings.MemoryMode = "manual" // these tests exercise the manual slider
 	return a, ui.NewTester(a.View, 1536, 1024)
+}
+
+func TestHardwareAccelerationPreferenceSurvivesRestart(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows renderer preference")
+	}
+	a, tt := settingsTester(t)
+	if a.HardwareAcceleration() {
+		t.Fatal("new configuration should use low-memory rendering")
+	}
+	for _, enabled := range []bool{true, false} {
+		clickUI(t, tt, "界面硬件加速开关")
+		waitUI(t, tt, func() bool {
+			s, err := launcher.New(a.snapshot.DataDir)
+			return err == nil && s.Snapshot().Settings.HardwareAcceleration == enabled
+		})
+		if a.HardwareAcceleration() != enabled {
+			t.Fatal("renderer preference not reflected in the next startup")
+		}
+	}
 }
 
 func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {

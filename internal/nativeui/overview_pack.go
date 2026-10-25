@@ -17,7 +17,7 @@ func (a *App) heroPackStatus(c *ui.Context, r launcher.Instance) {
 	switch {
 	case packHasUpdate(r, ""):
 		text := a.L("更新到 ", "Update to ") + u.Latest.Number
-		b := ui.ButtonBase(c.Key("hero-pack-update")).Label(text).Tooltip(text+"\n"+a.L("查看变更并更新整合包", "Review and update")).Height(24*s).MinWidth(0).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(warning.Alpha(.14)).Border(1, warning.Alpha(.30)).AlignItems(ui.Center).Shrink(1)
+		b := tooltip(c, ui.ButtonBase(c.Key("hero-pack-update")).Label(text), text+"\n"+a.L("查看变更并更新整合包", "Review and update")).Height(24*s).MinWidth(0).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(warning.Alpha(.14)).Border(1, warning.Alpha(.30)).AlignItems(ui.Center).Shrink(1)
 		if b.Children(func() {
 			ui.Icon(c, icons["download"]).Size(12*s, 12*s).TextColor(ui.Hex("#b26a00")).Shrink(0)
 			ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(650).TextColor(ui.Hex("#b26a00")).SingleLine().MinWidth(0).Shrink(1)

@@ -138,7 +138,7 @@ func (a *App) changeGroupView(c *ui.Context, s float32, g changeGroup) {
 func (a *App) changeRow(c *ui.Context, s float32, g changeGroup, it launcher.PackChange) {
 	t := a.tr()
 	dir, name := path.Split(strings.ReplaceAll(it.Path, "\\", "/"))
-	ui.Row(c).Label("变更文件行").FillWidth().Height(changeRowH*s).Padding(0, 14*s, 0, 32*s).Gap(8 * s).AlignItems(ui.Center).Tooltip(it.Path).Children(func() {
+	tooltip(c, ui.Row(c).Label("变更文件行").FillWidth().Height(changeRowH*s).Padding(0, 14*s, 0, 32*s).Gap(8*s).AlignItems(ui.Center), it.Path).Children(func() {
 		ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Children(func() {
 			if dir != "" {
 				ui.Text(c, dir).FontSize(typeCaption * s).TextColor(muted).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)

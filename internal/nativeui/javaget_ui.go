@@ -240,6 +240,24 @@ func (a *App) javaGetDialog(c *ui.Context) {
 	})
 	label(c, a.L("来源", "Source")).FontSize(typeFootnote * s).FontWeight(600)
 	var pick *launcher.JavaOffer
+	// Resolve availability before handling clicks. A source row can change
+	// g.source before the previously selected row is built; treating a missing
+	// pick after that loop as an invalid selection overwrites the user's click.
+	for i := range g.offers {
+		off := &g.offers[i]
+		if off.Major != g.major {
+			continue
+		}
+		if pick == nil || off.Source == g.source {
+			pick = off
+		}
+		if off.Source == g.source {
+			break
+		}
+	}
+	if pick != nil {
+		g.source = pick.Source
+	}
 	ui.Column(c.Key("java-sources")).FillWidth().Gap(8 * s).Children(func() {
 		for _, src := range []string{"mojang", "temurin", "zulu"} {
 			src := src
@@ -250,9 +268,6 @@ func (a *App) javaGetDialog(c *ui.Context) {
 				}
 			}
 			sel := g.source == src && off != nil
-			if sel {
-				pick = off
-			}
 			b := ui.ButtonBase(c.Key("java-src-"+src)).Label(javaSourceName(a, src)).FillWidth().Height(52*s).PaddingX(14*s).Gap(12*s).Radius(12*s).AlignItems(ui.Center).Border(1, line).Background(raised)
 			if sel {
 				b.Background(accentSoft).Border(2, accent)
@@ -265,6 +280,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 						ui.Box(c).Size(8*s, 8*s).Radius(999).Background(accent)
 					}
 				})
+				javaBrandIcon(c, javaVendor(a, launcher.InstalledJava{Managed: true, Source: src}), 30*s)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2 * s).Children(func() {
 					ui.Text(c, javaSourceName(a, src)).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).NoWrap()
 					desc := a.L("官方启动器同款运行环境，逐个文件校验", "What the official launcher uses, each file checked")
@@ -287,27 +303,19 @@ func (a *App) javaGetDialog(c *ui.Context) {
 					ui.Text(c, v).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(inkSecondary).NoWrap().Shrink(0)
 				}
 			}).Clicked() && off != nil {
-				g.source = src
+				g.source, pick = src, off
 			}
 		}
 	})
-	if pick == nil {
-		for i := range g.offers {
-			if g.offers[i].Major == g.major {
-				g.source = g.offers[i].Source
-				break
-			}
-		}
-	}
 	ui.Row(c.Key("java-get-foot")).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
 		label(c, a.L("安装到 YoloMCL 数据目录，装好后自动加入 Java 列表", "Installs into YoloMCL's data folder and joins the Java list")).FontSize(typeCaption * s).Grow(1).MinWidth(0).SingleLine()
 		if button(c, "java-get-go", fmt.Sprintf(a.L("下载 Java %d", "Download Java %d"), g.major), "download", true, pick == nil) && pick != nil {
-			id, e := a.service.InstallJava(g.major, g.source)
+			id, e := a.service.InstallJava(pick.Major, pick.Source)
 			if e != nil {
 				a.message, a.errorMessage = a.friendlyErr(e), true
 				return
 			}
-			g.job, g.jobMajor, g.lastDone, g.speed = id, g.major, 0, 0
+			g.job, g.jobMajor, g.lastDone, g.speed = id, pick.Major, 0, 0
 		}
 	})
 }

@@ -31,7 +31,7 @@ func (a *App) javaSection(c *ui.Context) {
 					}
 					if total > 0 {
 						ui.Box(c).Width(1).Height(10 * s).Background(line)
-						a.rollNumber(c, "java-installed-size", fmtSize(total), typeFootnote*s, 500, muted).Tooltip(a.L("已检测到的安装目录占用空间", "Disk space of the detected installations"))
+						tooltip(c, a.rollNumber(c, "java-installed-size", fmtSize(total), typeFootnote*s, 500, muted), a.L("已检测到的安装目录占用空间", "Disk space of the detected installations"))
 					}
 					if busy {
 						statusSpinner(c, 12*s)
@@ -89,7 +89,7 @@ func (a *App) javaGroups(c *ui.Context) {
 						})
 						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
 							ui.Text(c, fmt.Sprintf("Java %d", major)).FontSize(typeHeadline * s).FontWeight(650).TextColor(ink).SingleLine()
-							ui.Text(c, javaSuits(a, major)).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Tooltip(javaSuits(a, major))
+							tooltip(c, ui.Text(c, javaSuits(a, major)).FontSize(typeFootnote*s).TextColor(muted).SingleLine(), javaSuits(a, major))
 						})
 						ui.Row(c).Shrink(0).Padding(4*s, 9*s).Radius(999).Background(panel).Border(1, line.Alpha(.65)).Children(func() {
 							a.rollNumber(c, fmt.Sprintf("java-group-count-%d", major), fmt.Sprintf(a.L("%d 个环境", "%d installed"), len(by[major])), typeCaption*s, 500, inkSecondary)
@@ -109,15 +109,16 @@ func (a *App) javaGroups(c *ui.Context) {
 
 func (a *App) javaListRow(c *ui.Context, j launcher.InstalledJava, used int, isAuto bool) {
 	s := uiScale(c)
+	vendor := javaVendor(a, j)
 	ui.Row(c.Key("java-card-"+j.Path)).Label("Java 安装项 "+j.Path).FillWidth().MinHeight(76*s).Padding(14*s, 16*s).Gap(16 * s).AlignItems(ui.Center).Children(func() {
+		javaBrandIcon(c, vendor, 36*s)
 		info := ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(7 * s)
 		info.Children(func() {
 			ui.Row(c).FillWidth().Wrap().Gap(7 * s).AlignItems(ui.Center).Children(func() {
-				vendor := javaVendor(a, j)
-				ui.Text(c, vendor).Label("Java 发行方 " + j.Path).MaxWidth(190 * s).MinWidth(0).Shrink(1).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).SingleLine().Tooltip(vendor)
-				numText(c, j.Version, typeFootnote*s, inkSecondary).MaxWidth(160 * s).MinWidth(0).Shrink(1).SingleLine().Tooltip(j.Version)
+				tooltip(c, ui.Text(c, vendor).Label("Java 发行方 "+j.Path).MaxWidth(190*s).MinWidth(0).Shrink(1).FontSize(typeCallout*s).FontWeight(650).TextColor(ink).SingleLine(), vendor)
+				tooltip(c, numText(c, j.Version, typeFootnote*s, inkSecondary).MaxWidth(160*s).MinWidth(0).Shrink(1).SingleLine(), j.Version)
 				if isAuto {
-					ui.Row(c).Shrink(0).Padding(3*s, 7*s).Gap(4 * s).Radius(999).Background(successInk.Alpha(.08)).AlignItems(ui.Center).Tooltip(a.L("自动选择此 Java 主版本时，优先使用这个环境", "Preferred when automatically choosing this Java major version")).Children(func() {
+					tooltip(c, ui.Row(c).Shrink(0).Padding(3*s, 7*s).Gap(4*s).Radius(999).Background(successInk.Alpha(.08)).AlignItems(ui.Center), a.L("自动选择此 Java 主版本时，优先使用这个环境", "Preferred when automatically choosing this Java major version")).Children(func() {
 						ui.Icon(c, icons["check"]).Size(10*s, 10*s).TextColor(successInk)
 						ui.Text(c, a.L("自动选用", "Auto pick")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
 					})
@@ -131,14 +132,14 @@ func (a *App) javaListRow(c *ui.Context, j launcher.InstalledJava, used int, isA
 			pathW := info.LayoutBounds().W
 			if pathW <= 0 {
 				w, _ := c.Size()
-				pathW = min(settingsColumnWidth*s, w-2*pageGutter*s) - (32+32+100+66)*s
+				pathW = min(settingsColumnWidth*s, w-2*pageGutter*s) - (32+48+36+100+66)*s
 				if j.Managed {
 					pathW -= 82 * s
 				}
 				c.After(0)
 			}
 			path := midEllipsis(c, j.Home, pathW, typeCaption*s, 400)
-			ui.Text(c, path).Label("Java 安装路径 " + j.Path).Font(uiFontFamily(titlebarOS())).FontSize(typeCaption * s).TextColor(muted).FillWidth().MinWidth(0).SingleLine().Tooltip(j.Home)
+			tooltip(c, ui.Text(c, path).Label("Java 安装路径 "+j.Path).Font(uiFontFamily(titlebarOS())).FontSize(typeCaption*s).TextColor(muted).FillWidth().MinWidth(0).SingleLine(), j.Home)
 		})
 		ui.Column(c).Label("Java 使用情况 " + j.Path).Width(100 * s).Shrink(0).Gap(6 * s).AlignItems(ui.End).Children(func() {
 			if used > 0 {
@@ -155,6 +156,29 @@ func (a *App) javaListRow(c *ui.Context, j launcher.InstalledJava, used int, isA
 			}
 		})
 		ui.Row(c).Label("Java 操作 " + j.Path).Shrink(0).Gap(6 * s).AlignItems(ui.Center).Children(func() { a.javaListActions(c, j) })
+	})
+}
+
+func javaBrandIcon(c *ui.Context, vendor string, size float32) {
+	background := panel
+	if vendor == "GraalVM" {
+		background = ui.Hex("#163047")
+	}
+	ui.Box(c).Label("Java 品牌图标 "+vendor).Size(size, size).Shrink(0).Radius(size*.27).
+		Background(background).Border(1, line.Alpha(.65)).Center().Children(func() {
+		iconSize := size * .72
+		switch vendor {
+		case "Microsoft":
+			ui.Image(c, microsoftLogo).Size(iconSize, iconSize).Fit(ui.Contain)
+		case "Mojang":
+			ui.Image(c, loaderLogos["vanilla"]).Size(iconSize, iconSize).Fit(ui.Contain)
+		default:
+			if logo := javaLogos[strings.ToLower(vendor)]; logo != nil {
+				ui.Image(c, logo).Size(iconSize, iconSize).Fit(ui.Contain)
+			} else {
+				ui.Text(c, "JDK").Font(uiSansFamily()).FontSize(size * .30).FontWeight(650).TextColor(muted).NoWrap()
+			}
+		}
 	})
 }
 

@@ -107,11 +107,21 @@ func (s *Service) ImportPack(req ImportRequest) (string, error) {
 		lock.VersionID = req.VersionID
 		s.stampLock(ctx, &lock, path, req.Path != "")
 		lock.History = []PackHistory{{Version: lock.Version, At: lock.ImportedAt, Action: "import"}}
-		if e := s.downloadPackFiles(ctx, root, &lock, p); e != nil {
+		cache := s.modMetadataCache().begin(ctx)
+		defer cache.close()
+		verified := map[string]verifiedModFile{}
+		if e := s.downloadPackFilesIdentified(ctx, root, &lock, p, verified); e != nil {
 			return e
 		}
 		if e := applyPackOverrides(ctx, z, root, overrides, &lock); e != nil {
 			return e
+		}
+		// Overrides can replace a downloaded mod, even with the same size and
+		// timestamp. Their contents must be identified again after extraction.
+		for _, f := range lock.Files {
+			if (f.Kind == "override" || f.Kind == "client-override") && isPackMod(f.Path) {
+				delete(verified, filepath.Base(filepath.FromSlash(f.Path)))
+			}
 		}
 		if _, e = s.installVanilla(ctx, root, lock.Minecraft, p); e != nil {
 			return e
@@ -159,6 +169,13 @@ func (s *Service) ImportPack(req ImportRequest) (string, error) {
 			s.onUndo(ctx, func() { _ = s.RemoveRoot(id) })
 		}
 		s.setJobResultRoot(ctx, r.ID)
+		p("读取模组信息", 0, 0)
+		// Publish only in the registered destination, so ClearModCache can
+		// find it and a pre-clear import cannot resurrect a staged cache.
+		_, _ = scanModsIdentified(ctx, r.Path, nil, cache, verified)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if req.Path == "" {
 			_ = os.Remove(path) // the downloaded pack file was only a carrier
 		}

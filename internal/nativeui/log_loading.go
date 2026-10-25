@@ -22,7 +22,9 @@ func (a *App) loadLogs() {
 	} else if file != "" {
 		key = "file:" + file
 	} else {
-		lv.key, lv.lines, lv.loading = "", nil, false
+		lv.gen++
+		lv.key, lv.loading, lv.loadingOlder = "", false, false
+		lv.clearLines()
 		return // the empty state lists recent files instead
 	}
 	if lv.key != key {
@@ -51,12 +53,23 @@ func (a *App) loadLogs() {
 	gen := lv.gen
 	lv.loading = true
 	lv.lastPoll = time.Now()
+	seen, wasLive, loaded := lv.ringTotal, lv.live, lv.lines != nil
 	go func() {
 		var chunk launcher.LogChunk
 		var e error
 		if sid != "" {
 			chunk, e = a.service.SessionTail(sid, logPageLines)
 			chunk.Start = 0 // the ring is all there is; no older pages
+			// The live tail polls every second; a quiet game must not
+			// re-parse and re-measure the whole ring each time.
+			if e == nil && loaded && chunk.Live == wasLive && chunk.Dropped+len(chunk.Lines) == seen {
+				a.post(func() {
+					if gen == lv.gen && lv.key == key {
+						lv.loading, lv.err = false, ""
+					}
+				})
+				return
+			}
 		} else {
 			chunk, e = a.service.FileTail(id, ver, file, logPageLines, -1)
 		}
@@ -74,6 +87,10 @@ func (a *App) loadLogs() {
 			lv.lines = lines
 			lv.ver++
 			lv.start, lv.path, lv.live, lv.dropped = chunk.Start, chunk.Path, chunk.Live, chunk.Dropped
+			lv.ringTotal = 0
+			if sid != "" {
+				lv.ringTotal = chunk.Dropped + len(chunk.Lines)
+			}
 			a.logText = ""
 		})
 	}()

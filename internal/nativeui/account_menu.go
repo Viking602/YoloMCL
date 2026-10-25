@@ -17,7 +17,7 @@ func (a *App) accountEntry(c *ui.Context) {
 	if ac := a.account(); ac != nil {
 		tip = ac.Name + "   " + a.accountKindTag(*ac)
 	}
-	b := ui.ButtonBase(c.Key("account-menu")).Label(t.SideAccountManage).Tooltip(tip).Height(btnSm*s).PaddingX(8*s).Gap(6*s).AlignItems(ui.Center).Radius(999).Border(1, glassEdge).Shrink(0)
+	b := tooltip(c, ui.ButtonBase(c.Key("account-menu")).Label(t.SideAccountManage), tip).Height(btnSm*s).PaddingX(8*s).Gap(6*s).AlignItems(ui.Center).Radius(999).Border(1, glassEdge).Shrink(0)
 	bg := ui.RGBA(255, 255, 255, .6)
 	if a.accountMenuOpen || a.page == "settings" {
 		bg = accentSoft
@@ -71,6 +71,12 @@ func (a *App) accountMenu(c *ui.Context, anchor ui.Element) {
 	// Keep the overlay parent alive while closed, so the first opening can
 	// enter and the toolkit can finish an inert exit without retaining focus.
 	ui.Overlay(c, func() {})
+	// A closed PopoverBase builds nothing and leaves Context.Key pending.
+	// Only assign the key when the menu is built, or the next page/control
+	// inherits it and is recreated each time the menu opens or closes.
+	if !a.accountMenuOpen {
+		return
+	}
 	ui.PopoverBase(c.Key("account-menu-pop"), anchor, &a.accountMenuOpen, func(pop ui.Element) {
 		popover(pop.Label("账号快速切换").AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).Margin(6*s, 0, 0, 0).Width(264*s).MaxWidthPercent(40).Padding(6*s), 14*s, s)
 		if !c.Preferences().ReduceMotion {
@@ -103,7 +109,7 @@ func (a *App) accountMenu(c *ui.Context, anchor ui.Element) {
 						if active {
 							fg = accent
 						}
-						ui.Text(c, ac.Name).FontSize(typeCallout * s).FontWeight(600).TextColor(fg).SingleLine().Grow(1).MinWidth(0).Tooltip(ac.Name)
+						tooltip(c, ui.Text(c, ac.Name).FontSize(typeCallout*s).FontWeight(600).TextColor(fg).SingleLine().Grow(1).MinWidth(0), ac.Name)
 						a.accountTypeTag(c, ac)
 						if active {
 							ui.Icon(c, icons["check"]).Size(13*s, 13*s).TextColor(accent).Shrink(0)

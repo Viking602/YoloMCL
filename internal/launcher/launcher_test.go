@@ -237,6 +237,10 @@ func TestModUpdateRollsBackAndPreservesDisabledState(t *testing.T) {
 	if _, e = os.Stat(filepath.Join(r.Path, "mods", "dep.jar")); !os.IsNotExist(e) {
 		t.Fatal("rollback left a partially installed dependency")
 	}
+	failedCache := loadModCache(r.Path)
+	if _, ok := failedCache["dep.jar"]; ok {
+		t.Fatal("rollback published an uninstalled dependency")
+	}
 	if e = os.Remove(filepath.Join(r.Path, "mods", "new.jar.disabled")); e != nil {
 		t.Fatal(e)
 	}
@@ -253,6 +257,17 @@ func TestModUpdateRollsBackAndPreservesDisabledState(t *testing.T) {
 	}
 	if !checkHashes(filepath.Join(r.Path, "mods", "dep.jar"), depHash, "") {
 		t.Fatal("required dependency was not installed and enabled")
+	}
+	installedCache := loadModCacheData(r.Path)
+	if !installedCache.Shared || len(installedCache.Files) != 2 {
+		t.Fatal("installation did not publish ready metadata", installedCache)
+	}
+	for _, name := range []string{"new.jar.disabled", "dep.jar"} {
+		entry, ok := installedCache.Files[name]
+		st, err := os.Stat(filepath.Join(r.Path, "mods", name))
+		if err != nil || !ok || entry.SHA1 == "" || !entry.HasFP || entry.MTime != st.ModTime().UnixNano() || entry.Meta.ModID == "" {
+			t.Fatal("incomplete installation cache", name, entry, err)
+		}
 	}
 	matches, _ := filepath.Glob(filepath.Join(r.Path, ".mcl", "backups", "*", "old.jar.disabled"))
 	if len(matches) == 0 {
@@ -281,6 +296,10 @@ func TestMrpackImportLayersAndLockVerification(t *testing.T) {
 		t.Fatal(job.Message)
 	}
 	root := s.Snapshot().Instances[0]
+	importedCache := loadModCacheData(root.Path)
+	if entry := importedCache.Files["example.jar"]; !importedCache.Shared || entry.SHA1 != sha || entry.Meta.ModID != "example" || !entry.HasFP {
+		t.Fatal("pack import did not leave verified mod metadata", entry)
+	}
 	b, e := os.ReadFile(filepath.Join(root.Path, "config", "settings.txt"))
 	if e != nil || string(b) != "client" {
 		t.Fatalf("client override layering failed: %s, %v", b, e)

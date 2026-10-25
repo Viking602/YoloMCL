@@ -213,16 +213,7 @@ func (s *Service) installVanilla(ctx context.Context, root, id string, p progres
 }
 
 func readVersion(root, id string) (gameVersion, error) {
-	p, e := findVersionJSON(root, id)
-	if e != nil {
-		return gameVersion{}, e
-	}
-	b, e := os.ReadFile(p)
-	if e != nil {
-		return gameVersion{}, e
-	}
-	var v gameVersion
-	e = json.Unmarshal(b, &v)
+	_, v, e := findVersionJSON(root, id)
 	if e == nil && v.ID == "" {
 		v.ID = id
 	}

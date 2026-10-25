@@ -136,7 +136,10 @@ func (s *Service) RemoveJob(id string) error {
 
 // sweepTemp removes download leftovers a crash may have left: partial
 // downloads, Java staging folders, pack previews and update staging.
-func (s *Service) sweepTemp() {
+func (s *Service) sweepTemp(ctx context.Context) {
+	if ctx.Err() != nil {
+		return
+	}
 	s.mu.Lock()
 	roots := append([]Root(nil), s.cfg.Roots...)
 	busy := len(s.rootLocks) > 0
@@ -151,20 +154,34 @@ func (s *Service) sweepTemp() {
 	// old leftovers qualify; never remove a fresh preview/staging directory.
 	cutoff := time.Now().Add(-24 * time.Hour)
 	removeOld := func(root *os.Root, path string) {
+		if ctx.Err() != nil {
+			return
+		}
 		if info, err := root.Lstat(path); err == nil && info.ModTime().Before(cutoff) {
 			_ = root.RemoveAll(path)
 		}
 	}
 	sweep := func(root *os.Root, dir string, match func(string) bool) {
+		if ctx.Err() != nil {
+			return
+		}
 		f, err := root.Open(dir)
 		if err != nil {
 			return
 		}
-		entries, _ := f.ReadDir(-1)
-		f.Close()
-		for _, en := range entries {
-			if match(en.Name()) {
-				removeOld(root, filepath.Join(dir, en.Name()))
+		defer f.Close()
+		// A normal JAR needs neither a FileInfo nor a DirEntry for cleanup.
+		// Bound the temporary names too; large packs are never materialized
+		// as a whole directory listing just to find a partial download.
+		for ctx.Err() == nil {
+			names, err := f.Readdirnames(128)
+			for _, name := range names {
+				if match(name) {
+					removeOld(root, filepath.Join(dir, name))
+				}
+			}
+			if err != nil {
+				return
 			}
 		}
 	}
@@ -172,32 +189,43 @@ func (s *Service) sweepTemp() {
 		return strings.HasPrefix(n, ".mcl-download-") || strings.HasPrefix(n, ".mcl-stage-") || strings.HasSuffix(n, ".mcl-part")
 	}
 	if root, err := os.OpenRoot(s.dir); err == nil {
-		sweep(root, "cache", func(n string) bool { return isTemp(n) || strings.HasSuffix(n, ".pack") })
+		sweep(root, "cache", func(n string) bool { return isTemp(n) || strings.HasSuffix(n, ".pack") || n == "mod-metadata.bin.tmp" })
 		if rel, err := filepath.Rel(s.dir, s.runtimeDir()); err == nil {
 			sweep(root, rel, func(n string) bool { return isTemp(n) || strings.Contains(n, ".old-") || strings.HasPrefix(n, ".tmp-") })
 		}
 		root.Close()
 	}
 	for _, r := range roots {
+		if ctx.Err() != nil {
+			return
+		}
 		root, err := openScanRoot(r.Path)
 		if err != nil {
 			continue
 		}
 		removeOld(root, filepath.Join(".mcl", "update-staging"))
-		bases := []string{"."}
-		if f, err := root.Open("versions"); err == nil {
-			entries, _ := f.ReadDir(-1)
-			f.Close()
-			for _, en := range entries {
-				if en.IsDir() && en.Type()&os.ModeSymlink == 0 {
-					bases = append(bases, filepath.Join("versions", en.Name()))
-				}
+		sweepBase := func(base string) {
+			for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", ".mcl"} {
+				sweep(root, filepath.Join(base, sub), func(n string) bool { return isTemp(n) || sub == ".mcl" && n == modCacheFile+".tmp" })
 			}
 		}
-		for _, base := range bases {
-			for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", ".mcl"} {
-				sweep(root, filepath.Join(base, sub), isTemp)
+		sweepBase(".")
+		if f, err := root.Open("versions"); err == nil {
+			for ctx.Err() == nil {
+				entries, err := f.ReadDir(64)
+				for _, en := range entries {
+					if ctx.Err() != nil {
+						break
+					}
+					if en.IsDir() && en.Type()&os.ModeSymlink == 0 {
+						sweepBase(filepath.Join("versions", en.Name()))
+					}
+				}
+				if err != nil {
+					break
+				}
 			}
+			f.Close()
 		}
 		root.Close()
 	}
@@ -212,7 +240,7 @@ func (s *Service) Maintain(ctx context.Context) {
 	case <-ctx.Done():
 		return
 	case <-timer.C:
-		s.sweepTemp()
+		s.sweepTemp(ctx)
 	}
 }
 

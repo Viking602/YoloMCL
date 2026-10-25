@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -15,61 +16,14 @@ import (
 	"time"
 )
 
-// modCacheFile persists per-jar hashes and metadata across launcher runs so
-// reopening a pack never rehashes unchanged jars.
-const modCacheFile = "modcache.json"
-
-const modCacheVersion = 1
-
-type modCacheEntry struct {
-	Size  int64  `json:"size"`
-	MTime int64  `json:"mtime"`
-	SHA1  string `json:"sha1"`
-	FP    uint32 `json:"fp,omitempty"`
-	HasFP bool   `json:"hasFp,omitempty"`
-	Meta  Mod    `json:"meta"`
-}
-
-type modCache struct {
-	V     int                      `json:"v"`
-	Files map[string]modCacheEntry `json:"files"`
-}
-
-var modCacheMu sync.Mutex // serialises cache writes per process
-
-// loadModCache reads the cache; a missing, corrupt or old-format file is an
-// empty cache (it is rebuilt, never trusted partially).
-func loadModCache(root string) map[string]modCacheEntry {
-	var c modCache
-	path, e := safeJoin(root, ".mcl/"+modCacheFile)
-	if e != nil {
-		return map[string]modCacheEntry{}
-	}
-	b, e := os.ReadFile(path)
-	if e != nil || json.Unmarshal(b, &c) != nil || c.V != modCacheVersion || c.Files == nil {
-		return map[string]modCacheEntry{}
-	}
-	return c.Files
-}
-
-func saveModCache(root string, files map[string]modCacheEntry) {
-	modCacheMu.Lock()
-	defer modCacheMu.Unlock()
-	if path, err := safeJoin(root, ".mcl/"+modCacheFile); err == nil {
-		_ = atomicJSON(path, modCache{V: modCacheVersion, Files: files})
-	}
-}
-
 // modWorkers hashes and parses new or changed jars in parallel.
 const modWorkers = 6
 
 // Keep concurrent cold scans from allocating hundreds of MB per worker.
 // Larger jars use a bounded buffer; fingerprints retain the existing 256 MB
 // limit (MurmurHash2 needs the filtered length before hashing).
-const maxInMemoryJar = 1 << 20
+const maxInMemoryJar = 256 << 10
 const maxFingerprintJar = 256 << 20
-
-var modScanSlots = make(chan struct{}, modWorkers)
 
 // readJarOnce uses one in-memory read for small jars and bounded streaming
 // passes for large ones, returning the same hashes and metadata for both.
@@ -78,37 +32,90 @@ func readJarOnce(path string, size int64, m *Mod) (sha string, fp uint32, hasFP 
 }
 
 func readJarContext(ctx context.Context, path string, size int64, m *Mod) (sha string, fp uint32, hasFP bool, err error) {
+	w := beginModScan()
+	defer endModScan()
+	return w.readJar(ctx, path, size, m)
+}
+
+func (w *modScanWorkspace) readJar(ctx context.Context, path string, size int64, m *Mod) (sha string, fp uint32, hasFP bool, err error) {
+	return w.readJarCached(ctx, path, size, m, nil, nil, nil)
+}
+
+// identity comes only from a verified download into our private staging area.
+// Arbitrary files always compute their SHA-1 before consulting the shared index.
+func (w *modScanWorkspace) readJarCached(ctx context.Context, path string, size int64, m *Mod, cache *modMetadataSession, identity *downloadIdentity, stamp os.FileInfo) (sha string, fp uint32, hasFP bool, err error) {
+	hit := false
+	defer func() {
+		if err == nil && ctx.Err() == nil {
+			cache.put(ctx, modCacheEntry{Size: size, SHA1: sha, FP: fp, HasFP: hasFP, Meta: metaOnly(*m)})
+		}
+	}()
+	if identity != nil {
+		sha = identity.SHA1
+		if hit, ok := cache.lookup(ctx, sha, size); ok {
+			applyMeta(m, hit.Meta)
+			return sha, hit.FP, hit.HasFP, nil
+		}
+	}
+	scratch, err := w.acquire(ctx)
+	if err != nil {
+		return "", 0, false, err
+	}
+	defer func() { w.workers <- scratch }()
 	if err := ctx.Err(); err != nil {
 		return "", 0, false, err
 	}
-	if size > maxInMemoryJar {
-		f, e := os.Open(path)
-		if e != nil {
-			return "", 0, false, e
+	f, e := os.Open(path)
+	if e != nil {
+		return "", 0, false, e
+	}
+	defer f.Close()
+	defer func() {
+		// Reuse the directory scan's stamp. Only newly parsed metadata needs
+		// a final check against concurrent edits before it enters the index.
+		if err != nil || stamp == nil || hit {
+			return
 		}
-		defer f.Close()
+		after, statErr := f.Stat()
+		if statErr != nil {
+			err = statErr
+			return
+		}
+		if after.Size() != stamp.Size() || !after.ModTime().Equal(stamp.ModTime()) {
+			err = fmt.Errorf("模组文件在读取过程中发生变化: %s", path)
+		}
+	}()
+	if size > maxInMemoryJar {
 		h := sha1.New()
-		buf := make([]byte, 64<<10)
+		scratch.jar = resizeModBuffer(scratch.jar, modReadChunk)
+		buf := scratch.jar
 		filtered := uint32(0)
 		hasFP = size <= maxFingerprintJar
-		for {
+		if identity != nil {
+			filtered = identity.Filtered
+		}
+		for identity == nil {
 			if e := ctx.Err(); e != nil {
 				return "", 0, false, e
 			}
 			n, e := f.Read(buf)
 			_, _ = h.Write(buf[:n])
 			if hasFP {
-				for _, v := range buf[:n] {
-					if v != 9 && v != 10 && v != 13 && v != 32 {
-						filtered++
-					}
-				}
+				filtered += uint32(fingerprintLength(buf[:n]))
 			}
 			if e == io.EOF {
 				break
 			}
 			if e != nil {
 				return "", 0, false, e
+			}
+		}
+		if identity == nil {
+			sha = hex.EncodeToString(h.Sum(nil))
+			if cached, ok := cache.lookup(ctx, sha, size); ok {
+				hit = true
+				applyMeta(m, cached.Meta)
+				return sha, cached.FP, cached.HasFP, ctx.Err()
 			}
 		}
 		if hasFP {
@@ -122,24 +129,76 @@ func readJarContext(ctx context.Context, path string, size int64, m *Mod) (sha s
 		if e := ctx.Err(); e != nil {
 			return "", 0, false, e
 		}
-		if zr, e := zip.NewReader(f, size); e == nil {
-			readModMetadataFrom(zr, f, m)
-		} else {
-			m.Status = "invalid"
-		}
-		return hex.EncodeToString(h.Sum(nil)), fp, hasFP, ctx.Err()
+		w.readMetadata(ctx, f, size, scratch, m)
+		return sha, fp, hasFP, ctx.Err()
 	}
-	b, e := os.ReadFile(path)
-	if e != nil {
+	if size < 0 {
+		return "", 0, false, zip.ErrFormat
+	}
+	scratch.jar = resizeModBuffer(scratch.jar, int(size))
+	b := scratch.jar
+	if e := readModBytes(ctx, f, b); e != nil {
 		return "", 0, false, e
 	}
-	sum := sha1.Sum(b)
-	if zr, e := zip.NewReader(bytes.NewReader(b), int64(len(b))); e == nil {
-		readModMetadataFrom(zr, bytes.NewReader(b), m)
-	} else {
-		m.Status = "invalid"
+	if identity == nil {
+		sum := sha1.Sum(b)
+		sha = hex.EncodeToString(sum[:])
+		if cached, ok := cache.lookup(ctx, sha, size); ok {
+			hit = true
+			applyMeta(m, cached.Meta)
+			return sha, cached.FP, cached.HasFP, ctx.Err()
+		}
 	}
-	return hex.EncodeToString(sum[:]), curseFingerprint(b), true, nil
+	w.readMetadata(ctx, bytes.NewReader(b), int64(len(b)), scratch, m)
+	if err := ctx.Err(); err != nil {
+		return "", 0, false, err
+	}
+	return sha, curseFingerprint(b), true, ctx.Err()
+}
+
+// fingerprintFile bounds temporary memory even for large imported packs.
+// Count using byte searches so the extra streaming pass does not add a
+// per-byte branch loop; both passes reuse the same small buffer.
+func fingerprintFile(ctx context.Context, path string) (uint32, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	buf := make([]byte, 64<<10)
+	var filtered uint32
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+		n, err := f.Read(buf)
+		filtered += uint32(fingerprintLength(buf[:n]))
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return 0, err
+	}
+	return streamFingerprint(ctx, f, filtered, buf)
+}
+
+// Read-only lookup: compressed jar contents almost always contain runs without
+// whitespace. Combining four lookups avoids four byte-assembly iterations.
+var fingerprintWhitespace = [256]uint8{9: 1, 10: 1, 13: 1, 32: 1}
+
+func mixFingerprintWord(h, word uint32) uint32 {
+	const mul uint32 = 0x5bd1e995
+	word *= mul
+	word ^= word >> 24
+	word *= mul
+	return h*mul ^ word
 }
 
 // streamFingerprint hashes the filtered stream without holding the jar in
@@ -152,17 +211,21 @@ func streamFingerprint(ctx context.Context, r io.Reader, filtered uint32, buf []
 			return 0, err
 		}
 		n, err := r.Read(buf)
-		for _, v := range buf[:n] {
+		for i := 0; i < n; {
+			if got == 0 && i+4 <= n && fingerprintWhitespace[buf[i]]|fingerprintWhitespace[buf[i+1]]|fingerprintWhitespace[buf[i+2]]|fingerprintWhitespace[buf[i+3]] == 0 {
+				h = mixFingerprintWord(h, binary.LittleEndian.Uint32(buf[i:i+4]))
+				i += 4
+				continue
+			}
+			v := buf[i]
+			i++
 			if v == 9 || v == 10 || v == 13 || v == 32 {
 				continue
 			}
 			k |= uint32(v) << (8 * got)
 			got++
 			if got == 4 {
-				k *= mul
-				k ^= k >> 24
-				k *= mul
-				h = h*mul ^ k
+				h = mixFingerprintWord(h, k)
 				k, got = 0, 0
 			}
 		}
@@ -196,6 +259,20 @@ func scanModsStream(root string, emit func([]Mod)) ([]Mod, error) {
 }
 
 func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) ([]Mod, error) {
+	return scanModsCached(ctx, root, emit, nil)
+}
+
+func (s *Service) scanModDirectory(ctx context.Context, root string, emit func([]Mod)) ([]Mod, error) {
+	cache := s.modMetadataCache().begin(ctx)
+	defer cache.close()
+	return scanModsCached(ctx, root, emit, cache)
+}
+
+func scanModsCached(ctx context.Context, root string, emit func([]Mod), shared *modMetadataSession) ([]Mod, error) {
+	return scanModsIdentified(ctx, root, emit, shared, nil)
+}
+
+func scanModsIdentified(ctx context.Context, root string, emit func([]Mod), shared *modMetadataSession, verified map[string]verifiedModFile) ([]Mod, error) {
 	modsDir, e := safeJoin(root, "mods")
 	if e != nil {
 		return nil, e
@@ -208,16 +285,33 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 		return nil, e
 	}
 	records, checks := readRecords(root), readChecks(root)
-	cache := loadModCache(root)
+	stored := loadModCacheData(root)
+	cache := stored.Files
 	type job struct {
 		i    int
 		path string
 		st   os.FileInfo
 	}
-	var out []Mod
+	out := make([]Mod, 0, len(entries))
 	var jobs []job
-	fresh := map[string]modCacheEntry{}
+	fresh := make(map[string]modCacheEntry, len(entries))
 	changed := false
+	completed := 0
+	defer func() {
+		if ctx.Err() == nil || completed == 0 {
+			return
+		}
+		// Navigation cancels content IO immediately. Preserve only completed,
+		// stamp-checked entries so returning does not rehash those JARs. This
+		// bounded metadata flush owns no scan buffers and respects cache clears.
+		flush, cancel := context.WithTimeout(context.WithoutCancel(ctx), 250*time.Millisecond)
+		defer cancel()
+		if shared != nil {
+			shared.checkpointLocal(flush, root, fresh)
+		} else {
+			checkpointModCache(flush, root, fresh, false)
+		}
+	}()
 	for _, entry := range entries {
 		if e := ctx.Err(); e != nil {
 			return nil, e
@@ -230,7 +324,7 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 		if e != nil {
 			return nil, e
 		}
-		st, e := os.Stat(path)
+		st, e := entry.Info() // free on Windows; regular files need no link follow
 		if e != nil {
 			return nil, e
 		}
@@ -250,11 +344,13 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 		changed = true // files removed
 	}
 	order := make([]int, len(out))
+	names := make([]string, len(out))
 	for i := range order {
 		order[i] = i
+		names[i] = strings.ToLower(out[i].Name)
 	}
 	sort.SliceStable(order, func(a, b int) bool {
-		return strings.ToLower(out[order[a]].Name) < strings.ToLower(out[order[b]].Name)
+		return names[order[a]] < names[order[b]]
 	})
 	finish := func(m Mod) Mod {
 		rec := records[strings.TrimSuffix(m.File, ".disabled")]
@@ -282,6 +378,8 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 		emit(snapshot())
 	}
 	if len(jobs) > 0 {
+		workspace := beginModScan()
+		defer endModScan()
 		ch := make(chan job)
 		var wg sync.WaitGroup
 		var firstErr error
@@ -291,14 +389,15 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 			go func() {
 				defer wg.Done()
 				for j := range ch {
-					select {
-					case modScanSlots <- struct{}{}:
-					case <-ctx.Done():
+					if ctx.Err() != nil {
 						return
 					}
 					var meta Mod
-					sha, fp, hasFP, e := readJarContext(ctx, j.path, j.st.Size(), &meta)
-					<-modScanSlots
+					var identity *downloadIdentity
+					if known, ok := verified[out[j.i].File]; ok && known.Size == j.st.Size() && known.mtime == j.st.ModTime().UnixNano() {
+						identity = &known.downloadIdentity
+					}
+					sha, fp, hasFP, e := workspace.readJarCached(ctx, j.path, j.st.Size(), &meta, shared, identity, j.st)
 					mu.Lock()
 					if e != nil {
 						if firstErr == nil {
@@ -311,8 +410,9 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 					applyMeta(m, meta)
 					m.SHA1, m.Fingerprint, m.Pending = sha, fp, false
 					fresh[m.File] = modCacheEntry{Size: j.st.Size(), MTime: j.st.ModTime().UnixNano(), SHA1: sha, FP: fp, HasFP: hasFP, Meta: metaOnly(meta)}
+					completed++
 					var snap []Mod
-					if emit != nil && time.Since(last) > 150*time.Millisecond {
+					if emit != nil && (completed == 1 || time.Since(last) > 150*time.Millisecond) {
 						last = time.Now()
 						snap = snapshot()
 					}
@@ -343,8 +443,29 @@ func scanModsStreamContext(ctx context.Context, root string, emit func([]Mod)) (
 	if e := ctx.Err(); e != nil {
 		return nil, e
 	}
+	if shared != nil && !stored.Shared {
+		// Migrate valid existing entries once, without reparsing their jars.
+		// Publish ready rows before this optional background cache maintenance.
+		if emit != nil {
+			emit(snapshot())
+		}
+		for _, entry := range fresh {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			shared.put(ctx, entry)
+		}
+		changed = true
+	}
 	if changed {
-		saveModCache(root, fresh)
+		if shared != nil {
+			shared.saveLocal(ctx, root, fresh)
+		} else {
+			saveModCache(root, fresh)
+		}
+	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 	return snapshot(), nil
 }

@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,8 +20,10 @@ import (
 type avatarCache struct {
 	heads     map[string]*ui.Bitmap
 	tried     map[string]bool
+	headOrder []string
 	icons     map[string]*ui.Bitmap
 	iconTried map[string]bool
+	iconOrder []string
 }
 
 // skinHead composites the face (8,8) and hat overlay (40,8) of a 64×32/64×64
@@ -89,7 +92,7 @@ func (a *App) accountHead(ac launcher.Account) *ui.Bitmap {
 		if head == nil {
 			return
 		}
-		a.post(func() { a.avatars.heads[ac.ID] = ui.NewBitmap(head).Pixelated() })
+		a.post(func() { a.rememberHead(ac.ID, ui.NewBitmap(head).Pixelated()) })
 	}()
 	return nil
 }
@@ -145,7 +148,7 @@ func (a *App) authIcon(server string) *ui.Bitmap {
 			if img.Bounds().Dx() <= 16 {
 				bm = bm.Pixelated() // keep tiny pixel favicons crisp
 			}
-			a.avatars.icons[key] = bm
+			a.rememberIcon(key, bm)
 		})
 	}()
 	return nil
@@ -174,4 +177,34 @@ func builtinAuthIcon(name string) *ui.Bitmap {
 	}
 	builtinIcons.Store(name, bm)
 	return bm
+}
+
+const avatarCacheLimit = 64
+
+func (a *App) rememberHead(id string, bm *ui.Bitmap) {
+	if a.avatars.heads == nil {
+		a.avatars.heads = map[string]*ui.Bitmap{}
+	}
+	a.avatars.heads[id] = bm
+	a.avatars.headOrder = append(slices.DeleteFunc(a.avatars.headOrder, func(k string) bool { return k == id }), id)
+	for len(a.avatars.headOrder) > avatarCacheLimit {
+		old := a.avatars.headOrder[0]
+		a.avatars.headOrder = a.avatars.headOrder[1:]
+		delete(a.avatars.heads, old)
+		delete(a.avatars.tried, old)
+	}
+}
+
+func (a *App) rememberIcon(key string, bm *ui.Bitmap) {
+	if a.avatars.icons == nil {
+		a.avatars.icons = map[string]*ui.Bitmap{}
+	}
+	a.avatars.icons[key] = bm
+	a.avatars.iconOrder = append(slices.DeleteFunc(a.avatars.iconOrder, func(k string) bool { return k == key }), key)
+	for len(a.avatars.iconOrder) > avatarCacheLimit {
+		old := a.avatars.iconOrder[0]
+		a.avatars.iconOrder = a.avatars.iconOrder[1:]
+		delete(a.avatars.icons, old)
+		delete(a.avatars.iconTried, old)
+	}
 }

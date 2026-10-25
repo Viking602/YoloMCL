@@ -12,9 +12,11 @@ import (
 // traffic lights' room at the left and draws no window buttons of its own;
 // Windows/Linux keep min/max/close at the right.
 func TestTitlebarPerPlatform(t *testing.T) {
+	original := titlebarPlatform
+	t.Cleanup(func() { titlebarPlatform = original })
 	for _, goos := range []string{"darwin", "windows", "linux"} {
 		for _, sc := range []float32{1, 2} {
-			t.Setenv("MCL_TITLEBAR_OS", goos)
+			titlebarPlatform = goos
 			a, tt := acctTester(t, "zh-CN", 1280, 800)
 			tt.SetScale(sc)
 			a.closeDialog()
@@ -46,6 +48,16 @@ func TestTitlebarPerPlatform(t *testing.T) {
 		}
 	}
 	_ = ui.Rect{}
+}
+
+func TestPlatformFontLookupsDoNotAllocate(t *testing.T) {
+	if allocations := testing.AllocsPerRun(100, func() {
+		if titlebarOS() == "" || uiSansFamily() == "" {
+			t.Fatal("missing platform or font")
+		}
+	}); allocations != 0 {
+		t.Fatalf("font lookup allocated %g times per widget", allocations)
+	}
 }
 
 func TestUIFontFamilyPerOS(t *testing.T) {

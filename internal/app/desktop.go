@@ -2,53 +2,39 @@ package app
 
 import (
 	"log"
+	"os"
+	"runtime"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/nativeui"
-	"github.com/Viking602/YoloMCL/plugins/startup"
 )
 
 func runDesktop(o options) error {
-	accelerator := startup.New()
-	mygo.Use(accelerator.Plugin())
-	// Prepare inventory while the OS creates the window. ContentAfter joins
-	// this worker before attaching the view, keeping the first frame complete.
-	type result struct {
-		app *nativeui.App
-		err error
-	}
-	prepared := make(chan result, 1)
-	var app *nativeui.App
-	content := accelerator.ContentAfter(func() {
-		r := <-prepared
-		if r.err != nil {
-			log.Fatal(r.err)
+	mygo.App.SetName("YoloMCL")
+	mygo.App.SetLanguages(nativeui.LangEN, nativeui.LangZH)
+	mygo.App.WhenReady(func() {
+		// Font registration must follow native application initialization.
+		nativeui.PreloadAssets()
+		app, err := newApplication()
+		if err != nil {
+			log.Fatal(err)
 		}
-		app = r.app
+		if err := configureRendering(app.HardwareAcceleration()); err != nil {
+			log.Printf("configure launcher renderer: %v", err)
+		}
 		if o.language != "" {
 			app.OverrideLanguage(o.language)
 		}
 		app.BindSystemLanguage()
-	}, func(c *ui.Context) { app.View(c) })
-	mygo.App.SetName("YoloMCL")
-	mygo.App.SetLanguages(nativeui.LangEN, nativeui.LangZH)
-	mygo.App.WhenReady(func() {
-		// Font registration must follow OS initialization to avoid loader-lock
-		// contention. Only application preparation overlaps window creation.
-		nativeui.PreloadAssets()
-		go func() {
-			app, err := newApplication()
-			prepared <- result{app, err}
-		}()
 		mygo.Theme.SetSource(mygo.ThemeLight)
 		win := mygo.NewWindow(mygo.WindowOptions{
 			Title: "YoloMCL", Width: o.width, Height: o.height,
 			MinWidth: 900, MinHeight: 540,
 			TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 40,
 			TrafficLightPosition: &mygo.Point{X: 18, Y: 20},
-			BackgroundColor:      "#f5f7fb", Content: content,
+			BackgroundColor:      "#f5f7fb", Content: ui.View(app.View),
 		})
 		_ = win.SetIcon(nativeui.BrandIconPNG())
 		app.Attach(win)
@@ -56,4 +42,16 @@ func runDesktop(o options) error {
 		win.Invalidate()
 	})
 	return mygo.App.Run()
+}
+
+// configureRendering applies the Windows preference before creating a window.
+// Other platforms retain their default renderer; an explicit MYGO_GPU wins.
+func configureRendering(hardwareAcceleration bool) error {
+	if runtime.GOOS != "windows" || hardwareAcceleration {
+		return nil
+	}
+	if _, explicit := os.LookupEnv("MYGO_GPU"); explicit {
+		return nil
+	}
+	return os.Setenv("MYGO_GPU", "0")
 }

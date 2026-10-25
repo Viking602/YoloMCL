@@ -10,6 +10,49 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+func TestNumberPlaceholderFadesInWithoutRollingFromZero(t *testing.T) {
+	if err := loadAssets(); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{}
+	value := "—"
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Fill().Background(panel).Children(func() {
+			a.rollNumber(c, "initial-count", value, 24, 700, ink).Width(180)
+		})
+	}, 220, 80)
+	value = "465"
+	tt.Frame()
+	tt.Advance(60 * time.Millisecond)
+	state := a.numberRolls["initial-count"]
+	for _, d := range state.digits {
+		if d.position != float32(d.char-'0') {
+			t.Fatal("initial count rolled through values that were never loaded")
+		}
+	}
+	if state.displayed == value {
+		t.Fatal("initial count skipped its fade")
+	}
+	tt.Advance(240 * time.Millisecond)
+	if !tt.HasText(value) {
+		t.Fatal("initial count did not finish fading in")
+	}
+	value = "478"
+	tt.Frame()
+	tt.Advance(80 * time.Millisecond)
+	moving := false
+	for _, d := range state.digits {
+		moving = moving || d.position != d.target
+	}
+	if !moving {
+		t.Fatal("subsequent count change lost its rolling animation")
+	}
+	tt.Advance(400 * time.Millisecond)
+	if !tt.HasText(value) {
+		t.Fatal("updated count did not settle")
+	}
+}
+
 func TestNumberRollKeepsUnitsAndUnchangedDigitsStill(t *testing.T) {
 	if err := loadAssets(); err != nil {
 		t.Fatal(err)

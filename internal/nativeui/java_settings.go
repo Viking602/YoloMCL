@@ -12,6 +12,30 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
+// javaSelectBox shares the installed-runtime artwork across all Java pickers.
+// Resolve icons by executable path, never the displayed name: two installations
+// can have the same version/vendor, and a browsed path may not be scanned yet.
+func (a *App) javaSelectBox(c *ui.Context, key, labelText string, selected *string, options []string, paths map[string]string) ui.Element {
+	s := uiScale(c)
+	return selectBoxImpl(c, key, labelText, selected, options, nil, nil, func(option string) {
+		path := paths[option]
+		if path == "" {
+			ui.Box(c).Label("Java 自动选择图标").Size(20*s, 20*s).Shrink(0).Radius(5*s).Background(panel).Border(1, line.Alpha(.65)).Center().Children(func() {
+				ui.Icon(c, icons["settings"]).Size(13*s, 13*s).TextColor(accent)
+			})
+			return
+		}
+		j := launcher.InstalledJava{Home: filepath.Dir(filepath.Dir(path))}
+		for _, known := range a.java {
+			if known.Path == path || runtime.GOOS == "windows" && strings.EqualFold(known.Path, path) {
+				j.JavaInfo = known
+				break
+			}
+		}
+		javaBrandIcon(c, javaVendor(a, j), 20*s)
+	}, nil)
+}
+
 // Keep known runtimes visible during a partial/cancelled refresh. A completed
 // scan replaces the list so removed installations are still dropped.
 func mergeJavaScanRows(known, found []launcher.JavaInfo) []launcher.JavaInfo {
@@ -171,7 +195,7 @@ func (a *App) javaDialog(c *ui.Context) {
 				if meta != "" {
 					label(c, meta)
 				}
-				label(c, j.Path).FillWidth().FontSize(typeCallout * s).SingleLine().Tooltip(j.Path)
+				tooltip(c, label(c, j.Path).FillWidth().FontSize(typeCallout*s).SingleLine(), j.Path)
 			})
 			if button(c, "pick-"+j.Path, t.JavaUseBtn, "check", a.settings.JavaPath == j.Path, false) {
 				a.settings.JavaPath = j.Path

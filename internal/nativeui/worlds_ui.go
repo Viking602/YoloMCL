@@ -218,7 +218,7 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 			})
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, w.Name).FontSize(typeSubhead * s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(w.Name)
+					tooltip(c, ui.Text(c, w.Name).FontSize(typeSubhead*s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0), w.Name)
 					m := worldModes[w.Mode]
 					tone := muted
 					if w.Mode == "hardcore" {

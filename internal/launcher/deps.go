@@ -42,8 +42,10 @@ type installedIndex struct {
 
 func (s *Service) installedIndexFor(ctx context.Context, r Root) (installedIndex, error) {
 	idx := installedIndex{byKey: map[string]Mod{}, byModID: map[string]Mod{}}
-	_ = ctx
-	mods, e := scanMods(r.VersionDir())
+	mods, e := s.scanModDirectory(ctx, r.VersionDir(), nil)
+	if err := ctx.Err(); err != nil {
+		return idx, err
+	}
 	if e != nil {
 		// An unreadable folder must not sink the whole plan: resolve as if
 		// nothing were installed and let each install report for itself.
@@ -52,9 +54,12 @@ func (s *Service) installedIndexFor(ctx context.Context, r Root) (installedIndex
 	}
 	refs := make([]AddonRef, 0, len(mods))
 	for _, m := range mods {
-		refs = append(refs, AddonRef{SHA1: m.SHA1, File: m.File})
+		refs = append(refs, AddonRef{SHA1: m.SHA1, File: m.File, Fingerprint: m.Fingerprint})
 	}
 	info, _ := s.AddonRemoteInfo(ctx, r.ID, r.SelectedVersion, "mod", refs)
+	if err := ctx.Err(); err != nil {
+		return idx, err
+	}
 	put := func(k string, m Mod) {
 		if old, ok := idx.byKey[k]; !ok || (!old.Enabled && m.Enabled) {
 			idx.byKey[k] = m

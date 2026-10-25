@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -34,11 +35,35 @@ var zhNameSources = map[string][]string{
 
 // ZhNames looks up Chinese names by platform slug or mod id.
 type ZhNames struct {
-	cf, mr, modID  map[string]string
-	packCF, packMR map[string]string
-	// mod ids per platform slug, and slugs per mod id (from the same rows)
-	idsCF, idsMR map[string][]string
-	slugByID     map[string][2]string // mod id -> {cf slug, mr slug}
+	cf, mr, packCF, packMR map[string]zhProjectRef
+	modID                  map[string]zhModRef
+	rows                   []zhNameRow
+	ids                    []string
+	size                   int
+}
+
+// All lookups refer to the same immutable CSV rows. Separate references keep
+// the existing precedence: the last translated project name, all project IDs,
+// and the first translated name / platform slugs for each mod ID. The indexes
+// store two integers instead of duplicating strings and slices in eight maps.
+// Row zero means absent; duplicate slugs get their own merged ID-list row.
+type zhProjectRef struct{ name, ids uint32 }
+type zhModRef struct{ name, slugs uint32 }
+type zhNameRow struct {
+	// One allocation holds the name and both slugs. The map keys and returned
+	// strings are slices of it; offsets avoid three string/slice headers per row.
+	text             string
+	nameEnd, cfEnd   uint32
+	idsStart, idsEnd uint32
+}
+
+func (r zhNameRow) slugs() (string, string) {
+	return r.text[r.nameEnd:r.cfEnd], r.text[r.cfEnd:]
+}
+
+func (z *ZhNames) rowIDs(r zhNameRow) []string {
+	// No spare capacity escapes: callers may append their own candidates.
+	return z.ids[r.idsStart:r.idsEnd:r.idsEnd]
 }
 
 var (
@@ -96,7 +121,11 @@ func (s *Service) ZhNames(ctx context.Context) (*ZhNames, error) {
 }
 
 func newZhNames() *ZhNames {
-	return &ZhNames{cf: map[string]string{}, mr: map[string]string{}, modID: map[string]string{}, packCF: map[string]string{}, packMR: map[string]string{}, idsCF: map[string][]string{}, idsMR: map[string][]string{}, slugByID: map[string][2]string{}}
+	return &ZhNames{
+		cf: map[string]zhProjectRef{}, mr: map[string]zhProjectRef{},
+		packCF: map[string]zhProjectRef{}, packMR: map[string]zhProjectRef{},
+		modID: map[string]zhModRef{}, rows: []zhNameRow{{}},
+	}
 }
 
 func (s *Service) fetchFirst(ctx context.Context, urls []string) ([]byte, error) {
@@ -133,11 +162,30 @@ func hasHan(s string) bool {
 	return false
 }
 
-func (z *ZhNames) parse(b []byte, cf, mr, modID map[string]string) {
+func (z *ZhNames) parse(b []byte, cf, mr map[string]zhProjectRef, modID map[string]zhModRef) {
+	// One useful row per line in the usual corpus. Reserving its contiguous
+	// storage avoids repeatedly copying the live index while loading names.
+	lines := bytes.Count(b, []byte{'\n'}) + 1
+	z.rows = slices.Grow(z.rows, lines)
+	if modID != nil {
+		z.ids = slices.Grow(z.ids, lines+bytes.Count(b, []byte{';'}))
+	}
 	r := csv.NewReader(bytes.NewReader(b))
 	r.Comment = '#'
 	r.FieldsPerRecord = -1
 	r.LazyQuotes = true
+	r.ReuseRecord = true
+	// IDs repeat across projects. Intern only those; each row packs its name
+	// and slugs directly, without retaining the CSV's unused English columns.
+	stringsByValue := make(map[string]string)
+	keep := func(v string) string {
+		if s, ok := stringsByValue[v]; ok {
+			return s
+		}
+		s := strings.Clone(v)
+		stringsByValue[s] = s
+		return s
+	}
 	for {
 		rec, e := r.Read()
 		if e == io.EOF {
@@ -146,43 +194,91 @@ func (z *ZhNames) parse(b []byte, cf, mr, modID map[string]string) {
 		if e != nil || len(rec) < 4 {
 			continue
 		}
+		cfS := strings.ToLower(strings.TrimSpace(rec[1]))
+		mrS := strings.ToLower(strings.TrimSpace(rec[2]))
+		zh := strings.TrimSpace(rec[3])
+		if !hasHan(zh) {
+			zh = ""
+		}
+		idsStart := uint32(len(z.ids))
 		if modID != nil && len(rec) > 6 { // ids are useful even without a Chinese name
-			cfS, mrS := strings.ToLower(strings.TrimSpace(rec[1])), strings.ToLower(strings.TrimSpace(rec[2]))
-			for _, id := range strings.Split(rec[6], ";") {
+			for id := range strings.SplitSeq(rec[6], ";") {
 				if id = strings.ToLower(strings.TrimSpace(id)); id == "" {
 					continue
 				}
-				if cfS != "" {
-					z.idsCF[cfS] = append(z.idsCF[cfS], id)
-				}
-				if mrS != "" {
-					z.idsMR[mrS] = append(z.idsMR[mrS], id)
-				}
-				if _, dup := z.slugByID[id]; !dup && (cfS != "" || mrS != "") {
-					z.slugByID[id] = [2]string{cfS, mrS}
-				}
+				id = keep(id)
+				z.ids = append(z.ids, id)
 			}
 		}
-		zh := strings.TrimSpace(rec[3])
-		if !hasHan(zh) {
+		if zh == "" && int(idsStart) == len(z.ids) {
 			continue
 		}
-		if v := strings.TrimSpace(rec[1]); v != "" {
-			cf[strings.ToLower(v)] = zh
+		row := uint32(len(z.rows))
+		data := zhNameRow{
+			text:    strings.Join([]string{zh, cfS, mrS}, ""),
+			nameEnd: uint32(len(zh)), cfEnd: uint32(len(zh) + len(cfS)),
+			idsStart: idsStart, idsEnd: uint32(len(z.ids)),
 		}
-		if v := strings.TrimSpace(rec[2]); v != "" {
-			mr[strings.ToLower(v)] = zh
+		z.rows = append(z.rows, data)
+		cfS, mrS = data.slugs()
+		named := z.indexProject(cf, cfS, row) + z.indexProject(mr, mrS, row)
+		if modID != nil {
+			z.size += named
 		}
-		if modID != nil && len(rec) > 6 {
-			for _, id := range strings.Split(rec[6], ";") {
-				if id = strings.ToLower(strings.TrimSpace(id)); id != "" {
-					if _, dup := modID[id]; !dup {
-						modID[id] = zh
-					}
-				}
+		for _, id := range z.rowIDs(data) {
+			ref := modID[id]
+			if zh != "" && ref.name == 0 {
+				ref.name = row
+			}
+			if ref.slugs == 0 && (cfS != "" || mrS != "") {
+				ref.slugs = row
+			}
+			if ref != (zhModRef{}) {
+				modID[id] = ref
 			}
 		}
 	}
+}
+
+// Return whether this slug acquired its first translated name. Merging IDs
+// allocates a new immutable row: the other provider may still use either of
+// the source lists, and dependency lookups may be reading them concurrently.
+func (z *ZhNames) indexProject(index map[string]zhProjectRef, slug string, row uint32) int {
+	if slug == "" {
+		return 0
+	}
+	ref, data := index[slug], z.rows[row]
+	named := 0
+	if data.nameEnd != 0 {
+		if ref.name == 0 {
+			named = 1
+		}
+		ref.name = row
+	}
+	if data.idsEnd != data.idsStart {
+		if ref.ids == 0 {
+			ref.ids = row
+		} else {
+			before, next := z.rowIDs(z.rows[ref.ids]), z.rowIDs(data)
+			start := uint32(len(z.ids))
+			z.ids = append(z.ids, before...)
+			z.ids = append(z.ids, next...)
+			ref.ids = uint32(len(z.rows))
+			z.rows = append(z.rows, zhNameRow{idsStart: start, idsEnd: uint32(len(z.ids))})
+		}
+	}
+	if ref != (zhProjectRef{}) {
+		index[slug] = ref
+	}
+	return named
+}
+
+func (z *ZhNames) name(row uint32) string {
+	if row == 0 {
+		return ""
+	}
+	r := z.rows[row]
+	return r.text[:r.nameEnd]
 }
 
 // Mod returns the Chinese name for a mod, or "".
@@ -190,14 +286,14 @@ func (z *ZhNames) Mod(cfSlug, mrSlug, modID string) string {
 	if z == nil {
 		return ""
 	}
-	if v := z.mr[strings.ToLower(mrSlug)]; mrSlug != "" && v != "" {
-		return v
+	if v := z.mr[strings.ToLower(mrSlug)]; mrSlug != "" && v.name != 0 {
+		return z.name(v.name)
 	}
-	if v := z.cf[strings.ToLower(cfSlug)]; cfSlug != "" && v != "" {
-		return v
+	if v := z.cf[strings.ToLower(cfSlug)]; cfSlug != "" && v.name != 0 {
+		return z.name(v.name)
 	}
 	if modID != "" {
-		return z.modID[strings.ToLower(modID)]
+		return z.name(z.modID[strings.ToLower(modID)].name)
 	}
 	return ""
 }
@@ -222,9 +318,9 @@ func (z *ZhNames) Project(p Project) string {
 		return ""
 	}
 	if p.Source == "curseforge" {
-		return cf[slug]
+		return z.name(cf[slug].name)
 	}
-	return mr[slug]
+	return z.name(mr[slug].name)
 }
 
 // Size reports how many names are known (for diagnostics).
@@ -232,18 +328,23 @@ func (z *ZhNames) Size() int {
 	if z == nil {
 		return 0
 	}
-	return len(z.cf) + len(z.mr)
+	return z.size
 }
 
-// ModIDs lists the jar mod ids MC百科 records for a platform slug.
+// ModIDs lists the jar mod ids MC百科 records for a platform slug. Treat the
+// existing entries as read-only; appending candidates always allocates a copy.
 func (z *ZhNames) ModIDs(source, slug string) []string {
 	if z == nil || slug == "" {
 		return nil
 	}
+	ref := z.mr[strings.ToLower(slug)]
 	if source == "curseforge" {
-		return z.idsCF[strings.ToLower(slug)]
+		ref = z.cf[strings.ToLower(slug)]
 	}
-	return z.idsMR[strings.ToLower(slug)]
+	if ref.ids == 0 {
+		return nil
+	}
+	return z.rowIDs(z.rows[ref.ids])
 }
 
 // SlugsFor returns the CurseForge and Modrinth slugs for a jar mod id.
@@ -251,6 +352,9 @@ func (z *ZhNames) SlugsFor(modID string) (cf, mr string) {
 	if z == nil {
 		return "", ""
 	}
-	v := z.slugByID[strings.ToLower(modID)]
-	return v[0], v[1]
+	ref := z.modID[strings.ToLower(modID)]
+	if ref.slugs == 0 {
+		return "", ""
+	}
+	return z.rows[ref.slugs].slugs()
 }

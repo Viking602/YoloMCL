@@ -16,7 +16,7 @@ func (a *App) importDialog(c *ui.Context) {
 	ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
 		label(c, t.ImportFileLabel).FontWeight(600)
 		ui.Row(c).FillWidth().Gap(10 * s).Children(func() {
-			input := textField(c, &a.form.Path).Label(t.ImportFileLabel).Placeholder(t.ImportFilePlaceholder).Tooltip(t.ImportFileHint).Grow(1).MinWidth(0)
+			input := tooltip(c, textField(c, &a.form.Path).Label(t.ImportFileLabel).Placeholder(t.ImportFilePlaceholder), t.ImportFileHint).Grow(1).MinWidth(0)
 			if input.Changed() && strings.TrimSpace(a.form.Path) != "" {
 				a.inspectPackFile(a.form.Path)
 			}

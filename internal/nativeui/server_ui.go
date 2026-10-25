@@ -91,7 +91,14 @@ func (a *App) ovServer(c *ui.Context, st launcher.InstanceStatus) {
 	if target := st.RecentServer; target != nil && !a.overviewHolding {
 		a.serverProbe(target.Address)
 	}
-	st = swappedContent(a, c, "ov-server", []any{st.Dir != "", st.RecentServer}, st)
+	signature := struct {
+		Ready, Present bool
+		Server         launcher.InstanceServer
+	}{Ready: st.Dir != ""}
+	if st.RecentServer != nil {
+		signature.Present, signature.Server = true, *st.RecentServer
+	}
+	st = swappedContent(a, c, "ov-server", signature, st)
 	a.resetContentChildren("ov-server", "server-details")
 	server := st.RecentServer
 	var probe serverProbe
@@ -115,21 +122,27 @@ func (a *App) ovServer(c *ui.Context, st launcher.InstanceStatus) {
 			return
 		}
 		ui.Column(c).Label("服务器信息").Font(uiSansFamily()).FillWidth().Grow(1).MinHeight(0).Clip().Children(func() {
-			var signature any
+			var signature struct {
+				Present, PlayersKnown         bool
+				Address, Description, Version string
+				Online, Max                   int
+			}
 			if info := probe.status; info != nil {
-				signature = []any{address, info.Description, info.Version, info.PlayersKnown, info.Online, info.Max}
+				signature.Present, signature.PlayersKnown = true, info.PlayersKnown
+				signature.Address, signature.Description, signature.Version = address, info.Description, info.Version
+				signature.Online, signature.Max = info.Online, info.Max
 			}
 			info := swappedContent(a, c, "server-details", signature, probe.status)
 			a.contentBody(c, "server-details").Grow(1).MinHeight(0).Gap(12 * s).Justify(ui.Center).Children(func() {
 				ui.Row(c.Key("server-identity")).Label("服务器标识").FillWidth().Height(66 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 					a.serverIcon(c, probe.icon)
 					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
-						ui.Text(c, address).FontSize(typeTitle2 * s).FontWeight(650).TextColor(ink).SingleLine().FillWidth().Tooltip(address)
+						tooltip(c, ui.Text(c, address).FontSize(typeTitle2*s).FontWeight(650).TextColor(ink).SingleLine().FillWidth(), address)
 						description := a.L("多人游戏服务器", "Multiplayer server")
 						if info != nil && info.Description != "" {
 							description = info.Description
 						}
-						ui.Text(c, description).FontSize(typeFootnote * s).TextColor(muted).FillWidth().MaxLines(2).Ellipsis("…").Tooltip(description)
+						tooltip(c, ui.Text(c, description).FontSize(typeFootnote*s).TextColor(muted).FillWidth().MaxLines(2).Ellipsis("…"), description)
 					})
 				})
 				a.serverMetrics(c, info)
@@ -140,7 +153,7 @@ func (a *App) ovServer(c *ui.Context, st launcher.InstanceStatus) {
 			if !server.Confirmed {
 				text = a.L("最近尝试 ", "Attempted ")
 			}
-			ui.Text(c, text+agoText(a, server.Connected)).FontSize(typeCaption * s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(server.Connected.Local().Format("2006-01-02 15:04:05"))
+			tooltip(c, ui.Text(c, text+agoText(a, server.Connected)).FontSize(typeCaption*s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0), server.Connected.Local().Format("2006-01-02 15:04:05"))
 			copy := ui.ButtonBase(c.Key("ov-copy-server")).Label(a.L("复制地址", "Copy address")).Height(28 * s).PaddingX(8 * s).Radius(8 * s).Gap(5 * s).Shrink(0).AlignItems(ui.Center)
 			color := ui.Transparent
 			if copy.Hovered() {
@@ -195,7 +208,7 @@ func (a *App) serverMetrics(c *ui.Context, info *launcher.ServerStatus) {
 		ui.Box(c).Width(1).Height(30 * s).Shrink(0).Background(line)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, a.L("版本", "Version")).FontSize(typeCaption * s).TextColor(muted).SingleLine().FillWidth()
-			ui.Text(c, version).FontSize(typeFootnote * s).FontWeight(600).TextColor(inkSecondary).SingleLine().FillWidth().Tooltip(version)
+			tooltip(c, ui.Text(c, version).FontSize(typeFootnote*s).FontWeight(600).TextColor(inkSecondary).SingleLine().FillWidth(), version)
 		})
 	})
 }

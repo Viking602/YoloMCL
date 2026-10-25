@@ -1,13 +1,35 @@
 package nativeui
 
 import (
+	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
+
+func BenchmarkDiscoverVersionFilterClosed(b *testing.B) {
+	if err := loadAssets(); err != nil {
+		b.Fatal(err)
+	}
+	a := &App{}
+	for i := 0; i < 900; i++ {
+		a.minecraftVersions = append(a.minecraftVersions, launcher.MinecraftVersion{ID: fmt.Sprintf("1.%d.1", i), Type: "release"})
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(theme)
+		c.AnimationFrame()
+		ui.Column(c).Fill().Children(func() { a.discoverVersionFilter(c) })
+	}, 340, 800)
+	tt.Advance(time.Second)
+	b.ReportAllocs()
+	for b.Loop() {
+		tt.Advance(time.Second / 60)
+	}
+}
 
 func TestDiscoverVersionDropdownCommitsAndClearsFilter(t *testing.T) {
 	for _, source := range []string{"modrinth", "curseforge"} {

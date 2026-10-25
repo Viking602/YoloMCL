@@ -94,6 +94,7 @@ func (s *Service) endSession(gs *gameSession, err error) {
 		}
 	}
 	go recordPlay(gs.GameSession, gs.stopped)
+	go s.invalidateStatus(gs.GameDir)
 	exited := 0
 	for i := len(s.sessions) - 1; i >= 0; i-- {
 		if s.sessions[i].State == "running" {

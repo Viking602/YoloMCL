@@ -13,7 +13,7 @@ type wardrobeState struct {
 	capeImgs    map[string]image.Image // cape URL -> texture
 	capeThumbs  map[string]*ui.Bitmap
 	capeAsked   map[string]bool
-	capeRetry   map[string]time.Time
+	capeFailed  map[string]bool
 	pendingSkin []byte // a local file chosen but not uploaded yet
 	pendingName string
 	recent      []recentSkin
@@ -31,6 +31,10 @@ type recentSkin struct {
 }
 
 const noCapeKey = "\x00none"
+
+// Slow, continuous rotation does not need the display's full refresh rate.
+// Dragging, zooming and short front/back transitions remain interactive.
+const previewSpinInterval = time.Second / 30
 
 func (a *App) wd() *wardrobeState {
 	if a.wardrobeSt == nil {
@@ -126,6 +130,9 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 		dt = math.Min(now.Sub(p.last).Seconds(), .1)
 	}
 	p.last = now
+	if !p.spin {
+		p.spinFrame = time.Time{}
+	}
 	animating := false
 	if p.target != nil {
 		d := *p.target - p.yaw
@@ -137,8 +144,15 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 		}
 		p.dirty = true
 	} else if p.spin {
-		p.yaw += dt * .6
-		p.dirty = true
+		elapsed := now.Sub(p.spinFrame)
+		if p.spinFrame.IsZero() || elapsed >= previewSpinInterval {
+			if !p.spinFrame.IsZero() {
+				dt = min(elapsed.Seconds(), .1)
+			}
+			p.yaw += dt * .6
+			p.spinFrame = now
+			p.dirty = true
+		}
 		animating = true
 	}
 	if p.dirty || p.bitmap == nil {
@@ -202,13 +216,17 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 		}
 	})
 	if animating {
-		c.After(16 * time.Millisecond)
+		if p.spin {
+			c.After(max(0, previewSpinInterval-now.Sub(p.spinFrame)))
+		} else {
+			c.After(16 * time.Millisecond)
+		}
 	}
 }
 
 func stageIcon(c *ui.Context, key, icon, label string, on bool) bool {
 	s := uiScale(c)
-	b := ui.ButtonBase(c.Key(key)).Label(label).Tooltip(label).Size(32*s, 32*s).Radius(999).AlignItems(ui.Center).Justify(ui.Center)
+	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(32*s, 32*s).Radius(999).AlignItems(ui.Center).Justify(ui.Center)
 	bg, fg := ui.Transparent, inkSecondary
 	if on {
 		bg, fg = accentSoft, accent

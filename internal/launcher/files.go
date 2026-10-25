@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/sha1"
 	"crypto/sha512"
 	"encoding/hex"
@@ -98,6 +99,55 @@ func readZipJSON(f *zip.File, v any) error {
 	}
 	defer r.Close()
 	return decodeJSON(io.LimitReader(r, 16<<20), v)
+}
+
+// readZipBytes validates the declared size before a single allocation. Reading
+// through EOF also verifies the ZIP checksum and rejects a false size header.
+// io.ReadAll's growth copies are costly for embedded jars and large artwork.
+func readZipBytes(f *zip.File, limit uint64) ([]byte, error) {
+	return readZipBytesContext(context.Background(), f, limit)
+}
+
+func readZipBytesContext(ctx context.Context, f *zip.File, limit uint64) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if f.UncompressedSize64 > limit {
+		return nil, errors.New("archive entry is too large")
+	}
+	b := make([]byte, int(f.UncompressedSize64))
+	if err := readZipBuffer(ctx, f, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func readZipBuffer(ctx context.Context, f *zip.File, b []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	r, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	return readModBytes(ctx, r, b)
+}
+
+// Fill an exact-size buffer and consume EOF to verify ZIP length and CRC.
+func readModBytes(ctx context.Context, source io.Reader, b []byte) error {
+	r := modReader{ctx: ctx, r: source}
+	if _, err := io.ReadFull(r, b); err != nil {
+		return err
+	}
+	var tail [1]byte
+	if n, err := r.Read(tail[:]); n != 0 || err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return errors.New("archive entry size mismatch")
+	}
+	return nil
 }
 func extractZipEntry(f *zip.File, dest string) error {
 	if f.Mode()&os.ModeSymlink != 0 {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -94,7 +93,7 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 					}
 					a.rollNumber(c, "storage-total", text, typeHeadline*s, 700, ink, true).Width(104 * s)
 					if iconOnlyButton(c, "ov-refresh", "refresh", a.L("刷新概览", "Refresh overview"), 26*s, false) && a.overviewActionReady("ov-dir") {
-						a.loadInstanceStatus()
+						a.refreshInstanceStatus(true)
 					}
 				}, func() { a.ovDir(c, st, r, false) })
 			})
@@ -161,7 +160,7 @@ func (a *App) ovStats(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 					if b.Hovered() {
 						bg = it.tone.Alpha(.08)
 					}
-					b.Background(b.AnimateColor("bg", bg, fastAnim))
+					b.Background(b.AnimateColor("bg", bg, fastAnim).Over(contentBackground))
 					if b.Children(func() {
 						ui.Column(c).Fill().Gap(6 * s).Children(func() {
 							ui.Row(c).FillWidth().Gap(7 * s).AlignItems(ui.Center).Children(func() {
@@ -171,7 +170,7 @@ func (a *App) ovStats(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 							key := "stat-value-" + it.key
 							a.rollNumber(c, key, it.value, typeDisplay*s, 750, ink).FillWidth()
 							hintKey := "stat-hint-" + it.key
-							a.rollNumber(c, hintKey, it.hint, typeCaption*s, 400, muted).FillWidth().Tooltip(it.hint)
+							tooltip(c, a.rollNumber(c, hintKey, it.hint, typeCaption*s, 400, muted).FillWidth(), it.hint)
 						})
 					}).Clicked() && a.overviewActionReady("stat-value-"+it.key) {
 						a.setInstTab(it.tab)
@@ -184,15 +183,20 @@ func (a *App) ovStats(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 
 func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceStatus) {
 	s := uiScale(c)
-	iconScope := ""
-	var worldSignature any
-	if st.RecentWorld != nil && st.RecentWorld.HasIcon {
-		iconScope = r.ID + "|" + r.SelectedVersion
-	}
+	signature := struct {
+		Ready, Present bool
+		World          launcher.World
+		IconScope      string
+	}{Ready: st.Dir != ""}
 	if w := st.RecentWorld; w != nil {
-		worldSignature = []any{w.Dir, w.Name, w.Mode, w.LastPlayed, w.HasIcon}
+		signature.Present, signature.World = true, *w
+		// Size and backup counts animate in their own child slots.
+		signature.World.Size, signature.World.Backups = 0, 0
+		if w.HasIcon {
+			signature.IconScope = r.ID + "|" + r.SelectedVersion
+		}
 	}
-	r, st = a.overviewPanelData(c, "ov-world", []any{st.Dir != "", worldSignature, iconScope}, r, st)
+	r, st = swappedOverviewPanel(a, c, "ov-world", signature, r, st)
 	a.resetContentChildren("ov-world", "world-size", "world-backups")
 	a.ovPanel(c, "ov-world", a.L("最近世界", "Recent world"), st, func() {
 		if fixedButton(c, "ov-worlds", a.L("全部存档", "All worlds"), "chevron", 0, 26*s, false, false) && a.overviewActionReady("ov-world") {
@@ -225,7 +229,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 				}
 			})
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(9 * s).Children(func() {
-				ui.Text(c, w.Name).FontSize(typeTitle1 * s).FontWeight(700).TextColor(ink).SingleLine().FillWidth().Tooltip(w.Name)
+				tooltip(c, ui.Text(c, w.Name).FontSize(typeTitle1*s).FontWeight(700).TextColor(ink).SingleLine().FillWidth(), w.Name)
 				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 					if mode, ok := worldModes[w.Mode]; ok {
 						quietTag(c, a.L(mode[0], mode[1]), successInk)
@@ -251,7 +255,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 		})
 		ui.Spacer(c).Grow(1)
 		ui.Row(c).FillWidth().Height(30 * s).Shrink(0).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, w.Dir).FontSize(typeCaption * s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(w.Dir)
+			tooltip(c, ui.Text(c, w.Dir).FontSize(typeCaption*s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0), w.Dir)
 			if fixedButton(c, "ov-world-backups", a.L("管理备份", "Manage backups"), "folder", 0, btnSm*s, false, false) && a.overviewActionReady("ov-world") {
 				a.setInstTab("worlds")
 				a.wv.open = w.Dir
@@ -266,7 +270,12 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 	if st.LatestShot != nil {
 		imageKey = overviewShotKey(r, *st.LatestShot)
 	}
-	r, st = a.overviewPanelData(c, "ov-shot", []any{st.Dir != "", st.Screenshots, imageKey}, r, st)
+	signature := struct {
+		Ready    bool
+		Count    int
+		ImageKey string
+	}{st.Dir != "", st.Screenshots, imageKey}
+	r, st = swappedOverviewPanel(a, c, "ov-shot", signature, r, st)
 	a.ovPanel(c, "ov-shot", a.L("游戏截图", "Screenshots"), st, func() {
 		if st.Screenshots > 0 {
 			quietTag(c, fmt.Sprintf(a.L("%d 张", "%d shots"), st.Screenshots), muted)
@@ -307,7 +316,7 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 		})
 		ui.Row(c).FillWidth().Height(26 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			text, date := shot.File, agoText(a, shot.Modified)
-			ui.Text(c, text).FontSize(typeCaption * s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(text)
+			tooltip(c, ui.Text(c, text).FontSize(typeCaption*s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0), text)
 			ui.Text(c, date).FontSize(typeCaption * s).TextColor(muted).NoWrap().Shrink(0)
 		})
 	})
@@ -345,31 +354,14 @@ func ovLoading(c *ui.Context) {
 func (a *App) prepareOverviewImages(ctx context.Context, id, ver string, st launcher.InstanceStatus) {
 	prepare := func(key string, read func() ([]byte, error)) {
 		a.imageMu.Lock()
-		known := a.images[key] != nil || !a.imageRetry[key].IsZero()
-		a.imageMu.Unlock()
+		known := a.cachedImageLocked(key) != nil || a.imagePendingLocked(key) || !a.imageRetry[key].IsZero()
 		if known || ctx.Err() != nil {
+			a.imageMu.Unlock()
 			return
 		}
-		select {
-		case a.overviewImageSlots <- struct{}{}:
-			defer func() { <-a.overviewImageSlots }()
-		case <-ctx.Done():
-			return
-		}
-		var source ui.ImageSource
-		if b, err := read(); err == nil && ctx.Err() == nil {
-			source, _ = decodeResourceImage(b)
-		}
-		if ctx.Err() != nil {
-			return
-		}
-		a.imageMu.Lock()
-		if source != nil {
-			a.images[key] = source
-		} else {
-			a.imageRetry[key] = time.Now().Add(24 * time.Hour)
-		}
+		a.reserveImageLocked(key, ctx)
 		a.imageMu.Unlock()
+		a.loadLocalImage(ctx, key, read)
 	}
 	if world := st.RecentWorld; world != nil && world.HasIcon {
 		prepare("world:"+id+":"+ver+":"+world.Dir, func() ([]byte, error) { return a.service.WorldIcon(id, ver, world.Dir) })

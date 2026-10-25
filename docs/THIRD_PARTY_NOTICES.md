@@ -2,7 +2,6 @@
 
 - MyGo Native UI: [egoist/mygo](https://github.com/egoist/mygo), MIT. See module license.
 - GitHub mark: [Primer Octicons](https://github.com/primer/octicons/blob/main/icons/mark-github-16.svg), Copyright (c) 2026 GitHub Inc., MIT. Full license embedded at `internal/nativeui/assets/LICENSES/octicons/LICENSE.txt`. The mark identifies the source repository link.
-- Startup plugin shader assets: the unmodified Direct3D vertex/pixel bytecode from MyGo v0.5.5, bundled in `plugins/startup/assets/mygo-0.5.5/` to warm the Windows driver independently. Copyright (c) 2026 MyGo contributors; MIT license included beside the assets. MyGo source and module namespace are unchanged.
 - Fusion Pixel Font 12px, simplified Chinese: [TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font), 2026.10.16 release. The bundled `pixel.otf` is a modified subset named **MCL Pixel Brand**, containing only the `YoloMCL` wordmark and space; glyph outlines and advances are unchanged. Rebuild it with `scripts/subset-brand-font.py` and the upstream OTF. It remains under SIL Open Font License 1.1; the license and incorporated font notices are included in `internal/nativeui/assets/OFL.txt` and `internal/nativeui/assets/LICENSES/`. User text uses the separate UI fonts, not this subset.
 - Modrinth official logomark: original SVG from [Modrinth's source](https://github.com/modrinth/code/blob/main/apps/frontend/src/assets/images/logo.svg). Its brand color variable is resolved to Modrinth green for native rendering. Logo and trademark rights remain with their owner.
 - CurseForge official anvil logomark: unmodified brand SVG from [Modrinth's external brand assets](https://github.com/modrinth/code/blob/main/apps/frontend/src/assets/images/external/curseforge.svg). Logo and trademark rights remain with their owner.
@@ -37,6 +36,24 @@ Bundled in `internal/nativeui/assets/authicons/` so built-in servers show their 
 
 - `littleskin.png` — LittleSkin, fetched 2026-10-21 from https://littleskin.cn/favicon.png (unchanged).
 - `ely.png` — Ely.by, fetched 2026-10-21 from https://ely.by/favicon.ico?v=2 (16×16 ICO converted to PNG).
+
+## Java distribution icons
+
+`internal/nativeui/assets/java/*.png` identify installed Java distributions and download sources. These official project or vendor marks were fetched on 2026-10-24 and resized proportionally to 64×64 pixels; SVG sources were rasterized without changing their artwork. They are embedded for offline display and shared across runtime rows. All names, logos, and trademarks remain the property of their respective owners; their use does not imply endorsement.
+
+| File | Project or vendor | Original asset |
+| --- | --- | --- |
+| `zulu.png` | Azul Systems, for Azul Zulu | [Azul site icon](https://www.azul.com/wp-content/themes/azul/assets/img/azul-favicon-block.png) |
+| `temurin.png` | Eclipse Foundation, Eclipse Temurin | [Temurin project mark](https://adoptium.net/images/projects/temurin-project.svg), [logo guide](https://adoptium.net/docs/logo-styleguide/) |
+| `corretto.png` | Amazon Web Services, for Amazon Corretto | [AWS site icon](https://a0.awsstatic.com/libra-css/images/site/touch-icon-ipad-144-smile.png) |
+| `liberica.png` | BellSoft, for Liberica JDK | [BellSoft site icon](https://bell-sw.com/assets/images/favicon.png) |
+| `graalvm.png` | Oracle, GraalVM | [GraalVM project mark](https://www.graalvm.org/resources/img/home/graalvm_rabbit_icon.svg) |
+| `jbr.png` | JetBrains, for JetBrains Runtime | [JetBrains site icon](https://www.jetbrains.com/apple-touch-icon.png?r=1234), [brand guidelines](https://www.jetbrains.com/company/brand/) |
+| `oracle.png` | Oracle, for Oracle JDK | [Oracle site icon](https://www.oracle.com/asset/web/favicons/favicon-128.png) |
+
+Copyright © 2026 [JetBrains s.r.o.](https://www.jetbrains.com/). JetBrains and the JetBrains logo are trademarks of JetBrains s.r.o.
+
+Microsoft builds reuse the Microsoft four-square mark already used in account sign-in. Mojang's official launcher runtime source reuses the Minecraft game icon credited above. Unrecognized distributions use the application's generic runtime icon.
 
 ## JetBrains Mono
 

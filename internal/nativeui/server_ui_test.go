@@ -69,6 +69,38 @@ func TestRecentServerOnlineAndUnreachableCards(t *testing.T) {
 	}
 }
 
+func TestRecentServerRefreshComparesValues(t *testing.T) {
+	a, old := homeTester(t, LangEN)
+	defer func() { a.cancel(); a.bgWG.Wait() }()
+	a.bgWG.Wait()
+	old.Frame()
+	a.contentSwaps = nil
+	a.overviewHolding = true // this test never starts a network probe
+	st := launcher.InstanceStatus{Dir: a.root().Path, RecentServer: &launcher.InstanceServer{Address: "old.example.test:25565"}}
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(theme)
+		ui.Row(c).Width(360).Height(260).Children(func() { a.ovServer(c, st) })
+	}, 400, 300)
+	for range 3 {
+		server := *st.RecentServer
+		st.RecentServer = &server
+		tt.Frame()
+		if state := a.contentSwaps["ov-server"]; state.leaving || state.serial != 0 {
+			t.Fatal("identical server data from a new publication triggered an animation")
+		}
+	}
+	// A real field change must still animate, even if the pointer is reused.
+	st.RecentServer.Address = "new.example.test:25565"
+	tt.Frame()
+	if !a.contentSwaps["ov-server"].leaving {
+		t.Fatal("changed server fields did not trigger a transition")
+	}
+	tt.Advance(400 * time.Millisecond)
+	if state := a.contentSwaps["ov-server"]; state.leaving || state.serial != 1 || !tt.HasText("new.example.test") {
+		t.Fatal("server transition failed to settle on the new value")
+	}
+}
+
 func TestRecentServerSwitchCancelsPendingQuery(t *testing.T) {
 	a, tt := homeTester(t, LangZH)
 	defer func() { a.cancel(); a.bgWG.Wait() }()

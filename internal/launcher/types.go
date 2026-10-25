@@ -35,6 +35,9 @@ type Settings struct {
 	JVMArgs         string `json:"jvmArgs,omitempty"`
 	ShowSnapshots   bool   `json:"showSnapshots"`
 	UseRootSettings bool   `json:"useRootSettings"`
+	// HardwareAcceleration opts into the Windows launcher GPU renderer.
+	// Software rendering is the Windows default; game rendering is unaffected.
+	HardwareAcceleration bool `json:"hardwareAcceleration,omitempty"`
 	// Modpack update checks: on by default, releases only by default.
 	PackAutoCheckOff bool `json:"packAutoCheckOff,omitempty"`
 	PackIncludeBeta  bool `json:"packIncludeBeta,omitempty"`
@@ -49,6 +52,10 @@ type Root struct {
 	MemoryAuto      bool                     `json:"memoryAuto,omitempty"`
 	JVMArgs         string                   `json:"jvmArgs,omitempty"`
 	VersionConfigs  map[string]VersionConfig `json:"versionConfigs,omitempty"`
+
+	// gameDir is the game folder resolved for gameDirFor by the inventory
+	// (see Service.cacheGameDir); only set on copies handed out by getRoot.
+	gameDir, gameDirFor string
 }
 type Account struct {
 	ID       string `json:"id"`
@@ -176,9 +183,14 @@ type jobState struct {
 	holdDone  int
 }
 type Service struct {
+	modMetadata *modMetadataCache // initialized under mu; owns its own gate
 	mu          sync.Mutex
 	inventoryMu sync.Mutex
 	inventories map[string]*inventoryEntry
+	statusMu    sync.Mutex
+	statuses    map[string]*statusCacheEntry
+	statusUse   uint64
+	worldSizes  map[string]*worldSizeEntry
 	authMu      sync.Mutex
 	cfg         config
 	publisher   publisherconfig.Config

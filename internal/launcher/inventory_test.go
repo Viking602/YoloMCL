@@ -139,3 +139,44 @@ func BenchmarkCachedSnapshot(b *testing.B) {
 		_ = s.Snapshot()
 	}
 }
+
+func TestVersionDirUsesPublishedInventory(t *testing.T) {
+	s := testService(t)
+	r := inventoryFixture(t, s)
+	writeTestFile(t, filepath.Join(r.Path, "mods", "shared.jar"), []byte("shared"))
+	writeTestFile(t, filepath.Join(r.Path, "versions", "two", "two.json"), []byte(`{"id":"two","mainClass":"net.minecraft.client.main.Main"}`))
+	s.invalidateInventory(r.ID)
+	_ = s.Snapshot()
+
+	probe := func(version string) string { return Root{Path: r.Path, SelectedVersion: version}.VersionDir() }
+	two, err := s.rootAt(r.ID, "two")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if two.gameDir == "" || two.VersionDir() != r.Path || two.VersionDir() != probe("two") {
+		t.Fatalf("shared folder not served from the inventory: %q", two.VersionDir())
+	}
+
+	// Creating the isolation folder invalidates the inventory, which must
+	// disable the cached directory until the next scan.
+	isolated := filepath.Join(r.Path, "versions", "two")
+	if err := os.MkdirAll(filepath.Join(isolated, "mods"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	s.invalidateInventory(r.ID)
+	two, _ = s.rootAt(r.ID, "two")
+	if two.gameDir != "" || filepath.Clean(two.VersionDir()) != filepath.Clean(isolated) {
+		t.Fatalf("stale directory after invalidation: %q", two.VersionDir())
+	}
+	_ = s.Snapshot()
+	two, _ = s.rootAt(r.ID, "two")
+	if two.gameDir == "" || two.VersionDir() != probe("two") || filepath.Clean(two.VersionDir()) != filepath.Clean(isolated) {
+		t.Fatalf("rescanned directory differs from probing: %q vs %q", two.VersionDir(), probe("two"))
+	}
+
+	// A cached directory belongs to the version it was resolved for.
+	two.SelectedVersion = "pack"
+	if two.VersionDir() != probe("pack") {
+		t.Fatalf("directory leaked across versions: %q", two.VersionDir())
+	}
+}

@@ -98,14 +98,17 @@ func (s *Service) Select(rootID, accountID, version string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	draft := s.cfg.clone()
+	changed := false
 	if rootID != "" {
 		found := false
 		for i, r := range draft.Roots {
 			if r.ID == rootID {
 				found = true
+				changed = changed || draft.ActiveRoot != rootID
 				draft.ActiveRoot = rootID
-				if version != "" {
+				if version != "" && draft.Roots[i].SelectedVersion != version {
 					draft.Roots[i].SelectedVersion = version
+					changed = true
 				}
 				break
 			}
@@ -119,6 +122,7 @@ func (s *Service) Select(rootID, accountID, version string) error {
 		for _, a := range draft.Accounts {
 			if a.ID == accountID {
 				found = true
+				changed = changed || draft.ActiveAccount != accountID
 				draft.ActiveAccount = accountID
 				break
 			}
@@ -127,9 +131,15 @@ func (s *Service) Select(rootID, accountID, version string) error {
 			return errors.New("账号不存在")
 		}
 	}
+	if !changed {
+		return nil // repeated clicks must not rewrite and fsync config.json
+	}
 	return s.saveConfigLocked(draft)
 }
 func (r Root) VersionDir() string {
+	if r.gameDir != "" && r.gameDirFor == r.SelectedVersion {
+		return r.gameDir
+	}
 	if r.SelectedVersion != "" {
 		if vDir, err := safeJoin(r.Path, "versions/"+r.SelectedVersion); err == nil && isDir(vDir) {
 			for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", "saves", "config", "options.txt"} {

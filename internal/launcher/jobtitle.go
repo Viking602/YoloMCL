@@ -8,6 +8,7 @@ import "strings"
 var jobTitleKeys = []struct{ prefix, key string }{
 	{"下载整合包：", "pack.download"},
 	{"导入整合包：", "pack.download"},
+	{"导出整合包：", "pack.export"},
 	{"更新整合包：", "pack.update"},
 	{"回滚整合包：", "pack.rollback"},
 	{"安装 Minecraft ", "game.install"},

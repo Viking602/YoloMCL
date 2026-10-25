@@ -71,7 +71,7 @@ func metricTone(c *ui.Context, key, name, value string, w float32, col ui.Color)
 	s := uiScale(c)
 	ui.Column(c.Key(key)).Gap(3 * s).Width(w * s).Grow(1).Shrink(1).MinWidth(0).Clip().Children(func() {
 		ui.Text(c, name).FontSize(typeCaption2 * s).TextColor(muted).SingleLine()
-		ui.Text(c, value).FontSize(typeFootnote * s).FontWeight(600).FontFeatures("tnum").TextColor(col).SingleLine().Tooltip(value)
+		tooltip(c, ui.Text(c, value).FontSize(typeFootnote*s).FontWeight(600).FontFeatures("tnum").TextColor(col).SingleLine(), value)
 	})
 }
 
@@ -94,7 +94,7 @@ func (a *App) sessionHeader(c *ui.Context, g *launcher.GameSession, scope string
 			ui.Column(c).Gap(4 * s).Width(220 * s).Shrink(1).MinWidth(90 * s).Children(func() {
 				ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 					statusDot(c, sessionTone(g.State), s)
-					ui.Text(c, a.sessionLabel(*g, sess)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).SingleLine().Tooltip(a.sessionLabel(*g, sess)).Shrink(1).MinWidth(0)
+					tooltip(c, ui.Text(c, a.sessionLabel(*g, sess)).FontSize(typeCallout*s).FontWeight(700).TextColor(ink).SingleLine(), a.sessionLabel(*g, sess)).Shrink(1).MinWidth(0)
 				})
 				ui.Text(c, a.sessionStateText(g.State)).FontSize(typeCaption * s).TextColor(sessionTone(g.State)).NoWrap()
 			})
@@ -201,14 +201,14 @@ func (a *App) crashCard(c *ui.Context, g *launcher.GameSession) {
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
 			ui.Text(c, a.L("可能的原因", "Probable cause")).FontSize(typeCaption2 * s).FontWeight(600).TextColor(ui.Hex("#d70015")).NoWrap()
-			ui.Text(c, cause).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).SingleLine().Tooltip(cause)
+			tooltip(c, ui.Text(c, cause).FontSize(typeCallout*s).FontWeight(700).TextColor(ink).SingleLine(), cause)
 			ui.Row(c).Gap(8 * s).AlignItems(ui.Center).MinWidth(0).Children(func() {
 				if in.Mod != "" {
 					ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(ui.Hex("#ff3b30").Alpha(.12)).Children(func() {
 						ui.Text(c, a.L("相关模组 ", "Mod ")+in.Mod).FontSize(typeCaption2 * s).FontWeight(700).TextColor(ui.Hex("#d70015")).NoWrap()
 					})
 				}
-				ui.Text(c, advice).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0).Tooltip(advice)
+				tooltip(c, ui.Text(c, advice).FontSize(typeFootnote*s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0), advice)
 			})
 		})
 		if g.CrashReport != "" {
@@ -344,6 +344,7 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 
 // logEmpty is shown when nothing has run yet: launch, or open a recent file.
 func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
+	c.After(5 * time.Second)
 	s := uiScale(c)
 	lv := &a.logView
 	key := r.ID + "|" + r.SelectedVersion
@@ -396,7 +397,7 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 					ui.Box(c).Size(26*s, 26*s).Radius(7 * s).Background(col.Alpha(.10)).Center().Shrink(0).Children(func() {
 						ui.Icon(c, icons[ic]).Size(13*s, 13*s).TextColor(col)
 					})
-					ui.Text(c, f.Name).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).MinWidth(0).Tooltip(f.Name)
+					tooltip(c, ui.Text(c, f.Name).FontSize(typeFootnote*s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).MinWidth(0), f.Name)
 					ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(col.Alpha(.10)).Children(func() {
 						ui.Text(c, kind).FontSize(typeCaption2 * s).FontWeight(600).TextColor(col).NoWrap()
 					})

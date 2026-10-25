@@ -13,6 +13,7 @@ import (
 // follows the UI language and re-renders on a live switch.
 var jobTitles = map[string][2]string{
 	"pack.download":      {"下载 %s", "Download %s"},
+	"pack.export":        {"导出 %s", "Export %s"},
 	"pack.update":        {"更新 %s", "Update %s"},
 	"pack.rollback":      {"回滚 %s", "Roll back %s"},
 	"game.install":       {"安装 Minecraft %s", "Install Minecraft %s"},
@@ -90,7 +91,7 @@ func (a *App) jobPill(c *ui.Context) {
 	} else if len(run) == 1 {
 		mid = jobStep(a.jobMsg(run[0].Message))
 	}
-	b := ui.ButtonBase(c.Key("title-job")).Label(a.L("查看下载", "View downloads")).Tooltip(strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(999).Clip().Background(accentSoft)
+	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("查看下载", "View downloads")), strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(999).Clip().Background(accentSoft)
 	if b.Hovered() {
 		b.Background(accent.Alpha(.16))
 	}

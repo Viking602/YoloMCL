@@ -60,6 +60,43 @@ func TestZhNamesParse(t *testing.T) {
 	}
 }
 
+func TestZhNamesRepeatedSlugsKeepProviderIDsIndependent(t *testing.T) {
+	z := newZhNames()
+	z.parse([]byte("1, SAME , MR ,第一名称,First,, ID ; Extra \n"+
+		"2,same,other,第二名称,Second,,next\n"+
+		"3,third,mr,第三名称,Third,,last\n"+
+		"4,english-only,,English,,,id;english\n"), z.cf, z.mr, z.modID)
+	for _, tc := range []struct{ source, slug, want string }{
+		{"curseforge", "SAME", "id,extra,next"},
+		{"modrinth", "MR", "id,extra,last"},
+		{"modrinth", "other", "next"},
+		{"curseforge", "english-only", "id,english"},
+	} {
+		if got := strings.Join(z.ModIDs(tc.source, tc.slug), ","); got != tc.want {
+			t.Fatalf("%s/%s IDs = %q, want %q", tc.source, tc.slug, got, tc.want)
+		}
+	}
+	if z.Mod("same", "", "") != "第二名称" || z.Mod("", "mr", "") != "第三名称" || z.Mod("", "", "id") != "第一名称" {
+		t.Fatal("duplicate rows changed name lookup precedence")
+	}
+	if cf, mr := z.SlugsFor("ID"); cf != "same" || mr != "mr" {
+		t.Fatalf("first mod ID mapping was lost: %s, %s", cf, mr)
+	}
+	z.parse([]byte("5,same,mr,整合包,Pack,,unrelated\n"), z.packCF, z.packMR, nil)
+	if z.Project(Project{Source: "modrinth", Type: "modpack", URL: "https://modrinth.com/modpack/mr"}) != "整合包" || strings.Join(z.ModIDs("modrinth", "mr"), ",") != "id,extra,last" {
+		t.Fatal("pack names changed the mod ID index")
+	}
+	// Dependency lookups append slug-derived candidates. Concurrent callers
+	// must not share spare capacity with another lookup or provider.
+	z.parse([]byte("6,shared,shared,共享,Shared,,one;two;three\n"), z.cf, z.mr, z.modID)
+	a := append(z.ModIDs("curseforge", "shared"), "cf-candidate")
+	b := append(z.ModIDs("modrinth", "shared"), "mr-candidate")
+	c := append(z.ModIDs("curseforge", "shared"), "next-candidate")
+	if a[3] != "cf-candidate" || b[3] != "mr-candidate" || c[3] != "next-candidate" {
+		t.Fatal("dependency candidates overwrite another lookup")
+	}
+}
+
 // gameLogR10 is the r10 stream path, kept for the benchmark.
 type gameLogR10 struct {
 	ring    *lineRing

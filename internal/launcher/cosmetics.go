@@ -31,14 +31,20 @@ type Appearance struct {
 	CanCape bool   `json:"canCape"`
 }
 
+// Profiles can still contain legacy HTTP texture URLs. Normalize both the
+// active textures and the selectable capes before they reach HTTPS-only loaders.
+func textureURL(raw string) string {
+	if rest, ok := strings.CutPrefix(raw, "http://"); ok {
+		return "https://" + rest
+	}
+	return raw
+}
+
 func (s *Service) imageData(ctx context.Context, raw string) (string, error) {
 	if raw == "" {
 		return "", nil
 	}
-	if strings.HasPrefix(raw, "http://") {
-		raw = "https://" + strings.TrimPrefix(raw, "http://")
-	}
-	r, e := s.request(ctx, "GET", raw, nil, nil)
+	r, e := s.request(ctx, "GET", textureURL(raw), nil, nil)
 	if e != nil {
 		return "", e
 	}
@@ -114,7 +120,7 @@ func (s *Service) Appearance(ctx context.Context, id string) (Appearance, error)
 			}
 		}
 		for _, v := range profile.Capes {
-			out.Capes = append(out.Capes, Cape{ID: v.ID, Name: v.Alias, URL: v.URL, Active: v.State == "ACTIVE"})
+			out.Capes = append(out.Capes, Cape{ID: v.ID, Name: v.Alias, URL: textureURL(v.URL), Active: v.State == "ACTIVE"})
 			if v.State == "ACTIVE" {
 				out.Cape = v.URL
 			}

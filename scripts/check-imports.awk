@@ -1,7 +1,7 @@
 # Check the canonical import groups and runtime package boundaries after goimports.
 function allowed(pkg, dep) {
   if (pkg == ".") return dep == "internal/app"
-  if (pkg == "internal/app") return dep ~ /^(internal\/(buildinfo|launcher|nativeui)|plugins\/startup)$/
+  if (pkg == "internal/app") return dep ~ /^internal\/(buildinfo|launcher|nativeui)$/
   if (pkg == "internal/nativeui") return dep ~ /^internal\/(launcher|buildinfo|nativeui\/i18n)$/
   if (pkg == "internal/launcher") return dep ~ /^internal\/(config|launcher\/(memory|proctree|textenc|vault))$/
   return 0
@@ -19,7 +19,7 @@ function inspect(line, name, first, group, dep) {
   }
   previous = group
   if (FILENAME ~ /_test\.go$/) return
-  if ((name == "github.com/egoist/mygo" || index(name, "github.com/egoist/mygo/") == 1) && pkg !~ /^(internal\/(app|nativeui)|plugins\/startup)$/) {
+  if ((name == "github.com/egoist/mygo" || index(name, "github.com/egoist/mygo/") == 1) && pkg !~ /^internal\/(app|nativeui)$/) {
     print FILENAME ": UI dependency is not allowed here" > "/dev/stderr"; failed = 1
   }
   if (group == 2) {

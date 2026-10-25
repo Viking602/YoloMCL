@@ -77,10 +77,10 @@ func testPackSwitchFrames(t *testing.T, tab string) {
 	ready := func() bool {
 		// Summary publication has a bounded thumbnail wait. A slow image
 		// decoder must not prevent the pack's counts and controls appearing.
-		if a.modsLoading || len(a.mods) != 199 {
-			return false
-		}
 		if tab == "overview" {
+			if a.instStatus.Mods != 199 || filepath.Base(a.instStatus.Dir) != a.root().SelectedVersion {
+				return false
+			}
 			shot := a.instStatus.LatestShot
 			if shot == nil {
 				return false
@@ -89,7 +89,7 @@ func testPackSwitchFrames(t *testing.T, tab string) {
 			defer a.imageMu.Unlock()
 			return a.images[overviewShotKey(*a.root(), *shot)] != nil
 		}
-		return true
+		return !a.modsLoading && len(a.mods) == 199 && a.modsKey == a.root().ID+"|"+a.root().SelectedVersion+"|mods"
 	}
 	waitUI(t, tt, ready)
 

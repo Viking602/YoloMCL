@@ -20,6 +20,8 @@ func (a *App) refreshGameStateContext(ctx context.Context) {
 	}
 	key := r.ID + "|" + r.SelectedVersion
 	id, ver, tab := r.ID, r.SelectedVersion, a.addonTab
+	cached, haveMods := a.addonCache[key+"|mods"]
+	loader := findShaderLoader(cached.mods)
 	ready := a.firstFrame
 	a.bgWG.Add(1)
 	go func() {
@@ -34,9 +36,11 @@ func (a *App) refreshGameStateContext(ctx context.Context) {
 			}
 			return
 		}
-		var mods []launcher.Mod
-		if tab == "shader" {
-			mods, _ = a.service.ListModsStreamContext(ctx, id, ver, nil)
+		if tab == "shader" && !haveMods {
+			mods, err := a.service.ListModsStreamContext(ctx, id, ver, nil)
+			if err == nil {
+				loader, haveMods = findShaderLoader(mods), true
+			}
 		}
 		a.post(func() {
 			if ctx.Err() != nil {
@@ -44,11 +48,13 @@ func (a *App) refreshGameStateContext(ctx context.Context) {
 			}
 			if a.gameStates == nil {
 				a.gameStates = map[string]launcher.GameOptions{}
-				a.shaderMods = map[string][]launcher.Mod{}
 			}
 			a.gameStates[key] = st
-			if mods != nil {
-				a.shaderMods[key] = mods
+			if tab == "shader" && haveMods {
+				if a.shaderLoaders == nil {
+					a.shaderLoaders = map[string]shaderLoaderInfo{}
+				}
+				a.shaderLoaders[key] = loader
 			}
 		})
 	}()
@@ -70,13 +76,19 @@ func (a *App) shaderLoader() (name, version string, known bool) {
 		return "", "", false
 	}
 	key := r.ID + "|" + r.SelectedVersion
-	mods, ok := a.shaderMods[key]
 	if c, hit := a.addonCache[key+"|mods"]; hit {
-		mods, ok = c.mods, true
+		info := findShaderLoader(c.mods)
+		return info.name, info.version, true
 	}
-	if !ok {
-		return "", "", false
-	}
+	info, ok := a.shaderLoaders[key]
+	return info.name, info.version, ok
+}
+
+// Shader status needs two strings, not another retained copy of every mod
+// in every instance whose shaders have ever been opened.
+type shaderLoaderInfo struct{ name, version string }
+
+func findShaderLoader(mods []launcher.Mod) shaderLoaderInfo {
 	for _, m := range mods {
 		if !m.Enabled {
 			continue
@@ -84,14 +96,14 @@ func (a *App) shaderLoader() (name, version string, known bool) {
 		id, f := strings.ToLower(m.ModID), strings.ToLower(m.File)
 		switch {
 		case id == "iris" || strings.HasPrefix(f, "iris-") || strings.HasPrefix(f, "iris_"):
-			return "Iris", m.Version, true
+			return shaderLoaderInfo{"Iris", m.Version}
 		case id == "oculus" || strings.HasPrefix(f, "oculus"):
-			return "Oculus", m.Version, true
+			return shaderLoaderInfo{"Oculus", m.Version}
 		case id == "optifine" || strings.HasPrefix(f, "optifine"):
-			return "OptiFine", m.Version, true
+			return shaderLoaderInfo{"OptiFine", m.Version}
 		}
 	}
-	return "", "", true
+	return shaderLoaderInfo{}
 }
 
 // shaderNeed is the shader loader that fits the instance's mod loader.

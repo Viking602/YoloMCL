@@ -1,7 +1,9 @@
 package nativeui
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -13,45 +15,79 @@ import (
 // caches it (misses too) under key; nil until it is ready.
 func (a *App) localIcon(key string, load func() ([]byte, error)) ui.ImageSource {
 	a.imageMu.Lock()
-	cached, pending, retry := a.images[key], a.imagePending[key], a.imageRetry[key]
+	cached, pending, retry := a.cachedImageLocked(key), a.imagePendingLocked(key), a.imageRetry[key]
 	if cached != nil || pending || !retry.IsZero() {
 		a.imageMu.Unlock()
 		return cached
 	}
-	a.imagePending[key] = true
+	ctx := a.imageContextLocked()
+	a.reserveImageLocked(key, ctx)
 	a.imageMu.Unlock()
 	ready := a.firstFrame
+	a.bgWG.Add(1)
 	go func() {
-		if !waitForFirstFrame(a.ctx, ready) {
+		defer a.bgWG.Done()
+		if !waitForFirstFrame(ctx, ready) {
+			a.clearImagePending(key, ctx)
 			return
 		}
-		select {
-		case a.imageSlots <- struct{}{}:
-			defer func() { <-a.imageSlots }()
-		case <-a.ctx.Done():
-			return
+		a.loadLocalImage(ctx, key, load)
+		if ctx.Err() == nil {
+			a.post(func() {})
 		}
-		var src ui.ImageSource
-		if b, e := load(); e == nil {
-			src, _ = decodeResourceImage(b)
-		}
-		a.imageMu.Lock()
-		delete(a.imagePending, key)
-		if src != nil {
-			a.images[key] = src
-		} else {
-			a.imageRetry[key] = time.Now().Add(24 * time.Hour)
-		}
-		a.imageMu.Unlock()
-		a.post(func() {})
 	}()
 	return nil
 }
 
+// Both overview preloading and visible widgets reserve imagePending before
+// entering here, so a large screenshot is never decoded by two workers.
+func (a *App) loadLocalImage(ctx context.Context, key string, load func() ([]byte, error)) {
+	defer a.clearImagePending(key, ctx)
+	slots := a.imageSlots
+	if strings.HasPrefix(key, "screenshot:") {
+		slots = a.overviewImageSlots
+	}
+	select {
+	case slots <- struct{}{}:
+		defer func() { <-slots }()
+	case <-ctx.Done():
+		return
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	b, err := load()
+	var source ui.ImageSource
+	var content imageContentKey
+	if err == nil && ctx.Err() == nil {
+		source, content, _ = a.decodeImageContent(ctx, b, localImageEdge(key))
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	a.imageMu.Lock()
+	defer a.imageMu.Unlock()
+	if ctx.Err() != nil || a.imageRequests[key] != ctx {
+		return
+	}
+	if source != nil {
+		a.cacheImageContentLocked(key, source, len(b), content)
+	} else {
+		a.failImageLocked(key, 24*time.Hour)
+	}
+}
+
 // Lists and dialogs share artwork and its cache. An explicit version keeps a
 // closing dialog tied to its original mod if the selected instance changes.
-func (a *App) addonIcon(rootID, version, kind, file, iconURL string) ui.ImageSource {
-	key := "addon:" + rootID + ":" + version + ":" + kind + ":" + stableFile(file)
+func (a *App) addonIcon(rootID, version, kind, file, iconURL, sha1 string) ui.ImageSource {
+	var key string
+	if sha1 != "" {
+		// The same jar in several packs has identical embedded artwork.
+		// Share one bitmap even when its path or enabled state differs.
+		key = "addon:sha1:" + sha1
+	} else {
+		key = "addon:" + rootID + ":" + version + ":" + kind + ":" + stableFile(file)
+	}
 	icon := a.localIcon(key, func() ([]byte, error) {
 		b, e := a.service.AddonIcon(rootID, version, kind, file)
 		if e != nil { // renamed meanwhile: try the other name
@@ -63,7 +99,7 @@ func (a *App) addonIcon(rootID, version, kind, file, iconURL string) ui.ImageSou
 	missed := !a.imageRetry[key].IsZero()
 	a.imageMu.Unlock()
 	if icon == nil && iconURL != "" && missed {
-		return a.remoteImage(iconURL)
+		return a.remoteImageSize(iconURL, 96)
 	}
 	return icon
 }
@@ -86,13 +122,24 @@ func (a *App) fetchModIcons() {
 	id, ver := r.ID, r.SelectedVersion
 	refs := make([]launcher.AddonRef, 0, len(a.mods))
 	for _, m := range a.mods {
-		refs = append(refs, launcher.AddonRef{SHA1: m.SHA1, File: m.File})
+		refs = append(refs, launcher.AddonRef{SHA1: m.SHA1, File: m.File, Fingerprint: m.Fingerprint})
 	}
+	a.imageMu.Lock()
+	ctx := a.imageContextLocked()
+	a.imageMu.Unlock()
 	a.bgWG.Add(1)
 	go func() {
 		defer a.bgWG.Done()
-		info, _ := a.service.AddonRemoteInfo(a.ctx, id, ver, "mod", refs)
+		info, _ := a.service.AddonRemoteInfo(ctx, id, ver, "mod", refs)
 		a.post(func() {
+			if ctx.Err() != nil {
+				delete(a.modIconAsked, key)
+				return
+			}
+			if _, cached := a.addonCache[id+"|"+ver+"|mods"]; !cached && a.modsKey != id+"|"+ver+"|mods" {
+				delete(a.modIconAsked, key)
+				return
+			}
 			if a.addonRemote == nil {
 				a.addonRemote = map[string]launcher.RemoteInfo{}
 			}
@@ -123,12 +170,19 @@ func (a *App) fetchPackIcons(kind string) {
 	a.packRemoteAsked[key] = true
 	id, ver := r.ID, r.SelectedVersion
 	packs := append([]launcher.AssetPack(nil), a.assetPacks...)
+	a.imageMu.Lock()
+	ctx := a.imageContextLocked()
+	a.imageMu.Unlock()
 	a.bgWG.Add(1)
 	go func() {
 		defer a.bgWG.Done()
-		refs := a.service.PackRefs(id, ver, kind, packs)
-		info, _ := a.service.AddonRemoteInfo(a.ctx, id, ver, kind, refs)
+		refs := a.service.PackRefsContext(ctx, id, ver, kind, packs)
+		info, _ := a.service.AddonRemoteInfo(ctx, id, ver, kind, refs)
 		a.post(func() {
+			if ctx.Err() != nil {
+				delete(a.packRemoteAsked, key)
+				return
+			}
 			if a.addonRemote == nil {
 				a.addonRemote = map[string]launcher.RemoteInfo{}
 			}

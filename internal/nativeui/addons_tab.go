@@ -12,6 +12,9 @@ import (
 )
 
 func (a *App) goDiscover(kind, query string) {
+	if a.launcherUpdateRequired() {
+		return
+	}
 	t := a.tr()
 	switch kind {
 	case "resourcepack":
@@ -23,10 +26,8 @@ func (a *App) goDiscover(kind, query string) {
 	}
 	a.query = query
 	a.searchResult = launcher.SearchResult{}
+	a.search()
 	a.goPage("discover")
-	if query != "" && a.service != nil {
-		a.search()
-	}
 }
 
 func (a *App) importAddons(kind string) {
@@ -82,7 +83,7 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 					icon, text string
 				}{{false, "mods", a.L("卡片", "Cards")}, {true, "list", a.L("列表", "List")}} {
 					sel := a.addonListMode == v.list
-					b := ui.ButtonBase(c.Key("addon-view-"+v.icon)).Label(v.text).Tooltip(v.text).Size(btnSm*s, btnSm*s-4*s).Radius(7 * s).Center()
+					b := tooltip(c, ui.ButtonBase(c.Key("addon-view-"+v.icon)).Label(v.text), v.text).Size(btnSm*s, btnSm*s-4*s).Radius(7 * s).Center()
 					bg, fg := ui.Transparent, muted
 					if sel {
 						bg, fg = panel, ink

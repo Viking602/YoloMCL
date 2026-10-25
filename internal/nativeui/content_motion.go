@@ -1,7 +1,6 @@
 package nativeui
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 // the same fixed parent. Only a changed visible value triggers motion. Unlike
 // overlapping Exit ghosts this never paints two versions of text together.
 type contentSwapState struct {
-	signature      string
+	signature      any // copied comparable fields, independent of publication pointers
 	value          any
 	serial         uint64
 	childrenSerial uint64
@@ -41,18 +40,16 @@ func (a *App) overviewActionReady(key string) bool {
 	return !a.overviewHolding && (state == nil || !state.leaving)
 }
 
-func swappedContent[T any](a *App, c *ui.Context, key string, signature any, value T) T {
-	b, _ := json.Marshal(signature)
-	sig := string(b)
+func swappedContent[T any, S comparable](a *App, c *ui.Context, key string, signature S, value T) T {
 	if a.contentSwaps == nil {
 		a.contentSwaps = map[string]*contentSwapState{}
 	}
 	state := a.contentSwaps[key]
 	if state == nil {
-		a.contentSwaps[key] = &contentSwapState{signature: sig, value: value}
+		a.contentSwaps[key] = &contentSwapState{signature: signature, value: value}
 		return value
 	}
-	if state.signature == sig {
+	if state.signature == signature {
 		state.leaving, state.value = false, value
 		return value
 	}
@@ -65,7 +62,7 @@ func swappedContent[T any](a *App, c *ui.Context, key string, signature any, val
 			return state.value.(T)
 		}
 	}
-	state.signature, state.value, state.leaving = sig, value, false
+	state.signature, state.value, state.leaving = signature, value, false
 	state.serial++
 	return value
 }
@@ -96,7 +93,7 @@ type overviewPanelData struct {
 	status launcher.InstanceStatus
 }
 
-func (a *App) overviewPanelData(c *ui.Context, key string, signature any, r launcher.Instance, st launcher.InstanceStatus) (launcher.Instance, launcher.InstanceStatus) {
+func swappedOverviewPanel[S comparable](a *App, c *ui.Context, key string, signature S, r launcher.Instance, st launcher.InstanceStatus) (launcher.Instance, launcher.InstanceStatus) {
 	d := swappedContent(a, c, key, signature, overviewPanelData{r, st})
 	return d.root, d.status
 }

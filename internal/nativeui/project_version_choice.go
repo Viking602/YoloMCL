@@ -32,7 +32,7 @@ func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 	arrowClicked := false
 	row.Children(func() {
 		cb = ui.ComboboxBase(c.Key("project-mc"), &st.text)
-		cb.Input.Label(a.L("项目游戏版本筛选", "Project game version filter")).FontSize(typeBody * s).TextColor(ink).Grow(1).Basis(0).MinWidth(0).Tooltip(selected)
+		tooltip(c, cb.Input.Label(a.L("项目游戏版本筛选", "Project game version filter")).FontSize(typeBody*s).TextColor(ink).Grow(1).Basis(0).MinWidth(0), selected)
 		if ui.ButtonBase(c.Key("project-mc-arrow")).Label(a.L("展开游戏版本", "Choose game version")).Size(18*s, 18*s).Center().Shrink(0).Children(func() {
 			ui.Icon(c, icons["chevron-down"]).Size(15*s, 15*s).TextColor(muted)
 		}).Clicked() {
@@ -76,7 +76,7 @@ func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 						fg = accent
 					}
 					item.Children(func() {
-						ui.Text(c, opt).FontSize(typeCallout * s).TextColor(fg).Grow(1).Basis(0).MinWidth(0).Tooltip(opt)
+						tooltip(c, ui.Text(c, opt).FontSize(typeCallout*s).TextColor(fg).Grow(1).Basis(0).MinWidth(0), opt)
 						if opt == selected {
 							ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(fg).Shrink(0)
 						}

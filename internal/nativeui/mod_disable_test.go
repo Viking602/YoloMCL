@@ -46,7 +46,7 @@ func TestModDisableArtworkUsesOriginalInstanceAndSharedCache(t *testing.T) {
 	}
 	for _, source := range []string{"local", "remote", "late-local", "late-remote"} {
 		t.Run(source, func(t *testing.T) {
-			const localKey, remoteURL = "addon:r:pack:mod:example.jar", "https://cdn.example.test/mod.png"
+			const localKey, remoteURL = "addon:sha1:sha", "https://cdn.example.test/mod.png"
 			m := launcher.Mod{Name: "Example", File: "example.jar", SHA1: "sha", Enabled: true}
 			a := &App{
 				snapshot: launcher.Snapshot{ActiveRoot: "r", Instances: []launcher.Instance{{Root: launcher.Root{ID: "r", SelectedVersion: "pack"}}}},

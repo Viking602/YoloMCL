@@ -46,21 +46,18 @@ func (a *App) selectRoot(id string) {
 func (a *App) selectVersion(rootID, versionID string) {
 	prevRoot, prevVersion, ok := a.applySelection(rootID, versionID)
 	if !ok {
-		a.execute("select", map[string]string{"rootId": rootID, "version": versionID}, func(json.RawMessage) { a.loadMods() })
+		a.execute("select", map[string]string{"rootId": rootID, "version": versionID}, func(json.RawMessage) { a.loadSelectedInstance() })
 		return
 	}
 	if prevRoot == rootID && (versionID == "" || prevVersion == versionID) {
 		return
 	}
 	epoch := a.selectionEpoch.Add(1)
+	a.resetImageRequests()
 	if prevRoot != rootID {
 		a.instLoaded, a.instScrollPending = rootID, true
 	}
-	a.loadMods()
-	a.loadInstanceStatus()
-	if a.instTab == "logs" {
-		a.loadLogs()
-	}
+	a.loadSelectedInstance()
 	if a.service == nil {
 		return
 	}
@@ -87,14 +84,30 @@ func (a *App) selectVersion(rootID, versionID string) {
 				return
 			}
 			a.applySelection(prevRoot, prevVersion)
-			a.loadMods()
-			a.loadInstanceStatus()
+			a.loadSelectedInstance()
 			a.message, a.errorMessage = a.friendlyErr(e), true
 		})
 	}()
 }
 
-// A snapshot scans every installed pack after reading the saved selection.
+// Only load the selected pane. Overview counts and storage need directory
+// metadata, not full JAR hashes, nested archives or remote mod update checks.
+func (a *App) loadSelectedInstance() {
+	a.cancelAddonLoad()
+	a.cancelInstanceStatus()
+	a.cancelServerPing()
+	if a.page == "mods" {
+		a.ensureAddons()
+	} else if a.page == "home" {
+		if a.instTab == "" || a.instTab == "overview" {
+			a.loadInstanceStatus()
+		} else {
+			a.setInstTab(a.instTab)
+		}
+	}
+}
+
+// A snapshot reads cached inventories after reading the saved selection.
 // It may arrive after the user has clicked another pack, or after its save.
 // Apply fresh jobs/settings while retaining the newer local selection.
 func (a *App) applySnapshot(snap launcher.Snapshot, epoch uint64) {

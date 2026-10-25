@@ -31,7 +31,7 @@ func (a *App) heroLoaderBadge(c *ui.Context, v launcher.VersionSummary) {
 	if !c.Preferences().ReduceMotion {
 		motion = ui.ElementTransition{Animation: &motionFast, Enter: &ui.Motion{Opacity: .3, Y: 3 * s}}
 	}
-	ui.Row(c.Key("hero-loader-badge")).Label(a.L("实例加载器", "Instance loader")).Tooltip(tip).
+	tooltip(c, ui.Row(c.Key("hero-loader-badge")).Label(a.L("实例加载器", "Instance loader")), tip).
 		Height(24*s).MinWidth(28*s).Shrink(0).Padding(0, 7*s, 0, 4*s).Gap(5*s).Radius(8*s).
 		Background(ui.RGBA(255, 255, 255, .82)).Border(1, ui.RGBA(60, 72, 110, .08)).
 		Font(uiSansFamily()).AlignItems(ui.Center).Children(func() {
@@ -92,9 +92,9 @@ func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 	if shown.icon == "play" {
 		fg, iconColor = successInk, successInk
 	}
-	badge := ui.Box(c.Key("hero-history-slot")).Label(a.L("游玩记录", "Play history")).
-		Width(132 * s).Height(24 * s).Shrink(0).Clip().Justify(ui.Center).
-		Font(uiSansFamily()).Tooltip(shown.tip)
+	badge := tooltip(c, ui.Box(c.Key("hero-history-slot")).Label(a.L("游玩记录", "Play history")).
+		Width(132*s).Height(24*s).Shrink(0).Clip().Justify(ui.Center).
+		Font(uiSansFamily()), shown.tip)
 	if stacked {
 		badge.Width(112*s).Height(44*s).Padding(0, 0, 0, 16*s).Draw(func(p *ui.Painter, b ui.Rect) {
 			p.Fill(ui.Rect{X: b.X, Y: b.Y + 5*s, W: s, H: b.H - 10*s}, lineStrong, 0)

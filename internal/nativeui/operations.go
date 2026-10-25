@@ -21,6 +21,7 @@ var commandNoSnapshot = map[string]bool{
 	"logs": true, "versions": true, "fetchAuthServerName": true,
 	"checkPack": true, "packUpdateReport": true, "planPackUpdate": true,
 	"inspectPack": true, "previewRemotePack": true, "startMicrosoft": true,
+	"previewPackExport": true,
 }
 
 func (a *App) pendingOp(methods ...string) bool {
@@ -112,6 +113,9 @@ func requestKey(method string, payload any) string {
 }
 
 func (a *App) execute(method string, payload any, done func(json.RawMessage)) {
+	if a.launcherUpdateRequired() && method != "stop" && method != "cancelJob" {
+		return
+	}
 	key := requestKey(method, payload)
 	if _, exists := a.pendingRequests[key]; exists {
 		return // a double click must not submit the same operation twice

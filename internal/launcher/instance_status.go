@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -63,15 +62,25 @@ func (s *Service) InstanceOverviewContext(ctx context.Context, rootID, versionID
 	if _, e := os.Stat(dir); e != nil {
 		return InstanceStatus{}, e
 	}
+	entry := s.statusEntry(dir)
+	s.statusMu.Lock()
+	entry.overviewScan++
+	scan := entry.overviewScan
+	s.statusMu.Unlock()
+	inputs, e := readOverviewInputs(ctx, dir)
+	if e != nil {
+		return InstanceStatus{}, e
+	}
+	if cached, ok := s.cachedOverview(entry, dir, inputs.stamp); ok {
+		return cached, nil
+	}
 	st := InstanceStatus{Dir: dir, StoragePending: true}
 	count := func(sub string, ok func(os.DirEntry) bool) int {
-		path, err := safeJoin(dir, sub)
-		if err != nil {
-			return 0
-		}
-		entries, _ := os.ReadDir(path)
 		n := 0
-		for _, en := range entries {
+		for _, en := range inputs.entries[sub] {
+			if ctx.Err() != nil {
+				break
+			}
 			if en.Type()&os.ModeSymlink == 0 && !strings.HasPrefix(en.Name(), ".") && ok(en) {
 				n++
 			}
@@ -118,7 +127,7 @@ func (s *Service) InstanceOverviewContext(ctx context.Context, rootID, versionID
 		return InstanceStatus{}, e
 	}
 	st.Play = readPlayStats(dir)
-	if st.RecentServer, e = readRecentServer(ctx, dir); e != nil {
+	if st.RecentServer, e = readRecentServer(ctx, dir, inputs.entries["logs"]); e != nil {
 		return InstanceStatus{}, e
 	}
 	if st.RecentWorld != nil {
@@ -127,25 +136,53 @@ func (s *Service) InstanceOverviewContext(ctx context.Context, rootID, versionID
 	if fi, e := os.Stat(filepath.Join(dir, "logs", "latest.log")); e == nil {
 		st.LastLog = fi.ModTime()
 	}
-	if entries, e := os.ReadDir(filepath.Join(dir, "crash-reports")); e == nil {
-		sort.Slice(entries, func(i, j int) bool { return entries[i].Name() > entries[j].Name() })
-		for _, en := range entries {
-			if fi, e := en.Info(); e == nil && !en.IsDir() && fi.ModTime().After(st.LastCrash) {
-				st.LastCrash, st.CrashFile = fi.ModTime(), en.Name()
-			}
+	crashes := inputs.entries["crash-reports"]
+	for i := len(crashes) - 1; i >= 0; i-- {
+		en := crashes[i]
+		if fi, e := en.Info(); e == nil && !en.IsDir() && fi.ModTime().After(st.LastCrash) {
+			st.LastCrash, st.CrashFile = fi.ModTime(), en.Name()
 		}
 	}
-	return st, nil
+	if err := ctx.Err(); err != nil {
+		return InstanceStatus{}, err
+	}
+	s.storeOverview(entry, scan, inputs.stamp, st)
+	return cloneStatus(st), nil
 }
 
-// CompleteInstanceStorage scans in bounded directory batches, without sorting
-// whole directories or computing a relative path for every file. It returns a
-// new summary: the already published world metadata must not be mutated.
+// CachedInstanceStorage reuses recent totals during navigation. Deeper changes
+// may not change directory timestamps, so cache hits never extend the TTL.
+// Use CompleteInstanceStorage for an explicit refresh or an exact total.
+func (s *Service) CachedInstanceStorage(ctx context.Context, st InstanceStatus) (InstanceStatus, error) {
+	if err := ctx.Err(); err != nil {
+		return InstanceStatus{}, err
+	}
+	if st.Dir != "" {
+		if cached, ok := s.cachedStorage(st.Dir, st); ok {
+			return cached, nil
+		}
+	}
+	return s.CompleteInstanceStorage(ctx, st)
+}
+
+// CompleteInstanceStorage always scans in bounded directory batches, without
+// sorting whole directories or computing a relative path for every file. It
+// returns a new summary without mutating already published world metadata.
 func (s *Service) CompleteInstanceStorage(ctx context.Context, st InstanceStatus) (InstanceStatus, error) {
+	if err := ctx.Err(); err != nil {
+		return InstanceStatus{}, err
+	}
 	if st.Dir == "" {
 		return InstanceStatus{}, errors.New("missing instance directory")
 	}
+	entry := s.statusEntry(st.Dir)
+	s.statusMu.Lock()
+	entry.storageScan++
+	scan := entry.storageScan
+	s.statusMu.Unlock()
+	stamp := storageStamp(st.Dir)
 	st.Total = 0
+
 	st.Sizes = map[string]int64{}
 	for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", "saves", "screenshots"} {
 		st.Sizes[sub] = 0
@@ -227,6 +264,10 @@ func (s *Service) CompleteInstanceStorage(ctx context.Context, st InstanceStatus
 		}
 	}
 	st.StoragePending = false
+	if err := ctx.Err(); err != nil {
+		return InstanceStatus{}, err
+	}
+	s.storeStorage(entry, scan, stamp, st)
 	return st, nil
 }
 

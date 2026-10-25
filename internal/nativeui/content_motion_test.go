@@ -56,3 +56,21 @@ func TestContentSwapKeepsLatestTargetAndUnchangedSlots(t *testing.T) {
 		t.Fatal("reduced motion still animated a content slot")
 	}
 }
+
+func TestContentSwapDistinguishesFieldBoundaries(t *testing.T) {
+	a := &App{}
+	signature, value, shown := [2]string{"a b", "c"}, "first", ""
+	tt := ui.NewTester(func(c *ui.Context) {
+		shown = swappedContent(a, c, "fields", signature, value)
+	}, 200, 100)
+	// Both tuples used to format as "[a b c]", suppressing the transition.
+	signature, value = [2]string{"a", "b c"}, "second"
+	tt.Frame()
+	if shown != "first" || !a.contentSwaps["fields"].leaving {
+		t.Fatal("distinct fields were treated as the same content")
+	}
+	tt.Advance(66 * time.Millisecond)
+	if shown != "second" || a.contentSwaps["fields"].serial != 1 {
+		t.Fatal("changed content did not finish its transition")
+	}
+}

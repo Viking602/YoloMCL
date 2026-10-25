@@ -3,6 +3,7 @@ package nativeui
 import (
 	"encoding/json"
 	"hash/fnv"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -186,7 +187,7 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 					b.Background(accentSoft)
 				}
 				if b.Children(func() {
-					ui.Text(c, a.L("清除", "Clear")+" "+itoaN(n)).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
+					ui.Text(c, a.L("清除", "Clear")+" "+strconv.Itoa(n)).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
 				}).Clicked() {
 					a.catSel[a.catKey()] = nil
 					a.search()

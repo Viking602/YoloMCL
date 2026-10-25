@@ -1,8 +1,11 @@
 package launcher
 
 import (
+	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/binary"
 	"errors"
 	"image"
 	"image/png"
@@ -165,5 +168,95 @@ func TestOverviewScreenshotIsBoundedAndScoped(t *testing.T) {
 	writeTestFile(t, filepath.Join(r.Path, "screenshots", "broken.png"), []byte("not an image"))
 	if _, e := s.ScreenshotPreview(r.ID, "", "broken.png"); e == nil {
 		t.Fatal("accepted corrupt screenshot")
+	}
+}
+
+func TestOverviewReusesUnchangedFiles(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(t.TempDir(), "versions", "pack")
+	writeTestFile(t, filepath.Join(dir, "pack.json"), []byte(`{"id":"pack","mainClass":"x"}`))
+	writeTestFile(t, filepath.Join(dir, "saves", "w", "level.dat"), nbtLevel(t, "Cached", 0, 5))
+	writeTestFile(t, filepath.Join(dir, "logs", "latest.log"), []byte("[00:00:00] [main/INFO]: Connecting to example.com, 25565\n"))
+	r, err := s.AddRoot(filepath.Dir(filepath.Dir(dir)), "pack")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := s.InstanceOverviewContext(context.Background(), r.ID, "pack")
+	if err != nil || first.Saves != 1 || first.RecentWorld == nil || first.RecentWorld.Name != "Cached" {
+		t.Fatalf("%+v %v", first, err)
+	}
+	second, err := s.InstanceOverviewContext(context.Background(), r.ID, "pack")
+	if err != nil || second.RecentWorld.Name != first.RecentWorld.Name || second.Saves != first.Saves {
+		t.Fatalf("cache changed the summary: %+v %v", second, err)
+	}
+	if &second == &first || (second.RecentWorld == first.RecentWorld) {
+		t.Fatal("cached overview aliased its stored value")
+	}
+	writeTestFile(t, filepath.Join(dir, "saves", "w", "level.dat"), nbtLevel(t, "Changed", 0, 6))
+	third, err := s.InstanceOverviewContext(context.Background(), r.ID, "pack")
+	if err != nil || third.RecentWorld == nil || third.RecentWorld.Name != "Changed" {
+		t.Fatalf("changed level.dat stayed cached: %+v %v", third, err)
+	}
+}
+
+func TestParseLevelDatStopsAfterNeededFields(t *testing.T) {
+	var b bytes.Buffer
+	str := func(s string) { _ = binary.Write(&b, binary.BigEndian, uint16(len(s))); b.WriteString(s) }
+	b.WriteByte(10)
+	str("")
+	b.WriteByte(10)
+	str("Data")
+	b.WriteByte(8)
+	str("LevelName")
+	str("Early")
+	b.WriteByte(3)
+	str("GameType")
+	_ = binary.Write(&b, binary.BigEndian, int32(2))
+	b.WriteByte(1)
+	str("hardcore")
+	b.WriteByte(1)
+	b.WriteByte(4)
+	str("LastPlayed")
+	_ = binary.Write(&b, binary.BigEndian, int64(9))
+	b.Write(bytes.Repeat([]byte{0}, 8<<20))
+	payload := len(b.Bytes())
+	gz, err := gzip.NewReader(bytes.NewReader(compressedNBT(t, b.Bytes())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &nbtReader{r: &limitedReader{r: bufio.NewReader(gz), n: maxLevelData}}
+	if p.u8() != 10 {
+		t.Fatal("not a compound")
+	}
+	p.str()
+	var li LevelInfo
+	got := 0
+	p.compound(func(path, name string, tag byte) bool {
+		if path != "/Data" {
+			return false
+		}
+		switch {
+		case name == "LevelName" && tag == 8:
+			li.Name = p.str()
+		case name == "GameType" && tag == 3:
+			li.GameType = int32(p.u32())
+		case name == "hardcore" && tag == 1:
+			li.Hardcore = p.u8() != 0
+		case name == "LastPlayed" && tag == 4:
+			li.LastPlayed = int64(p.u64())
+		default:
+			return false
+		}
+		got++
+		if got == 4 {
+			p.done = true
+		}
+		return true
+	}, "")
+	if p.err != nil || li.Name != "Early" || li.LastPlayed != 9 || p.consumed() >= payload {
+		t.Fatalf("parsed %+v after reading %d of %d: %v", li, p.consumed(), payload, p.err)
 	}
 }

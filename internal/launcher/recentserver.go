@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -62,49 +63,52 @@ func serverAddress(host, port string) string {
 	return net.JoinHostPort(host, strconv.Itoa(n))
 }
 
-func serverFromLog(ctx context.Context, data []byte, file string, modified time.Time) (joined, attempted *InstanceServer) {
-	var pending *InstanceServer
-	for _, raw := range bytes.Split(data, []byte{'\n'}) {
-		if ctx.Err() != nil {
-			return nil, nil
-		}
-		line := strings.TrimSpace(DecodeLine(raw))
-		i := strings.LastIndex(line, "]: ")
-		if i < 0 {
-			continue
-		}
-		msg := line[i+3:]
-		if m := serverConnectRE.FindStringSubmatch(msg); m != nil && strings.Contains(line[:i], "/INFO") {
-			if address := serverAddress(m[1], m[2]); address != "" {
-				pending = &InstanceServer{Address: address, Connected: serverLogTime(line, file, modified)}
-				attempted = pending
-			}
-			continue
-		}
-		if pending == nil {
-			continue
-		}
-		if serverJoinedRE.MatchString(msg) || msg == "Connected to a modded server." {
-			pending.Confirmed = true
-			joined, pending = pending, nil
-		} else if strings.HasPrefix(msg, "Couldn't connect to server") || strings.HasPrefix(msg, "Failed to connect") || strings.HasPrefix(msg, "Disconnecting") || strings.HasPrefix(msg, "Starting integrated minecraft server") {
-			pending = nil
-		}
+type serverLogState struct {
+	file                       string
+	modified                   time.Time
+	joined, attempted, pending *InstanceServer
+}
+
+func (s *serverLogState) line(raw []byte) {
+	raw = bytes.TrimSpace(raw)
+	i := bytes.LastIndex(raw, []byte("]: "))
+	if i < 0 {
+		return
 	}
-	return joined, attempted
+	msg := raw[i+3:]
+	// Connection markers are ASCII in both UTF-8 and legacy Windows logs.
+	// Only decode a candidate connection; ordinary mod output needs neither
+	// a string allocation nor charset detection during overview navigation.
+	if bytes.HasPrefix(msg, []byte("Connecting to ")) && bytes.Contains(raw[:i], []byte("/INFO")) {
+		line := DecodeLine(raw)
+		if m := serverConnectRE.FindStringSubmatch(line[strings.LastIndex(line, "]: ")+3:]); m != nil {
+			if address := serverAddress(m[1], m[2]); address != "" {
+				s.pending = &InstanceServer{Address: address, Connected: serverLogTime(line, s.file, s.modified)}
+				s.attempted = s.pending
+			}
+		}
+		return
+	}
+	if s.pending == nil {
+		return
+	}
+	if serverJoinedRE.Match(msg) || bytes.Equal(msg, []byte("Connected to a modded server.")) {
+		s.pending.Confirmed = true
+		s.joined, s.pending = s.pending, nil
+	} else if bytes.HasPrefix(msg, []byte("Couldn't connect to server")) || bytes.HasPrefix(msg, []byte("Failed to connect")) || bytes.HasPrefix(msg, []byte("Disconnecting")) || bytes.HasPrefix(msg, []byte("Starting integrated minecraft server")) {
+		s.pending = nil
+	}
 }
 
 // Bounded, cancellable reads keep large debug logs and archive collections from
 // delaying a cold instance switch. No server is contacted or inferred from the
 // order of saved favourites. Debug logs duplicate latest.log and are excluded.
-func readRecentServer(ctx context.Context, dir string) (*InstanceServer, error) {
-	logs, err := safeJoin(dir, "logs")
-	if err != nil {
-		return nil, nil
-	}
-	entries, _ := os.ReadDir(logs)
+func readRecentServer(ctx context.Context, dir string, entries []os.DirEntry) (*InstanceServer, error) {
 	var files []os.FileInfo
 	for _, en := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		name := strings.ToLower(en.Name())
 		if !en.Type().IsRegular() || strings.HasPrefix(name, "debug") || (!strings.HasSuffix(name, ".log") && !strings.HasSuffix(name, ".log.gz")) {
 			continue
@@ -124,9 +128,8 @@ func readRecentServer(ctx context.Context, dir string) (*InstanceServer, error) 
 			break
 		}
 		limit := min(budget, 8<<20)
-		data, read := readServerLog(ctx, filepath.Join(dir, "logs", fi.Name()), limit)
+		joined, pending, read := readServerLog(ctx, filepath.Join(dir, "logs", fi.Name()), fi.ModTime(), limit)
 		budget -= read
-		joined, pending := serverFromLog(ctx, data, fi.Name(), fi.ModTime())
 		if joined != nil {
 			return joined, ctx.Err()
 		}
@@ -149,10 +152,14 @@ func (r serverContextReader) Read(b []byte) (int, error) {
 	return r.r.Read(b)
 }
 
-func readServerLog(ctx context.Context, path string, limit int64) ([]byte, int64) {
+// A fixed line buffer also bounds pathological single-line mod dumps. Such a
+// line is skipped in its entirety, never interpreted as several log messages.
+const serverLogLineSize = 32 << 10
+
+func readServerLog(ctx context.Context, path string, modified time.Time, limit int64) (joined, attempted *InstanceServer, read int64) {
 	f, e := os.Open(path)
 	if e != nil {
-		return nil, 0
+		return nil, nil, 0
 	}
 	defer f.Close()
 	var reader io.Reader = f
@@ -161,23 +168,39 @@ func readServerLog(ctx context.Context, path string, limit int64) ([]byte, int64
 	if compressed {
 		gz, e := gzip.NewReader(serverContextReader{ctx, f})
 		if e != nil {
-			return nil, 0
+			return nil, nil, 0
 		}
 		defer gz.Close()
 		reader = gz
 	} else if fi, e := f.Stat(); e == nil && fi.Size() > limit {
-		_, _ = f.Seek(-limit, io.SeekEnd)
+		if _, e := f.Seek(-limit, io.SeekEnd); e != nil {
+			return nil, nil, 0
+		}
 		tail = true
 	}
-	data, e := io.ReadAll(io.LimitReader(serverContextReader{ctx, reader}, limit+1))
-	read := int64(len(data))
-	if e != nil || (compressed && int64(len(data)) > limit) {
-		return nil, read // an incomplete archive may hide a newer connection
-	}
-	if tail {
-		if i := bytes.IndexByte(data, '\n'); i >= 0 {
-			data = data[i+1:]
+	limited := &io.LimitedReader{R: serverContextReader{ctx, reader}, N: limit + 1}
+	lines := bufio.NewReaderSize(limited, serverLogLineSize)
+	state := serverLogState{file: filepath.Base(path), modified: modified}
+	discard := tail
+	for {
+		if ctx.Err() != nil {
+			return nil, nil, limit + 1 - limited.N
+		}
+		line, err := lines.ReadSlice('\n')
+		read = limit + 1 - limited.N
+		if err == bufio.ErrBufferFull {
+			discard = true
+			continue
+		}
+		if err != nil && err != io.EOF || compressed && read > limit {
+			return nil, nil, read // a corrupt/incomplete archive may hide a newer connection
+		}
+		if !discard {
+			state.line(line)
+		}
+		discard = false
+		if err == io.EOF {
+			return state.joined, state.attempted, read
 		}
 	}
-	return data, read
 }

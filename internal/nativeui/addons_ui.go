@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -136,7 +137,9 @@ func letterTile(c *ui.Context, text string, size float32, dim bool) {
 
 type addonItem struct {
 	key, kind, file, name string
+	sha1                  string
 	enabled               bool
+	pending               bool // wait for the hash before reading embedded artwork
 	meta                  string
 	latest                string // newer version available
 	status                string
@@ -161,7 +164,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 		height = 54
 	}
 	ui.Row(c.Key("addon-" + it.key)).Label("资源项 " + it.name).FillWidth().Height(height * s).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-		b := ui.ButtonBase(c.Key("toggle-" + it.key)).Label(a.L("切换启用 ", "Toggle ") + it.name).Tooltip(it.file).Grow(1).Basis(0).MinWidth(0).FillHeight().PaddingX(10 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
+		b := tooltip(c, ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("切换启用 ", "Toggle ")+it.name), it.file).Grow(1).Basis(0).MinWidth(0).FillHeight().PaddingX(10 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
 		bg := ui.Transparent
 		if b.Hovered() {
 			bg = ui.RGBA(120, 130, 160, .08)
@@ -170,7 +173,10 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 		primary, secondary := a.itemNames(it)
 		if b.Children(func() {
 			size := 36 * s
-			icon := a.addonIcon(a.root().ID, a.root().SelectedVersion, it.kind, it.file, it.iconURL)
+			var icon ui.ImageSource
+			if !it.pending {
+				icon = a.addonIcon(a.root().ID, a.root().SelectedVersion, it.kind, it.file, it.iconURL, it.sha1)
+			}
 			op := float32(1)
 			if !it.enabled {
 				op = .42
@@ -216,10 +222,10 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 				quietTag(c, it.badge, ui.Hex("#248a3d"))
 			}
 			if len(it.missing) > 0 {
-				ui.Box(c).Shrink(0).Tooltip(a.L("缺少前置：", "Missing dependencies: ") + strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("缺少前置", "Missing deps"), danger) })
+				tooltip(c, ui.Box(c).Shrink(0), a.L("缺少前置：", "Missing dependencies: ")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("缺少前置", "Missing deps"), danger) })
 			}
 			if logo := sourceLogo(it.source); logo != nil {
-				ui.Icon(c, logo).Size(14*s, 14*s).Tooltip(sourceName(it.source)).Label(sourceName(it.source)).Shrink(0)
+				tooltip(c, ui.Icon(c, logo).Size(14*s, 14*s), sourceName(it.source)).Label(sourceName(it.source)).Shrink(0)
 			}
 			if it.size != "" {
 				ui.Text(c, it.size).Width(64 * s).TextAlign(ui.End).FontSize(typeCaption * s).TextColor(muted).NoWrap()
@@ -269,7 +275,7 @@ func joinMeta(parts ...string) string {
 }
 
 func (a *App) modItem(m launcher.Mod) addonItem {
-	it := addonItem{key: "mod-" + stableFile(m.File), kind: "mod", file: m.File, name: m.Name, enabled: m.Enabled, status: m.Status}
+	it := addonItem{key: "mod-" + stableFile(m.File), kind: "mod", file: m.File, name: m.Name, enabled: m.Enabled, status: m.Status, sha1: m.SHA1, pending: m.Pending}
 	it.meta = joinMeta(m.Version, a.loaderDisplay(m.Loader), sizeText(m.Size))
 	if m.Latest != nil {
 		it.latest = m.Latest.Number
@@ -363,13 +369,24 @@ func (a *App) togglePackFn(p launcher.AssetPack) func() {
 	}
 }
 
-func (a *App) loadInstanceStatus() {
+func (a *App) cancelInstanceStatus() {
 	a.statusGen++
-	gen := a.statusGen
 	if a.statusCancel != nil {
 		a.statusCancel()
 		a.statusCancel = nil
 	}
+	a.statusLoading = false
+}
+
+func (a *App) loadInstanceStatus() {
+	a.refreshInstanceStatus(false)
+}
+
+// Only an explicit refresh bypasses storage reuse. Ordinary navigation keeps
+// the previous summary visible while the background worker validates it.
+func (a *App) refreshInstanceStatus(force bool) {
+	a.cancelInstanceStatus()
+	gen := a.statusGen
 	r := a.root()
 	if r == nil {
 		return
@@ -449,18 +466,23 @@ func (a *App) loadInstanceStatus() {
 					visible.RecentWorld = &world
 				}
 			}
-			a.statusCache[key] = visible
+			a.rememberStatus(key, visible)
 			if a.instStatusKey == key {
 				a.instStatus, a.statusLoading = visible, false
 			}
 		})
-		full, e := a.service.CompleteInstanceStorage(ctx, st)
+		var full launcher.InstanceStatus
+		if force {
+			full, e = a.service.CompleteInstanceStorage(ctx, st)
+		} else {
+			full, e = a.service.CachedInstanceStorage(ctx, st)
+		}
 		if e == nil && ctx.Err() == nil {
 			a.post(func() {
 				if gen != a.statusGen {
 					return
 				}
-				a.statusCache[key] = full
+				a.rememberStatus(key, full)
 				if a.instStatusKey == key {
 					a.instStatus = full
 				}
@@ -471,6 +493,21 @@ func (a *App) loadInstanceStatus() {
 		case <-ctx.Done():
 		}
 	}()
+}
+
+const statusCacheLimit = 5
+
+func (a *App) rememberStatus(key string, st launcher.InstanceStatus) {
+	if a.statusCache == nil {
+		a.statusCache = map[string]launcher.InstanceStatus{}
+		a.statusOrder = nil
+	}
+	a.statusCache[key] = st
+	a.statusOrder = append(slices.DeleteFunc(a.statusOrder, func(k string) bool { return k == key }), key)
+	for len(a.statusOrder) > statusCacheLimit {
+		delete(a.statusCache, a.statusOrder[0])
+		a.statusOrder = a.statusOrder[1:]
+	}
 }
 
 func (a *App) openSub(sub string) {

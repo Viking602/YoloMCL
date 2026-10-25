@@ -15,9 +15,16 @@ import (
 // App owns the native window state and marshals background results onto the
 // UI thread. Use New to initialize services, queues and cancellation.
 type App struct {
+	frameSerial     atomic.Uint64 // main-thread frames observed by idle maintenance
+	uiUpdatePending atomic.Bool   // at most one main-thread callback for queued results
+	cacheRelease    atomic.Uint64 // detached caches awaiting idle reclamation
+	background      atomic.Bool   // hidden/minimized; background work uses a slower cadence
+	pollWake        chan struct{}
+	inventoryWake   chan struct{}
 	// Window lifecycle. App is never copied; locks guard the documented worker boundaries.
 	service        *launcher.Service
 	win            *mygo.Window
+	updateUI       func(func()) // win.Update; guarded by winMu, independent of painting
 	winMu          sync.RWMutex
 	ctx            context.Context
 	cancel         context.CancelFunc
@@ -56,6 +63,10 @@ type App struct {
 	memoryInfo       launcher.MemoryInfo
 	memoryError      string
 	verMemSlider     float64
+	modCacheInfo     launcher.ModCacheInfo
+	modCacheRevision uint64
+	modCacheLoading  bool
+	modCacheClearing bool
 
 	// Java discovery and installation.
 	java             []launcher.JavaInfo
@@ -77,14 +88,19 @@ type App struct {
 	instTabMotion                               instanceTabMotion
 	instScrollPending                           bool
 	instRows                                    ui.ListState
+	instListData                                instanceListData
 	pending                                     map[string]int
 	pendingRequests                             map[string]pendingRequest
 	modsGen                                     int
 	modsCancel                                  context.CancelFunc
+	modsRefreshing                              bool
+	modsLoadKey                                 string
 	modCheckCancel                              func()
 	modChecking                                 bool
 	addonCache                                  map[string]addonCacheEntry
 	addonOrder                                  []string
+	addonCacheBytes                             int
+	modsKey                                     string
 	instListBounds                              ui.Rect
 	tabViewBounds, modListBounds                ui.Rect
 	embedMods                                   bool
@@ -93,6 +109,7 @@ type App struct {
 	modFilter                                   string
 	addonFilterKind, addonSortKey               string
 	addonFilterMotion                           addonFilterMotion
+	addonListData                               addonListData
 	toggleMu                                    sync.Mutex
 	modDisable                                  modDisableState
 	lastToggle                                  time.Duration
@@ -105,7 +122,7 @@ type App struct {
 	addonListMode                               bool
 	addonGridW                                  map[string]float32
 	gameStates                                  map[string]launcher.GameOptions
-	shaderMods                                  map[string][]launcher.Mod
+	shaderLoaders                               map[string]shaderLoaderInfo
 	gameStateAsked                              map[string]bool
 	modsLoading                                 bool
 
@@ -115,6 +132,7 @@ type App struct {
 	statusCancel                  context.CancelFunc
 	statusGen                     int
 	statusCache                   map[string]launcher.InstanceStatus
+	statusOrder                   []string
 	statusLoading                 bool
 	instStatusErr                 string
 	overviewDisplay               overviewPresentation
@@ -180,6 +198,7 @@ type App struct {
 	packExpand                map[string]bool
 	packDropPath              string
 	packReport                *launcher.PackReport
+	packExport                *packExportState
 
 	// Account login, appearance and wardrobe previews.
 	accountTab                  string
@@ -209,17 +228,27 @@ type App struct {
 	toastHeld            bool
 	toastGen             int
 	toastLifeKey         string
+	toastUntil           time.Time
 	errorMessage         bool
 	contentSwaps         map[string]*contentSwapState
 	numberRolls          map[string]*numberRollState
 	launcherUpdateOnce   sync.Once
 	launcherUpdate       launcherUpdateState
-	checkLauncherRelease func(context.Context) (*launcherRelease, error)
+	checkLauncherRelease func(context.Context) (launcherUpdateResult, error)
 
-	// Remote image cache. imageMu protects lookup state shared with workers.
-	imageMu      sync.Mutex
-	images       map[string]ui.ImageSource
-	imagePending map[string]bool
-	imageRetry   map[string]time.Time
-	imageSlots   chan struct{}
+	// Bounded local/remote artwork cache; imageMu also protects worker requests.
+	imageMu            sync.Mutex
+	images             map[string]ui.ImageSource
+	imageUses          map[string]imageUse
+	imageContents      map[imageContentKey]*imageResource
+	retiredImages      map[*ui.Bitmap]struct{}
+	imageReleasePosted bool
+	imageSerial        uint64
+	imageBytes         int
+	imagePending       map[string]bool
+	imageRequests      map[string]context.Context
+	imageScope         context.Context
+	imageCancel        context.CancelFunc
+	imageRetry         map[string]time.Time
+	imageSlots         chan struct{}
 }

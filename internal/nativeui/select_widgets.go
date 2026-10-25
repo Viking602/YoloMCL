@@ -34,6 +34,9 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 		ctx = c.Key(key)
 	}
 	sel := ui.SelectBase(ctx, selected)
+	if !sel.Open() {
+		sel.Trigger.Jump("popup-reveal", 0)
+	}
 	triggerBg := fieldColor
 	if sel.Trigger.Hovered() || sel.Open() {
 		triggerBg = fieldHover
@@ -56,7 +59,7 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 				ui.Icon(c, icons[ic]).Size(16*s, 16*s).TextColor(col).Shrink(0)
 			}
 		}
-		ui.Text(c, show(*selected)).FontSize(typeBody * s).TextColor(ink).Grow(1).Shrink(1).Basis(0).MinWidth(0).SingleLine().Tooltip(*selected)
+		tooltip(c, ui.Text(c, show(*selected)).FontSize(typeBody*s).TextColor(ink).Grow(1).Shrink(1).Basis(0).MinWidth(0).SingleLine(), *selected)
 		if trailing != nil {
 			trailing(*selected, false)
 		}
@@ -64,7 +67,11 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 	})
 	sel.Popup(func(popupPanel ui.Element) {
 		popover(popupPanel.Padding(6*s), 14*s, s)
-		popupPanel.TransformOrigin(.5, 0).Transition(ui.ElementTransition{Animation: &motionEnter, Colors: true, Enter: &ui.Motion{Opacity: 0, Y: -6 * s, Scale: .98}})
+		// Keep the entrance in layout coordinates: transforming this wide,
+		// shadowed panel makes the software renderer rasterize every pixel of
+		// its shadows and rounded corners again throughout the animation.
+		p := sel.Trigger.AnimateTo("popup-reveal", 1, motionEnter)
+		popupPanel.Opacity(p).Margin(-6*s*(1-p), 0, 0, 0)
 		scrollArea(c, "select-scroll-"+key+"-"+labelText).MaxHeight(250*s).FillWidth().Padding(0, scrollGutter*s, 0, 0).Children(func() {
 			ui.Column(c).FillWidth().Gap(2 * s).Children(func() {
 				for _, opt := range options {

@@ -63,6 +63,10 @@ func TestJavaInstalledResponsiveControls(t *testing.T) {
 							t.Fatalf("runtime row missing or outside window: %+v", row)
 						}
 						path, _ := tt.Find("Java 安装路径 " + j.Path)
+						vendor, _ := tt.Find("Java 发行方 " + j.Path)
+						if vendor.X <= row.X+36*uiScaleFor(size[0], size[1]) {
+							t.Fatal("vendor label did not reserve room for its brand icon")
+						}
 						usage, _ := tt.Find("Java 使用情况 " + j.Path)
 						actions, ok := tt.Find("Java 操作 " + j.Path)
 						if !ok || actions.X+actions.W > row.X+row.W || path.W < 120 || path.X+path.W > usage.X || usage.X+usage.W > actions.X || actions.Y < row.Y || actions.Y+actions.H > row.Y+row.H {
@@ -81,6 +85,43 @@ func TestJavaInstalledResponsiveControls(t *testing.T) {
 					}
 				})
 			}
+		}
+	}
+}
+
+func TestJavaBrandIcons(t *testing.T) {
+	if err := loadAssets(); err != nil {
+		t.Fatal(err)
+	}
+	vendors := []string{"Zulu", "Temurin", "Microsoft", "Corretto", "Liberica", "GraalVM", "JBR", "Oracle", "Mojang", "OpenJDK"}
+	for _, name := range vendors[:8] {
+		if name == "Microsoft" {
+			continue
+		}
+		logo := javaLogos[strings.ToLower(name)]
+		if logo == nil {
+			t.Fatalf("missing offline brand icon for %s", name)
+		}
+		w, h := logo.Size()
+		if w != 64 || h != 64 {
+			t.Fatalf("%s icon is not bounded to 64 px: %dx%d", name, w, h)
+		}
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(theme)
+		ui.Column(c).Fill().Padding(24).Gap(12).Background(bg).Children(func() {
+			for _, vendor := range vendors {
+				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+					javaBrandIcon(c, vendor, 36)
+					ui.Text(c, vendor)
+				})
+			}
+		})
+	}, 360, 540)
+	snapshotUI(t, tt, "java-brand-icons")
+	for _, vendor := range vendors {
+		if _, ok := tt.Find("Java 品牌图标 " + vendor); !ok {
+			t.Fatalf("brand icon missing from row for %s", vendor)
 		}
 	}
 }

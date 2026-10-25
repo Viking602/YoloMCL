@@ -65,6 +65,11 @@ func (a *App) toggleLanguage() {
 func (a *App) dialogTitle(dialog string) string {
 	t := a.tr()
 	switch dialog {
+	case "launcherUpdate":
+		if a.launcherUpdateRequired() {
+			return a.L("需要更新启动器", "Launcher update required")
+		}
+		return a.L("启动器更新", "Launcher update")
 	case "javaGet":
 		return a.L("下载 Java", "Download Java")
 	case "launchAgain":
@@ -87,6 +92,8 @@ func (a *App) dialogTitle(dialog string) string {
 		return t.AccAddAccountBtn
 	case "import":
 		return t.DialogTitleImport
+	case "export":
+		return a.L("导出整合包", "Export modpack")
 	case "install":
 		return t.DialogTitleInstall
 	case "project":

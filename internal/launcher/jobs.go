@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"time"
 )
@@ -67,6 +68,7 @@ func (s *Service) jobListLocked() []Job {
 			sampleSpeedLocked(j, now)
 		}
 		cp := j.Job
+		cp.Steps = maps.Clone(j.Steps)
 		if j.State == "running" {
 			cp.Speed, cp.BytesDone, cp.BytesTotal = int64(j.speed), j.bytes.Load(), j.bytesTotal.Load()
 		}
@@ -151,6 +153,13 @@ func (s *Service) runJobLocked(j *jobState) {
 		s.invalidateInventory(rootID)
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		// Cleanup temporarily releases s.mu for disk IO. Keep the task
+		// running and its root reserved until that work really finishes:
+		// observers must not report idle, retry, or start another install
+		// in a directory whose cancelled task is still removing files.
+		if errors.Is(err, context.Canceled) || j.dropOnEnd && err != nil {
+			s.cleanupJobLocked(j)
+		}
 		delete(s.rootLocks, rootID)
 		now := time.Now()
 		j.Finished = &now
@@ -163,7 +172,6 @@ func (s *Service) runJobLocked(j *jobState) {
 		} else if errors.Is(err, context.Canceled) {
 			j.State = "cancelled"
 			j.Message = "已取消"
-			s.cleanupJobLocked(j) // only what this task created
 		} else {
 			j.State = "failed"
 			j.Message = err.Error()

@@ -16,37 +16,47 @@ type mrPack struct {
 	VersionID     string            `json:"versionId"`
 	Name          string            `json:"name"`
 	Dependencies  map[string]string `json:"dependencies"`
-	Files         []struct {
-		Path   string `json:"path"`
-		Hashes struct {
-			SHA1   string `json:"sha1"`
-			SHA512 string `json:"sha512"`
-		} `json:"hashes"`
-		Env struct {
-			Client string `json:"client"`
-		} `json:"env"`
-		Downloads []string `json:"downloads"`
-		Size      int64    `json:"fileSize"`
-	} `json:"files"`
+	Files         []mrPackFile      `json:"files"`
+}
+
+type mrPackFile struct {
+	Path   string `json:"path"`
+	Hashes struct {
+		SHA1   string `json:"sha1"`
+		SHA512 string `json:"sha512"`
+	} `json:"hashes"`
+	Env       *mrPackEnv `json:"env,omitempty"`
+	Downloads []string   `json:"downloads"`
+	Size      int64      `json:"fileSize"`
+}
+
+type mrPackEnv struct {
+	Client string `json:"client"`
+	Server string `json:"server,omitempty"`
 }
 type cfPack struct {
 	Name            string `json:"name"`
 	Version         string `json:"version"`
+	Author          string `json:"author,omitempty"`
 	ManifestType    string `json:"manifestType"`
 	ManifestVersion int    `json:"manifestVersion"`
 	Overrides       string `json:"overrides"`
 	Minecraft       struct {
-		Version string `json:"version"`
-		Loaders []struct {
-			ID      string `json:"id"`
-			Primary bool   `json:"primary"`
-		} `json:"modLoaders"`
+		Version string         `json:"version"`
+		Loaders []cfPackLoader `json:"modLoaders"`
 	} `json:"minecraft"`
-	Files []struct {
-		ProjectID int  `json:"projectID"`
-		FileID    int  `json:"fileID"`
-		Required  bool `json:"required"`
-	} `json:"files"`
+	Files []cfPackFile `json:"files"`
+}
+
+type cfPackLoader struct {
+	ID      string `json:"id"`
+	Primary bool   `json:"primary"`
+}
+
+type cfPackFile struct {
+	ProjectID int  `json:"projectID"`
+	FileID    int  `json:"fileID"`
+	Required  bool `json:"required"`
 }
 
 func parsePack(z *zip.ReadCloser) (PackLock, string, error) {
@@ -70,7 +80,7 @@ func parsePack(z *zip.ReadCloser) (PackLock, string, error) {
 				}
 			}
 			for _, file := range index.Files {
-				if file.Env.Client == "unsupported" {
+				if file.Env != nil && file.Env.Client == "unsupported" {
 					continue
 				}
 				if len(file.Downloads) == 0 || len(file.Hashes.SHA1) != 40 || len(file.Hashes.SHA512) != 128 {

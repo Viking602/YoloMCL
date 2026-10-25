@@ -75,6 +75,7 @@ func (a *App) toast(c *ui.Context) {
 	if p <= .01 || a.noticeShown == "" {
 		if a.message == "" {
 			a.noticeShown, a.noticeCopied = "", false
+			a.toastUntil = time.Time{}
 		}
 		host.Height(0)
 		return
@@ -91,12 +92,18 @@ func (a *App) toast(c *ui.Context) {
 		}
 		key := fmt.Sprintf("toast-life-%d-%s", a.toastGen, msg)
 		if a.toastHeld {
-			// paused
-		} else if a.toastLifeKey != key {
-			a.toastLifeKey = key
-			host.AnimateTo(key, 0, ui.Animation{})
-		} else if host.AnimateTo(key, 1, ui.Animation{Duration: toastLife, Ease: ui.Linear}) >= 1 {
-			a.message, a.noticeKind = "", ""
+			a.toastUntil = time.Time{}
+		} else {
+			if a.toastLifeKey != key || a.toastUntil.IsZero() {
+				a.toastLifeKey, a.toastUntil = key, c.Now().Add(toastLife)
+			}
+			// Only the visible entrance/exit animates. The four-second hold
+			// needs one wakeup, not a full view rebuild on every display frame.
+			remaining := a.toastUntil.Sub(c.Now())
+			if remaining <= 0 {
+				a.message, a.noticeKind = "", ""
+			}
+			c.After(max(0, remaining))
 		}
 	}
 	host.Opacity(p).Translate(0, (1-p)*10*s).Children(func() {

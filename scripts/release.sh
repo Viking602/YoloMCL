@@ -24,6 +24,7 @@ done
 [[ -n "$tag" ]] || fail 'Set TAG=vX.Y.Z or pass --tag.'
 build_identity "$tag"
 repository
+load_update_policy "$tag"
 new_work
 if [[ "$verify" == true ]]; then
   public_der internal/buildinfo/update-public-key.txt "$mcl_work"

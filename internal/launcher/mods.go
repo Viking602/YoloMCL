@@ -30,8 +30,18 @@ func readRecords(root string) map[string]modRecord {
 	return out
 }
 
-func readChecks(root string) map[string]Mod {
-	out := map[string]Mod{}
+// The on-disk check also contains jar metadata. Scanning already reads that
+// from modcache.json, so decode only the fields that a check can override.
+type modCheckResult struct {
+	Source    string          `json:"source"`
+	ProjectID string          `json:"projectId"`
+	VersionID string          `json:"versionId"`
+	Latest    *ProjectVersion `json:"latest,omitempty"`
+	Status    string          `json:"status"`
+}
+
+func readChecks(root string) map[string]modCheckResult {
+	out := map[string]modCheckResult{}
 	path, e := safeJoin(root, ".mcl/mod-checks.json")
 	if e != nil {
 		return out
@@ -49,8 +59,9 @@ func (s *Service) ListMods(rootID string) ([]Mod, error) { return s.ListModsAt(r
 // per-version folders resolve right even before a selection is saved.
 func (s *Service) rootAt(rootID, versionID string) (Root, error) {
 	r, e := s.getRoot(rootID)
-	if e == nil && versionID != "" {
+	if e == nil && versionID != "" && versionID != r.SelectedVersion {
 		r.SelectedVersion = versionID
+		s.cacheGameDir(&r)
 	}
 	return r, e
 }
@@ -61,7 +72,7 @@ func (s *Service) ListModsAt(rootID, versionID string) ([]Mod, error) {
 	if e != nil {
 		return nil, e
 	}
-	return scanMods(r.VersionDir())
+	return s.scanModDirectory(context.Background(), r.VersionDir(), nil)
 }
 
 // ListModsStream is ListModsAt that also reports partial lists while new
@@ -76,7 +87,7 @@ func (s *Service) ListModsStreamContext(ctx context.Context, rootID, versionID s
 	if e != nil {
 		return nil, e
 	}
-	return scanModsStreamContext(ctx, r.VersionDir(), partial)
+	return s.scanModDirectory(ctx, r.VersionDir(), partial)
 }
 
 func readDirRetryContext(ctx context.Context, dir string) ([]os.DirEntry, error) {

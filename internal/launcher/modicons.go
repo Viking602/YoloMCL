@@ -63,8 +63,9 @@ func (r RemoteInfo) known() bool { return r.Icon != "" || r.MRSlug != "" || r.CF
 
 // AddonRef names one local file by content hash.
 type AddonRef struct {
-	SHA1 string
-	File string
+	SHA1        string
+	File        string
+	Fingerprint uint32 // reuse the scan's hash; zero falls back to reading the file
 }
 
 var modIconMu sync.Mutex
@@ -85,7 +86,7 @@ func (s *Service) loadModIconIndex() map[string]modIconEntry {
 func (s *Service) ModIconURLs(ctx context.Context, rootID, versionID string, mods []Mod) (map[string]string, error) {
 	refs := make([]AddonRef, 0, len(mods))
 	for _, m := range mods {
-		refs = append(refs, AddonRef{SHA1: m.SHA1, File: m.File})
+		refs = append(refs, AddonRef{SHA1: m.SHA1, File: m.File, Fingerprint: m.Fingerprint})
 	}
 	info, e := s.AddonRemoteInfo(ctx, rootID, versionID, "mod", refs)
 	out := map[string]string{}
@@ -100,6 +101,11 @@ func (s *Service) ModIconURLs(ctx context.Context, rootID, versionID string, mod
 // PackRefs hashes resource or shader pack archives (folders are skipped:
 // the platforms only know published zips).
 func (s *Service) PackRefs(rootID, versionID, kind string, packs []AssetPack) []AddonRef {
+	return s.PackRefsContext(context.Background(), rootID, versionID, kind, packs)
+}
+
+// PackRefsContext stops hashing packs that belong to a superseded view.
+func (s *Service) PackRefsContext(ctx context.Context, rootID, versionID, kind string, packs []AssetPack) []AddonRef {
 	r, e := s.rootAt(rootID, versionID)
 	if e != nil {
 		return nil
@@ -110,6 +116,9 @@ func (s *Service) PackRefs(rootID, versionID, kind string, packs []AssetPack) []
 	}
 	out := []AddonRef{}
 	for _, p := range packs {
+		if ctx.Err() != nil {
+			break
+		}
 		path, e := safeJoin(r.VersionDir(), sub+"/"+p.File)
 		if e != nil {
 			continue
@@ -129,8 +138,14 @@ func (s *Service) PackRefs(rootID, versionID, kind string, packs []AssetPack) []
 // (fingerprint, batch) for what Modrinth missed. Hits and misses are cached
 // on disk by hash, so each file is looked up once.
 func (s *Service) AddonRemoteInfo(ctx context.Context, rootID, versionID, kind string, items []AddonRef) (map[string]RemoteInfo, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	modIconMu.Lock()
 	defer modIconMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	idx := s.loadModIconIndex()
 	out := map[string]RemoteInfo{}
 	now := time.Now().Unix()
@@ -197,21 +212,26 @@ func (s *Service) AddonRemoteInfo(ctx context.Context, rootID, versionID, kind s
 		if e == nil {
 			fps, byFP := []uint32{}, map[uint32]string{}
 			for _, m := range todo {
+				if err := ctx.Err(); err != nil {
+					return out, err
+				}
 				if f := found[m.SHA1]; f.Icon != "" && f.Summary != "" {
 					continue
 				}
-				p, e := safeJoin(r.VersionDir(), sub+"/"+m.File)
-				if e != nil {
-					continue
+				fp := m.Fingerprint
+				if fp == 0 {
+					p, e := safeJoin(r.VersionDir(), sub+"/"+m.File)
+					if e != nil {
+						continue
+					}
+					if st, e := os.Stat(p); e != nil || st.IsDir() || st.Size() > maxFingerprintJar {
+						continue
+					}
+					fp, e = fingerprintFile(ctx, p)
+					if e != nil {
+						continue
+					}
 				}
-				if st, e := os.Stat(p); e != nil || st.IsDir() || st.Size() > 256<<20 {
-					continue
-				}
-				b, e := os.ReadFile(p)
-				if e != nil {
-					continue
-				}
-				fp := curseFingerprint(b)
 				fps, byFP[fp] = append(fps, fp), m.SHA1
 			}
 			if len(fps) > 0 {
@@ -275,6 +295,9 @@ func (s *Service) AddonRemoteInfo(ctx context.Context, rootID, versionID, kind s
 				}
 			}
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return out, err
 	}
 	for _, m := range todo {
 		f := found[m.SHA1]

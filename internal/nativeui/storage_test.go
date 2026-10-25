@@ -2,6 +2,8 @@ package nativeui
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -9,6 +11,44 @@ import (
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
+
+func TestOverviewRefreshButtonRecalculatesNestedStorage(t *testing.T) {
+	game := t.TempDir()
+	dir := filepath.Join(game, "versions", "pack")
+	write := func(name, data string) {
+		t.Helper()
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(data), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("pack.json", `{"id":"pack","inheritsFrom":"1.21.1"}`)
+	write("saves/world/region/a.mca", "old")
+	s, err := launcher.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.AddRoot(game, "pack"); err != nil {
+		t.Fatal(err)
+	}
+	a, err := New(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { a.cancel(); a.bgWG.Wait() }()
+	tt := ui.NewTester(a.View, 1536, 1024)
+	waitUI(t, tt, func() bool { return !a.statusLoading && a.instStatus.Sizes["saves"] == 3 })
+	tt.Advance(400 * time.Millisecond)
+	write("saves/world/region/b.mca", "newregion")
+	clickUI(t, tt, a.L("刷新概览", "Refresh overview"))
+	waitUI(t, tt, func() bool { return !a.statusLoading && a.instStatus.Sizes["saves"] == 12 })
+	if a.instStatus.RecentWorld == nil || a.instStatus.RecentWorld.Size != 12 {
+		t.Fatal("manual refresh did not update the recent world's size")
+	}
+}
 
 func TestStorageBarFillsWithRealCapacityShares(t *testing.T) {
 	a, _ := homeTester(t, "zh-CN")

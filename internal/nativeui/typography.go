@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"math"
 	"path/filepath"
 	"strings"
 
@@ -28,6 +29,42 @@ func label(c *ui.Context, s string) ui.Element {
 	return ui.Text(c, s).TextColor(muted).FontSize(typeCallout * uiScale(c))
 }
 
+// tooltip sizes the text before adding padding. Rounding up leaves room for
+// fractional font metrics, which otherwise push the last glyph onto a new line.
+// Only the visible tooltip is measured; long paths and descriptions still wrap.
+func tooltip(c *ui.Context, anchor ui.Element, text string) ui.Element {
+	if text == "" {
+		return anchor
+	}
+	anchor.Description(text)
+	ui.TooltipBase(c, anchor, func(tip ui.Element) {
+		t := c.Theme()
+		windowW, _ := c.Size()
+		padX, padY := t.Space(2), t.Space(1.25)
+		size := t.FontSize - 1
+		textW, _ := c.MeasureText(0, ui.Span{Text: text, Font: t.Font, Size: size, Weight: 400})
+		contentW := min(float32(math.Ceil(float64(textW)))+1, max(1, min(t.Space(80), windowW-8)-2*padX))
+		fill, foreground := t.Inverse, t.InverseText
+		if fill == ui.Transparent {
+			fill = t.Text
+		}
+		if foreground == ui.Transparent {
+			foreground = t.Background
+		}
+		tip.Width(contentW+2*padX).Padding(padY, padX).Radius(t.Space(1.25)).
+			Font(t.Font).FontSize(size).FontWeight(400).Background(fill).TextColor(foreground).
+			Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, .2)).
+			AttachTo(anchor, ui.AnchorTop, ui.AnchorBottom).Margin(0, 0, t.Space(1.5), 0)
+		tip.Children(func() {
+			label := ui.Text(c, text).FillWidth().MinWidth(0)
+			if textW <= contentW {
+				label.NoWrap()
+			}
+		})
+	})
+	return anchor
+}
+
 func pathLabel(c *ui.Context, path string, size float32) ui.Element {
 	s := uiScale(c)
 	dir, base := filepath.Split(path)
@@ -35,7 +72,7 @@ func pathLabel(c *ui.Context, path string, size float32) ui.Element {
 		dir, base = filepath.Split(strings.TrimRight(path, `/\`))
 		base += string(filepath.Separator)
 	}
-	return ui.Row(c).Label("路径 " + path).Grow(1).Basis(0).MinWidth(0).Gap(0).AlignItems(ui.Center).Tooltip(path).Children(func() {
+	return tooltip(c, ui.Row(c).Label("路径 "+path).Grow(1).Basis(0).MinWidth(0).Gap(0).AlignItems(ui.Center), path).Children(func() {
 		if dir != "" {
 			ui.Text(c, dir).FontSize(size).TextColor(muted).SingleLine().Shrink(1).MinWidth(0)
 		}

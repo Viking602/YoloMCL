@@ -44,16 +44,20 @@ func TestInitialViewReusesRequestedModList(t *testing.T) {
 	if _, err = s.AddRoot(filepath.Dir(filepath.Dir(dir)), "pack"); err != nil {
 		t.Fatal(err)
 	}
-	a, err := New(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { a.cancel(); a.bgWG.Wait() }()
-	a.ShowPage("home")
-	requested := a.modsGen
-	tt := ui.NewTester(a.View, 1200, 820)
-	waitUI(t, tt, func() bool { return !a.modsLoading })
-	if requested != 1 || a.modsGen != requested {
-		t.Fatalf("first view repeated the mod scan: %d -> %d", requested, a.modsGen)
+	for page, scans := range map[string]int{"home": 0, "home/mods": 1} {
+		t.Run(page, func(t *testing.T) {
+			a, err := New(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { a.cancel(); a.bgWG.Wait() }()
+			a.ShowPage(page)
+			requested := a.modsGen
+			tt := ui.NewTester(a.View, 1200, 820)
+			waitUI(t, tt, func() bool { return !a.modsLoading })
+			if requested != scans || a.modsGen != requested {
+				t.Fatalf("first view requested unnecessary mod scans: %d -> %d, want %d", requested, a.modsGen, scans)
+			}
+		})
 	}
 }

@@ -1,8 +1,14 @@
 package launcher
 
 import (
+	"bytes"
+	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -41,6 +47,53 @@ func refFingerprint(data []byte) uint32 {
 	return h
 }
 
+func TestFingerprintFileMatchesReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(17))
+	path := filepath.Join(t.TempDir(), "pack.zip")
+	for _, size := range []int{0, 1, 3, 4, 65535, 65536, 65537, 2<<20 + 3} {
+		data := make([]byte, size)
+		_, _ = rng.Read(data)
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got, err := fingerprintFile(context.Background(), path)
+		if err != nil || got != refFingerprint(data) {
+			t.Fatalf("size=%d: fingerprint=%d err=%v", size, got, err)
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := fingerprintFile(ctx, path); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled fingerprint continued: %v", err)
+	}
+	if _, err := fingerprintFile(context.Background(), path+".missing"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("file error was lost: %v", err)
+	}
+}
+
+func BenchmarkFingerprintFile(b *testing.B) {
+	for _, size := range []int{64 << 10, 32 << 20} {
+		b.Run(fmt.Sprint(size), func(b *testing.B) {
+			path := filepath.Join(b.TempDir(), "pack.zip")
+			data := make([]byte, size)
+			_, _ = rand.New(rand.NewSource(7)).Read(data)
+			if err := os.WriteFile(path, data, 0o600); err != nil {
+				b.Fatal(err)
+			}
+			want := curseFingerprint(data)
+			data = nil
+			b.ReportAllocs()
+			b.SetBytes(int64(size))
+			for b.Loop() {
+				got, err := fingerprintFile(context.Background(), path)
+				if err != nil || got != want {
+					b.Fatalf("fingerprint=%d err=%v", got, err)
+				}
+			}
+		})
+	}
+}
+
 func TestCurseFingerprintMatchesReference(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
 	for n := 0; n < 300; n++ {
@@ -50,6 +103,12 @@ func TestCurseFingerprintMatchesReference(t *testing.T) {
 		}
 		if curseFingerprint(b) != refFingerprint(b) {
 			t.Fatalf("mismatch for %v", b)
+		}
+		for _, chunk := range []int{1, 3, 4, 5, 17} {
+			got, err := streamFingerprint(context.Background(), bytes.NewReader(b), uint32(fingerprintLength(b)), make([]byte, chunk))
+			if err != nil || got != refFingerprint(b) {
+				t.Fatalf("stream chunk=%d mismatch for %v: %d, %v", chunk, b, got, err)
+			}
 		}
 	}
 }

@@ -7,15 +7,38 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
+
+// Snapshot polling asks for memory every few seconds. Physical memory never
+// changes while running, and vm_stat is a subprocess: run sysctl once and
+// reuse an available-memory sample for a few seconds.
+var (
+	memoryMu    sync.Mutex
+	totalMemory uint64
+	availMemory uint64
+	availAt     time.Time
+)
+
+const availTTL = 5 * time.Second
 
 // physicalMemory reads hw.memsize via sysctl and estimates available memory
 // from vm_stat (free + inactive + speculative pages).
 func physicalMemory() (uint64, uint64, error) {
-	raw, e := exec.Command("sysctl", "-n", "hw.memsize").Output()
-	total, _ := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
-	if e != nil || total == 0 {
-		return 0, 0, errors.New("无法读取系统内存")
+	memoryMu.Lock()
+	defer memoryMu.Unlock()
+	if totalMemory == 0 {
+		raw, e := exec.Command("sysctl", "-n", "hw.memsize").Output()
+		total, _ := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
+		if e != nil || total == 0 {
+			return 0, 0, errors.New("无法读取系统内存")
+		}
+		totalMemory = total
+	}
+	total := totalMemory
+	if !availAt.IsZero() && time.Since(availAt) < availTTL {
+		return total, availMemory, nil
 	}
 	avail := total / 2
 	if out, e := exec.Command("vm_stat").Output(); e == nil {
@@ -44,5 +67,6 @@ func physicalMemory() (uint64, uint64, error) {
 			avail = min(total, pages*page)
 		}
 	}
+	availAt, availMemory = time.Now(), avail
 	return total, avail, nil
 }

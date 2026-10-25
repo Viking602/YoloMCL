@@ -81,7 +81,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 						// Tile plus a hover-only save badge in its corner; both
 						// stay inside the fixed 38 pt box.
 						ui.Box(c.Key("recent-wrap-"+itoa(i))).Size(38*s, 38*s).Shrink(0).Children(func() {
-							b := ui.ButtonBase(c.Key("recent-skin-"+itoa(i))).Label(rs.name).Tooltip(rs.name).Size(38*s, 38*s).Radius(9*s).Background(panel).Border(1, line).Clip().Center()
+							b := tooltip(c, ui.ButtonBase(c.Key("recent-skin-"+itoa(i))).Label(rs.name), rs.name).Size(38*s, 38*s).Radius(9*s).Background(panel).Border(1, line).Clip().Center()
 							hot := b.Hovered()
 							if b.Children(func() {
 								if rs.head != nil {
@@ -90,7 +90,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 							}).Clicked() {
 								a.setPendingSkin(rs.name, rs.data)
 							}
-							sb := ui.ButtonBase(c.Key("recent-save-"+itoa(i))).Label(a.L("保存皮肤", "Save skin")).Tooltip(a.L("保存皮肤", "Save skin")).Absolute().Right(-4*s).Bottom(-4*s).Size(18*s, 18*s).Radius(999).Background(panel).Border(1, line).Center()
+							sb := tooltip(c, ui.ButtonBase(c.Key("recent-save-"+itoa(i))).Label(a.L("保存皮肤", "Save skin")), a.L("保存皮肤", "Save skin")).Absolute().Right(-4*s).Bottom(-4*s).Size(18*s, 18*s).Radius(999).Background(panel).Border(1, line).Center()
 							op := float32(0)
 							if hot || sb.Hovered() {
 								op = 1

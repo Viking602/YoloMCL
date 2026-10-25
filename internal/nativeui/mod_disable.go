@@ -55,7 +55,7 @@ func (a *App) disableModDialog(c *ui.Context) {
 	if iconURL == "" {
 		iconURL = a.modIconURLs[target.sha1] // metadata can arrive while the dialog is open
 	}
-	icon := a.addonIcon(target.rootID, target.version, "mod", target.file, iconURL)
+	icon := a.addonIcon(target.rootID, target.version, "mod", target.file, iconURL, target.sha1)
 	ui.Column(c).Font(uiSansFamily()).FillWidth().Gap(18 * s).Children(func() {
 		ui.Row(c).FillWidth().Padding(14*s, 16*s).Gap(12 * s).Radius(12 * s).Background(raised).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Size(40*s, 40*s).Radius(10 * s).Clip().Background(panel).Shrink(0).Center().Children(func() {
@@ -66,8 +66,8 @@ func (a *App) disableModDialog(c *ui.Context) {
 				}
 			})
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
-				ui.Text(c, target.name).FillWidth().FontSize(typeHeadline * s).FontWeight(600).TextColor(ink).MaxLines(2).Tooltip(target.name)
-				ui.Text(c, target.file).FillWidth().FontSize(typeCaption * s).TextColor(muted).SingleLine().Tooltip(target.file)
+				tooltip(c, ui.Text(c, target.name).FillWidth().FontSize(typeHeadline*s).FontWeight(600).TextColor(ink).MaxLines(2), target.name)
+				tooltip(c, ui.Text(c, target.file).FillWidth().FontSize(typeCaption*s).TextColor(muted).SingleLine(), target.file)
 			})
 		})
 		ui.Text(c, a.L("下次启动游戏时将不再加载此模组，你可以随时重新启用。", "This mod won't load the next time you start the game. You can enable it again anytime.")).FillWidth().FontSize(typeCallout * s).TextColor(muted)

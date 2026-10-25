@@ -1,4 +1,4 @@
-// Package buildinfo exposes the identity of this launcher build without I/O.
+// Package buildinfo exposes build identity and verifies publisher update policies.
 package buildinfo
 
 import (

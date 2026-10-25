@@ -22,10 +22,21 @@ func (a *App) instTabs(_ launcher.Instance) []instTabItem {
 
 // setInstTab switches the right-side tab and loads what it shows.
 func (a *App) setInstTab(tab string) {
+	if a.launcherUpdateRequired() {
+		return
+	}
 	if tab == "" {
 		tab = "overview"
 	}
 	if a.instTab != tab {
+		a.addonListData = addonListData{}
+		a.resetImageRequests()
+		if tab != "overview" {
+			a.cancelInstanceStatus()
+		}
+		if tab != "mods" && tab != "resourcepack" && tab != "shader" {
+			a.cancelAddonLoad()
+		}
 		a.addonFilterKind = "" // filters belong to one list
 		if tab == "overview" {
 			a.loadInstanceStatus()
@@ -33,16 +44,14 @@ func (a *App) setInstTab(tab string) {
 	}
 	a.instTab = tab
 	switch tab {
-	case "overview", "mods":
-		if a.addonTab != "mods" {
-			a.addonTab = "mods"
-			a.loadMods()
-		}
+	case "overview":
+		a.addonTab = "mods"
+	case "mods":
+		a.addonTab = "mods"
+		a.ensureAddons()
 	case "resourcepack", "shader":
-		if a.addonTab != tab {
-			a.addonTab = tab
-			a.loadMods()
-		}
+		a.addonTab = tab
+		a.ensureAddons()
 	case "logs":
 		a.loadLogs()
 	case "worlds":
@@ -63,7 +72,7 @@ func (a *App) instanceView(c *ui.Context) {
 	if r := a.root(); r != nil && a.instLoaded != r.ID {
 		a.instLoaded = r.ID
 		a.instScrollPending = true
-		a.loadMods()
+		a.setInstTab(a.instTab)
 	}
 	ui.Row(c.Key("instance-split")).Label("实例视图").Fill().Gap(0).AlignItems(ui.Stretch).Children(func() {
 		a.instanceList(c)

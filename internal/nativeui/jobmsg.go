@@ -6,6 +6,13 @@ import "strings"
 // display time. Longest prefixes first; the rest of the line (counts, file
 // names) is kept as-is.
 var jobMsgPrefixes = [][2]string{
+	{"正在整理导出内容", "Preparing export contents"},
+	{"校验导出文件：", "Verifying export file: "},
+	{"识别导出文件：", "Identifying export files: "},
+	{"来源查询不可用，未识别文件将随包打包", "Provider lookup unavailable; unidentified files will be bundled"},
+	{"正在导出：", "Exporting: "},
+	{"导出文件引用 / 随包文件：", "Referenced / bundled files: "},
+	{"导出完成：", "Exported: "},
 	{"下载整合包文件 ", "Downloading pack files "},
 	{"下载新版本文件 ", "Downloading new files "},
 	{"解析整合包模组 ", "Resolving pack mods "},

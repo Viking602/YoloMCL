@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"fmt"
 	"testing"
 )
 
@@ -23,12 +24,33 @@ func compressedNBT(t *testing.T, data []byte) []byte {
 func TestParseLevelDatRejectsMalformedNBT(t *testing.T) {
 	root := []byte{10, 0, 0}
 	cases := map[string][]byte{
+		"missing name length":  {10},
+		"partial name length":  {10, 0},
+		"partial array length": {10, 0, 0, 7, 0, 0, 1},
 		"missing compound end": root,
 		"truncated name":       {10, 0, 10, 'x'},
 		"truncated value":      {10, 0, 0, 4, 0, 0, 1, 2},
 		"invalid tag":          {10, 0, 0, 99, 0, 0, 0},
 		"negative list":        {10, 0, 0, 9, 0, 0, 1, 255, 255, 255, 255, 0},
 		"nonempty end list":    {10, 0, 0, 9, 0, 0, 0, 0, 0, 0, 1, 0},
+	}
+	// Exercise every short read in the numeric fields consumed by the visitor.
+	for _, field := range []struct {
+		name  string
+		tag   byte
+		width int
+	}{{"GameType", 3, 4}, {"LastPlayed", 4, 8}} {
+		header := append(bytes.Clone(root), 10, 0, 4, 'D', 'a', 't', 'a', field.tag)
+		header = binary.BigEndian.AppendUint16(header, uint16(len(field.name)))
+		header = append(header, field.name...)
+		for n := range field.width {
+			t.Run(fmt.Sprintf("%s/%d-bytes", field.name, n), func(t *testing.T) {
+				data := append(bytes.Clone(header), make([]byte, n)...)
+				if _, err := ParseLevelDat(bytes.NewReader(compressedNBT(t, data))); err == nil {
+					t.Fatal("truncated numeric value accepted")
+				}
+			})
+		}
 	}
 	for _, tag := range []byte{7, 11, 12} {
 		for _, count := range []uint32{0x7fffffff, 0x80000000, 0xffffffff} {

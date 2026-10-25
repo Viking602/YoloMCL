@@ -49,7 +49,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 			if st.Total > 0 {
 				share = float32(float64(n) / float64(st.Total))
 			}
-			segment := ui.Box(c.Key("storage-segment-" + p.sub)).Label("存储占比 " + p.sub).FillHeight().Basis(0).MinWidth(0).Background(p.tone).Tooltip(a.L(p.zh, p.en) + "  " + fmtSize(n))
+			segment := tooltip(c, ui.Box(c.Key("storage-segment-"+p.sub)).Label("存储占比 "+p.sub).FillHeight().Basis(0).MinWidth(0).Background(p.tone), a.L(p.zh, p.en)+"  "+fmtSize(n))
 			segment.Grow(segment.AnimateTo("share", share, motionPack))
 		}
 	})
@@ -59,8 +59,8 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 			updates++
 		}
 	}
-	counts := map[string]int{"resourcepacks": st.ResourcePacks, "shaderpacks": st.Shaders, "saves": st.Saves, "screenshots": st.Screenshots}
-	units := map[string][2]string{"resourcepacks": {"%d 个", "%d packs"}, "shaderpacks": {"%d 个", "%d shaders"}, "saves": {"%d 个世界", "%d worlds"}, "screenshots": {"%d 张", "%d shots"}}
+	counts := map[string]int{"mods": st.Mods, "resourcepacks": st.ResourcePacks, "shaderpacks": st.Shaders, "saves": st.Saves, "screenshots": st.Screenshots}
+	units := map[string][2]string{"mods": {"%d 个", "%d mods"}, "resourcepacks": {"%d 个", "%d packs"}, "shaderpacks": {"%d 个", "%d shaders"}, "saves": {"%d 个世界", "%d worlds"}, "screenshots": {"%d 张", "%d shots"}}
 	for _, p := range dirParts {
 		p := p
 		size := storageBytes(st, p.sub)
@@ -84,13 +84,12 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 				if p.sub == "other" {
 					label(c, a.L("配置、日志、备份等", "Config, logs, backups…")).FontSize(typeCaption * s).SingleLine().MinWidth(0).Shrink(1)
 				}
-				if u, ok := units[p.sub]; ok {
+				if p.sub == "mods" && updates > 0 {
+					quietTag(c, fmt.Sprintf(a.L("%d 个可更新", "%d updates"), updates), accent)
+				} else if u, ok := units[p.sub]; ok {
 					key := "storage-count-" + p.sub
 					text := fmt.Sprintf(a.L(u[0], u[1]), n)
 					a.rollNumber(c, key, text, typeCallout*s, 600, ink).FillWidth()
-				}
-				if p.sub == "mods" && updates > 0 {
-					quietTag(c, fmt.Sprintf(a.L("%d 个可更新", "%d updates"), updates), accent)
 				}
 			})
 			ui.Box(c).Width(80 * s).Shrink(0).Children(func() {
@@ -123,7 +122,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 	}
 	ui.Spacer(c).Grow(1)
 	ui.Row(c).FillWidth().Height(32 * s).Shrink(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Grow(1).Basis(0).MinWidth(0).Clip().Tooltip(dir).Children(func() {
+		tooltip(c, ui.Box(c).Grow(1).Basis(0).MinWidth(0).Clip(), dir).Children(func() {
 			ww, _ := c.Size()
 			n := 44
 			if ww < 1700*s {

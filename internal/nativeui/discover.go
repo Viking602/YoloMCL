@@ -263,7 +263,7 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 			a.discoverIcon(c, p, state)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
 				title, original := a.zhTitle(a.zhNames.Project(p), p.Title)
-				ui.Text(c, title).FontSize(typeBody * s).FontWeight(650).TextColor(ink).SingleLine().FillWidth().MinWidth(0).Tooltip(p.Title)
+				tooltip(c, ui.Text(c, title).FontSize(typeBody*s).FontWeight(650).TextColor(ink).SingleLine().FillWidth().MinWidth(0), p.Title)
 				if original != "" || p.Author != "" {
 					ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 						if original != "" {
@@ -272,7 +272,7 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 						if p.Author != "" {
 							ui.Row(c).Gap(3 * s).AlignItems(ui.Center).Shrink(2).MinWidth(0).Children(func() {
 								ui.Icon(c, icons["account"]).Size(9*s, 9*s).TextColor(muted).Shrink(0)
-								ui.Text(c, p.Author).FontSize(typeCaption * s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0).Tooltip(a.L("作者 ", "By ") + p.Author)
+								tooltip(c, ui.Text(c, p.Author).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), a.L("作者 ", "By ")+p.Author)
 							})
 						}
 					})
@@ -294,7 +294,7 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 					catTag(c, cat, l, false)
 					continue
 				}
-				tb := ui.ButtonBase(c.Key("ctag-" + p.ID + "-" + id)).Label(l).Tooltip(a.L("按此分类筛选", "Filter by this tag")).Radius(5 * s)
+				tb := tooltip(c, ui.ButtonBase(c.Key("ctag-"+p.ID+"-"+id)).Label(l), a.L("按此分类筛选", "Filter by this tag")).Radius(5 * s)
 				if tb.Children(func() { catTag(c, cat, l, a.catSelected(id)) }).Clicked() && ready && !a.searchLoading && !a.catSelected(id) {
 					a.toggleCat(id)
 				}
@@ -306,7 +306,7 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 				numText(c, compactCount(p.Downloads), typeCaption*s, muted)
 			})
 			if relative, exact := a.resourceTime(c, p.Updated); relative != "" {
-				numText(c, relative, typeCaption*s, muted).Shrink(0).Tooltip(fmt.Sprintf(a.L("更新时间：%s", "Updated: %s"), exact))
+				tooltip(c, numText(c, relative, typeCaption*s, muted).Shrink(0), fmt.Sprintf(a.L("更新时间：%s", "Updated: %s"), exact))
 			}
 			ui.Spacer(c).Grow(1)
 			if installed {

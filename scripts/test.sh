@@ -108,15 +108,30 @@ chmod 755 "$stage/YoloMCL.app/Contents/MacOS/YoloMCL"
 ossl genpkey -algorithm ED25519 -outform DER -out "$mcl_work/private.der"
 ossl pkey -inform DER -in "$mcl_work/private.der" -pubout -outform DER > "$mcl_work/public.der"
 commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+policy_file="$mcl_work/update-policy.conf"
+for minimum in 0.0.0 1.0.0 1.9.9 1.10.0; do
+  printf 'minimum_version=%s\n' "$minimum" > "$policy_file"
+  load_update_policy v1.10.0 "$policy_file"
+  [[ "$mcl_minimum_version" == "$minimum" ]] || fail 'Update policy was not read literally.'
+done
+for minimum in 1.10.1 2.0.0 1.0.0-rc.1 01.0.0 '$(no-exec)'; do
+  printf 'minimum_version=%s\n' "$minimum" > "$policy_file"
+  if (load_update_policy v1.10.0 "$policy_file") >/dev/null 2>&1; then fail 'Invalid update floor accepted.'; fi
+done
+printf 'minimum_version=1.0.0\n' > "$policy_file"
+if (load_update_policy v1.0.0-rc.1 "$policy_file") >/dev/null 2>&1; then fail 'Prerelease below its own update floor accepted.'; fi
+printf 'minimum_version=0.0.0\nminimum_version=1.0.0\n' > "$policy_file"
+if (load_update_policy v1.0.0 "$policy_file") >/dev/null 2>&1; then fail 'Duplicate update floor accepted.'; fi
+printf 'minimum_version=1.0.0\n' > "$policy_file"
 for os_name in windows darwin linux; do
   for arch in amd64 arm64; do
-    package_release "$stage" "$output" v1.0.0 "$commit" "$os_name-$arch" 2023-11-14T22:13:20Z "$mcl_work" example/launcher
-    verify_target "$output" v1.0.0 "$commit" "$os_name-$arch" "$mcl_work" example/launcher
+    package_release "$stage" "$output" v1.0.0 "$commit" "$os_name-$arch" 2023-11-14T22:13:20Z "$mcl_work" example/launcher "$policy_file"
+    verify_target "$output" v1.0.0 "$commit" "$os_name-$arch" "$mcl_work" example/launcher "$policy_file"
   done
 done
 entries=$(tar -tzf "$output/YoloMCL-1.0.0-linux-arm64.tar.gz")
 [[ "$entries" == $'YoloMCL\nLICENSE\nTHIRD_PARTY_NOTICES.md' ]] || fail 'Archive contains unexpected files.'
-if (verify_target "$output" v1.0.0 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb linux-arm64 "$mcl_work" example/launcher) >/dev/null 2>&1; then fail 'Wrong commit accepted.'; fi
+if (verify_target "$output" v1.0.0 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb linux-arm64 "$mcl_work" example/launcher "$policy_file") >/dev/null 2>&1; then fail 'Wrong commit accepted.'; fi
 printf tampered >> "$output/YoloMCL-1.0.0-linux-arm64.tar.gz"
-if (verify_target "$output" v1.0.0 "$commit" linux-arm64 "$mcl_work" example/launcher) >/dev/null 2>&1; then fail 'Tampered archive accepted.'; fi
+if (verify_target "$output" v1.0.0 "$commit" linux-arm64 "$mcl_work" example/launcher "$policy_file") >/dev/null 2>&1; then fail 'Tampered archive accepted.'; fi
 printf 'Shell regression checks passed: configuration, version gates, six-platform archives and signatures.\n'

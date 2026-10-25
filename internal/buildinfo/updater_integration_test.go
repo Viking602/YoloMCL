@@ -92,7 +92,7 @@ func main() {
 	target := runtime.GOOS + "-" + runtime.GOARCH
 	pack := exec.CommandContext(ctx, "bash", filepath.ToSlash(filepath.Join("..", "..", "scripts", "test-update.sh")),
 		stage, assets, filepath.Join(publisher, "internal", "buildinfo", "update-public-key.txt"),
-		"v1.1.0", strings.Repeat("a", 40), target)
+		"v1.1.0", strings.Repeat("a", 40), target, "1.1.0")
 	pack.Env = append(os.Environ(), "MYGO_UPDATER_PRIVATE_KEY="+base64.StdEncoding.EncodeToString(private))
 	if output, err := pack.CombinedOutput(); err != nil {
 		t.Fatalf("package signed update with release script: %v\n%s", err, output)
@@ -101,14 +101,20 @@ func main() {
 	if err != nil {
 		t.Fatal(err)
 	}
+	policy, err := DecodeUpdatePolicy(data, target, base64.StdEncoding.EncodeToString(public))
+	if err != nil || !policy.RequiresUpdate("v1.0.0") || policy.RequiresUpdate("v1.1.0") {
+		t.Fatalf("script-generated policy is not interoperable: %+v, %v", policy, err)
+	}
 	var manifest struct {
-		Version   string `json:"version"`
-		Notes     string `json:"notes"`
-		Date      string `json:"date"`
-		URL       string `json:"url"`
-		Size      int64  `json:"size"`
-		Signature string `json:"signature"`
-		Commit    string `json:"commit"`
+		Version         string `json:"version"`
+		Notes           string `json:"notes"`
+		Date            string `json:"date"`
+		URL             string `json:"url"`
+		Size            int64  `json:"size"`
+		Signature       string `json:"signature"`
+		Commit          string `json:"commit"`
+		MinimumVersion  string `json:"minimumVersion"`
+		PolicySignature string `json:"policySignature"`
 	}
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		t.Fatal(err)

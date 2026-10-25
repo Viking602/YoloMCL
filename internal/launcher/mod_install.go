@@ -42,7 +42,9 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 		plan := []ProjectVersion{}
 		seen := map[string]string{}
 		vDir := r.VersionDir()
-		installed, e := scanMods(vDir)
+		cache := s.modMetadataCache().begin(ctx)
+		defer cache.close()
+		installed, e := scanModsCached(ctx, vDir, nil, cache)
 		if e != nil {
 			return e
 		}
@@ -112,6 +114,7 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 		}
 		defer os.RemoveAll(stage)
 		files := []DownloadFile{}
+		identities := []downloadIdentity{}
 		names := map[string]bool{}
 		for i, v := range plan {
 			f, e := primaryFile(v)
@@ -133,10 +136,12 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 			if e != nil {
 				return e
 			}
-			if e = s.download(ctx, f, staged); e != nil {
+			var identity downloadIdentity
+			if e = s.downloadWithIdentity(ctx, f, staged, &identity); e != nil {
 				return e
 			}
 			files = append(files, f)
+			identities = append(identities, identity)
 		}
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -151,6 +156,9 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 		}
 		moved := map[string]string{}
 		added := []string{}
+		fresh := loadModCache(vDir)
+		workspace := beginModScan()
+		defer endModScan()
 		rollback := func() {
 			for _, path := range added {
 				_ = os.Remove(path)
@@ -162,7 +170,12 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 		for i, v := range plan {
 			f := files[i]
 			stagedMod := Mod{}
-			readModMetadata(filepath.Join(stage, f.Name), &stagedMod)
+			identity := &identities[i]
+			hash, fp, hasFP, err := workspace.readJarCached(ctx, filepath.Join(stage, f.Name), identity.Size, &stagedMod, cache, identity, nil)
+			if err != nil {
+				rollback()
+				return err
+			}
 			disabled := false
 			for _, m := range installed {
 				if (m.Source == v.Source && m.ProjectID == v.ProjectID) || (stagedMod.ModID != "" && stagedMod.ModID == m.ModID) || m.File == replace && v.ProjectID == project || strings.TrimSuffix(m.File, ".disabled") == f.Name {
@@ -178,6 +191,7 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 							return e
 						}
 						moved[orig] = bak
+						delete(fresh, m.File)
 					}
 					if !m.Enabled && v.ProjectID == project {
 						disabled = true
@@ -206,17 +220,23 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 				return e
 			}
 			added = append(added, dest)
-			hash, _, e := fileHashes(dest)
+			st, e := os.Stat(dest)
 			if e != nil {
 				rollback()
 				return e
 			}
 			records[f.Name] = modRecord{SHA1: hash, Source: v.Source, ProjectID: v.ProjectID, VersionID: v.ID}
+			fresh[name] = modCacheEntry{Size: st.Size(), MTime: st.ModTime().UnixNano(), SHA1: hash, FP: fp, HasFP: hasFP, Meta: metaOnly(stagedMod)}
+		}
+		if ctx.Err() != nil {
+			rollback()
+			return ctx.Err()
 		}
 		if e = atomicJSON(filepath.Join(vDir, ".mcl", "mods.json"), records); e != nil {
 			rollback()
 			return e
 		}
+		cache.saveLocal(ctx, vDir, fresh)
 		p("模组及依赖已安装", len(plan), len(plan))
 		return nil
 	}

@@ -134,16 +134,7 @@ func (a *App) modPage(c *ui.Context) {
 			actions()
 		}
 		if button(c, "find-mods", t.ModsExploreMoreBtn, "search", false, false) {
-			switch a.addonTab {
-			case "resourcepack":
-				a.resourceType = t.DiscoverTypeRP
-			case "shader":
-				a.resourceType = t.DiscoverTypeShader
-			default:
-				a.resourceType = t.DiscoverTypeMod
-			}
-			a.searchResult = launcher.SearchResult{}
-			a.goPage("discover")
+			a.goDiscover(a.addonTab, a.query)
 		}
 	})
 

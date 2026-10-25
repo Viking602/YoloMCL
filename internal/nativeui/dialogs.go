@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -25,6 +26,9 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 	}
 	if !a.dialogOpen {
 		if presence <= 0.01 || a.dialogShown == "" {
+			if a.dialogShown == "export" {
+				a.packExport = nil
+			}
 			a.dialogShown = ""
 			return
 		}
@@ -34,6 +38,9 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 	}
 	if a.device != nil && a.dialog == "accountAdd" {
 		a.pollDevice()
+		if a.device != nil && !a.polling && !a.pendingOp("startMicrosoft") {
+			c.After(max(0, min(time.Until(a.nextDevicePoll), time.Until(a.deviceUntil))))
+		}
 	}
 	t := a.tr()
 	a.normalizeStateValues()
@@ -87,7 +94,7 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 				}
 				title := a.dialogTitle(a.dialog)
 				ui.Text(c, title).Label("弹窗标题 " + title).FontSize(typeTitle2 * s).Bold().TextColor(ink).Grow(1).MinWidth(0).Shrink(1).SingleLine()
-				if button(c, "close-dialog", t.DialogCloseBtn, "cross", false, false) {
+				if !(a.dialog == "launcherUpdate" && a.launcherUpdateRequired()) && button(c, "close-dialog", t.DialogCloseBtn, "cross", false, false) {
 					a.closeDialog()
 				}
 			})
@@ -101,6 +108,8 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 			}
 			scrollArea(c, "dialog-content-"+a.dialog).Label("弹窗内容").FillWidth().Margin(0, -scrollGutter*s, 0, 0).Padding(0, scrollGutter*s, 0, 0).MinHeight(0).MaxHeight(max(140, min(580*s, height-42-175*s))).Gap(16 * s).Children(func() {
 				switch a.dialog {
+				case "launcherUpdate":
+					a.launcherUpdateDialog(c)
 				case "java":
 					a.javaDialog(c)
 				case "add":
@@ -121,6 +130,8 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 					a.accountAddDialog(c)
 				case "import":
 					a.importDialog(c)
+				case "export":
+					a.packExportDialog(c)
 				case "install":
 					a.installDialog(c)
 				case "packReport":
@@ -137,6 +148,9 @@ func (a *App) dialogView(c *ui.Context, host ui.Element) {
 			})
 			if a.dialog == "packUpdate" {
 				a.packUpdateFooter(c)
+			}
+			if a.dialog == "export" {
+				a.packExportFooter(c)
 			}
 			if a.dialog == "version" && a.root() != nil {
 				r := a.root()

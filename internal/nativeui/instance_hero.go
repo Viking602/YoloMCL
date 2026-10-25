@@ -38,7 +38,7 @@ func heroChip(c *ui.Context, icon, text string, strong bool) ui.Element {
 		bg, fg, edge = accent.Alpha(.10), accent, accent.Alpha(.18)
 	}
 	// Optional metadata gives way to the complete loader build and history.
-	return ui.Row(c).Shrink(1).MinWidth(0).Height(24*s).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(bg).Border(1, edge).AlignItems(ui.Center).Tooltip(text).Children(func() {
+	return tooltip(c, ui.Row(c).Shrink(1).MinWidth(0).Height(24*s).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(bg).Border(1, edge).AlignItems(ui.Center), text).Children(func() {
 		if icon != "" && icons[icon] != nil {
 			ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(fg).Shrink(0)
 		}

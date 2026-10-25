@@ -16,10 +16,12 @@ import (
 )
 
 func (s *Service) Snapshot() Snapshot {
+	// The platform memory query can be a syscall or a subprocess; never make
+	// configuration, job or launch operations wait for it.
+	sysMem, _ := SystemMemory()
 	s.mu.Lock()
 	cfg := s.cfg.clone()
 	authServers := s.authServersLocked()
-	sysMem, _ := SystemMemory()
 	jobs := s.jobListLocked()
 	running := map[string]bool{}
 	runVers := map[string][]string{}
@@ -46,7 +48,9 @@ func (s *Service) Snapshot() Snapshot {
 				versions[i].DisplayName = vc.DisplayName
 			}
 			versions[i].MemoryAuto, _ = r.MemoryPlan(versions[i].ID, cfg.Settings)
-			versions[i].AutoMemoryMB = AutoMemoryMB(AutoMemoryInput{TotalMB: sysMem.TotalMB, AvailableMB: sysMem.AvailableMB,
+			// AvailableMB is left out on purpose: free memory changes every
+			// poll and would make the snapshot digest (and the UI) churn.
+			versions[i].AutoMemoryMB = AutoMemoryMB(AutoMemoryInput{TotalMB: sysMem.TotalMB,
 				Minecraft: versions[i].Minecraft, Loader: versions[i].Loader, Mods: index.modCount(versions[i].ID).Enabled})
 		}
 		out.Instances = append(out.Instances, Instance{Root: r, Available: index.Available, Versions: versions, ModCount: index.modCount(r.SelectedVersion).Total, Pack: index.Pack, Running: running[r.ID], RunningVersions: runVers[r.ID], PackUpdate: index.PackUpdate, PackBackups: slices.Clone(index.PackBackups)})
@@ -55,7 +59,7 @@ func (s *Service) Snapshot() Snapshot {
 }
 
 // Snapshots of jobs/selection are frequent. Filesystem inventories are not:
-// reuse them, probe only known Minecraft metadata every five seconds, and
+// reuse them, validate known Minecraft metadata after filesystem changes, and
 // invalidate immediately after launcher operations. Never hold Service.mu
 // during disk IO, nor hold an entry's publication lock while rebuilding it.
 const inventoryInterval = 5 * time.Second
@@ -127,9 +131,9 @@ func (s *Service) rootInventory(r Root) *inventoryData {
 	return data
 }
 
-// RefreshInventories is called by the window's cancellable maintenance worker,
-// after the first frame and every five seconds. Snapshot itself never launches
-// unowned workers or causes file reads just because progress is being polled.
+// RefreshInventories checks metadata when the scan interval permits. Desktop
+// maintenance uses InventoryMonitor to skip unchanged directories. Snapshot
+// never launches workers or reads files just because progress is being polled.
 func (s *Service) RefreshInventories(ctx context.Context) {
 	s.mu.Lock()
 	roots := append([]Root(nil), s.cfg.Roots...)
@@ -152,7 +156,6 @@ func (s *Service) invalidateInventory(rootID string) {
 	}
 	s.mu.Unlock()
 	s.inventoryMu.Lock()
-	defer s.inventoryMu.Unlock()
 	for _, path := range paths {
 		if entry := s.inventories[path]; entry != nil {
 			entry.mu.Lock()
@@ -161,6 +164,50 @@ func (s *Service) invalidateInventory(rootID string) {
 			entry.mu.Unlock()
 		}
 	}
+	s.inventoryMu.Unlock()
+	for _, path := range paths {
+		s.invalidateStatus(path)
+	}
+}
+
+// cacheGameDir fills r.gameDir from the published inventory, without scanning
+// or touching the disk. It stays empty (VersionDir then probes) unless the
+// entry was validated in this process, is not invalidated, and knows the
+// selected version. The result is keyed to r.SelectedVersion.
+func (s *Service) cacheGameDir(r *Root) {
+	r.gameDir, r.gameDirFor = "", ""
+	if r.SelectedVersion == "" {
+		return
+	}
+	s.inventoryMu.Lock()
+	entry := s.inventories[r.Path]
+	s.inventoryMu.Unlock()
+	if entry == nil {
+		return
+	}
+	entry.mu.Lock()
+	data, dirty, checked := entry.data, entry.dirty, entry.checked
+	entry.mu.Unlock()
+	if data == nil || dirty || checked.IsZero() {
+		return
+	}
+	// The persisted cache is user-writable: accept only the two shapes the
+	// scan produces.
+	switch dir, ok := data.Directories[r.SelectedVersion]; {
+	case !ok:
+		return
+	case dir == ".":
+		r.gameDir = r.Path
+	case dir == filepath.Join("versions", r.SelectedVersion):
+		abs, err := filepath.Abs(r.Path)
+		if err != nil {
+			return
+		}
+		r.gameDir = filepath.Join(abs, dir)
+	default:
+		return
+	}
+	r.gameDirFor = r.SelectedVersion
 }
 
 // Configured roots are canonicalized when added. If a root is later replaced
@@ -202,6 +249,13 @@ func inventoryUnchanged(path string, data *inventoryData) bool {
 }
 
 func (s *Service) refreshInventory(r Root, entry *inventoryEntry) *inventoryData {
+	data, _ := s.checkInventory(r, entry)
+	return data
+}
+
+// The boolean reports validation performed by this call, not by a concurrent
+// snapshot that happened to publish while this caller waited for scanMu.
+func (s *Service) checkInventory(r Root, entry *inventoryEntry) (*inventoryData, bool) {
 	entry.scanMu.Lock()
 	defer entry.scanMu.Unlock()
 	entry.mu.Lock()
@@ -209,7 +263,7 @@ func (s *Service) refreshInventory(r Root, entry *inventoryEntry) *inventoryData
 	// Coalesce concurrent initial snapshots and invalidations.
 	if old != nil && !dirty && time.Since(entry.checked) < inventoryInterval {
 		entry.mu.Unlock()
-		return old
+		return old, false
 	}
 	entry.mu.Unlock()
 	data := old
@@ -223,7 +277,7 @@ func (s *Service) refreshInventory(r Root, entry *inventoryEntry) *inventoryData
 	if data != old {
 		s.persistInventory(entry, data)
 	}
-	return data
+	return data, true
 }
 
 func (s *Service) persistInventory(entry *inventoryEntry, data *inventoryData) {

@@ -1,7 +1,6 @@
 package nativeui
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -20,26 +19,30 @@ type logViewState struct {
 	file         string // a log file picked from the recent list
 	live         bool
 	dropped      int
+	ringTotal    int // session lines ever received when lines were parsed
 	loading      bool
 	loadingOlder bool
 	follow       bool
 	setY, maxY   float32
 	levels       map[string]bool // chips picked; none = all
 	query        string
-	match        int // current search hit, an index into hits
+	queryIn      string // query that queryLow was computed from
+	queryLow     string // lowercased, trimmed query
+	match        int    // current search hit, an index into hits
 	open         map[string]bool
 	clearAt      int // session lines before this global index are hidden
 	lastPoll     time.Time
 	gen, ver     int
 	err          string
 	// derived from lines, rebuilt when sig changes
-	sig                      string
+	sig                      logSig
 	vis                      []int
 	hits                     []int // positions in vis
 	counts                   map[string]int
 	offsets                  []float32
 	measured                 map[logMeasureKey]float32
-	layoutSig, layoutLang    string
+	layoutSig                logSig
+	layoutLang               string
 	layoutWidth, layoutScale float32
 	anchor                   *int // clicked stack heading to keep visible after expansion
 	prepended                bool
@@ -56,20 +59,61 @@ const (
 	logMaxLoaded = 4 * launcher.LogRingLines
 )
 
+// clearLines drops every reference to the old text, including keys used for
+// wrapping and expanded stacks. Keep the filters and recent-file inventory;
+// the caller owns navigation and invalidates any outstanding read generation.
+func (lv *logViewState) clearLines() {
+	lv.lines, lv.vis, lv.hits, lv.offsets = nil, nil, nil, nil
+	lv.measured, lv.open, lv.counts = nil, nil, nil
+	lv.sig, lv.layoutSig = logSig{}, logSig{}
+	lv.anchor, lv.prepended = nil, false
+}
+
+// logSig is everything derive's output depends on. The zero value never
+// matches a computed signature.
+type logSig struct {
+	valid                                         bool
+	ver, nlines, dropped, clearAt, nopen, nlevels int
+	levels                                        uint8 // bit per levelKey result
+	query                                         string
+}
+
+var logLevelKeys = [...]string{"info", "warn", "error", "debug"}
+
+func (lv *logViewState) lowerQuery() string {
+	if lv.query != lv.queryIn {
+		lv.queryIn, lv.queryLow = lv.query, strings.ToLower(strings.TrimSpace(lv.query))
+	}
+	return lv.queryLow
+}
+
+func (lv *logViewState) signature(q string) logSig {
+	sig := logSig{true, lv.ver, len(lv.lines), lv.dropped, lv.clearAt, len(lv.open), len(lv.levels), 0, q}
+	for i, k := range logLevelKeys {
+		if lv.levels[k] {
+			sig.levels |= 1 << i
+		}
+	}
+	return sig
+}
+
 // derive rebuilds visible rows, search hits and level counts when needed.
 func (lv *logViewState) derive() {
-	q := strings.ToLower(strings.TrimSpace(lv.query))
-	sig := fmt.Sprint(lv.ver, len(lv.lines), lv.dropped, lv.clearAt, q, len(lv.open), lv.levels)
+	q := lv.lowerQuery()
+	sig := lv.signature(q)
 	if sig == lv.sig {
 		return
 	}
 	lv.sig = sig
 	all := len(lv.levels) == 0
-	var groupHit map[int]bool
+	// match and groupHit are only built while searching: one lowercase of
+	// each line per derive.
+	var match, groupHit []bool
 	if q != "" {
-		groupHit = map[int]bool{}
+		match, groupHit = make([]bool, len(lv.lines)), make([]bool, len(lv.lines))
 		for i, l := range lv.lines {
 			if strings.Contains(strings.ToLower(l.Raw), q) {
+				match[i] = true
 				h := i
 				if l.Cont && l.Parent >= 0 {
 					h = l.Parent
@@ -95,10 +139,10 @@ func (lv *logViewState) derive() {
 		if !all && !lv.levels[levelKey(h.Level)] {
 			continue
 		}
-		if l.Cont && h.Stack && !lv.open[h.Raw] && !groupHit[head] {
+		if l.Cont && h.Stack && !lv.open[h.Raw] && (groupHit == nil || !groupHit[head]) {
 			continue
 		}
-		if q != "" && strings.Contains(strings.ToLower(l.Raw), q) {
+		if match != nil && match[i] {
 			lv.hits = append(lv.hits, len(lv.vis))
 		}
 		lv.vis = append(lv.vis, i)

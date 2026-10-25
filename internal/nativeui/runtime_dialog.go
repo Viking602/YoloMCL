@@ -86,7 +86,7 @@ func (a *App) versionDialog(c *ui.Context) {
 					javaNames = append(javaNames, selectedJava)
 					javaPaths[selectedJava] = a.form.VerJava
 				}
-				if selectBox(c, "ver-java-select", t.RootCfgVerJavaLabel, &selectedJava, javaNames).Grow(1).MinWidth(0).Changed() {
+				if a.javaSelectBox(c, "ver-java-select", t.RootCfgVerJavaLabel, &selectedJava, javaNames, javaPaths).Grow(1).MinWidth(0).Changed() {
 					a.form.VerJava = javaPaths[selectedJava]
 				}
 				if button(c, "ver-java-browse", t.DialogBrowseBtn, "folder", false, a.dialogPending()) {
@@ -179,7 +179,7 @@ func (a *App) rootDialog(c *ui.Context) {
 					selected = a.form.Java
 					names, paths[selected] = append(names, selected), selected
 				}
-				if selectBox(c, "root-java-select", t.RootCfgJavaLabel, &selected, names).Grow(1).MinWidth(0).Changed() {
+				if a.javaSelectBox(c, "root-java-select", t.RootCfgJavaLabel, &selected, names, paths).Grow(1).MinWidth(0).Changed() {
 					a.form.Java = paths[selected]
 				}
 				if iconOnlyButton(c, "root-java-browse", "folder", t.DialogBrowseBtn, btnMd*s, false) {
@@ -282,7 +282,9 @@ func (a *App) versionAutoMemory(r launcher.Instance, v launcher.VersionSummary, 
 	if st.Dir == "" {
 		mods = r.ModCount
 	}
-	return launcher.AutoMemoryMB(launcher.AutoMemoryInput{TotalMB: a.memoryInfo.TotalMB, AvailableMB: a.memoryInfo.AvailableMB, Minecraft: v.Minecraft, Loader: v.Loader, Mods: mods})
+	// Free memory is deliberately not an input: it would make this number
+	// differ from Snapshot's and flicker while idle.
+	return launcher.AutoMemoryMB(launcher.AutoMemoryInput{TotalMB: a.memoryInfo.TotalMB, Minecraft: v.Minecraft, Loader: v.Loader, Mods: mods})
 }
 
 // memoryModeRow is the 自动 / 手动 switch with the computed value and a

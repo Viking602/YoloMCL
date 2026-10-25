@@ -10,8 +10,9 @@ import (
 	"strings"
 )
 
-// downloadPackFiles resolves provider metadata and downloads verified pack files.
-func (s *Service) downloadPackFiles(ctx context.Context, root string, lock *PackLock, p progress) error {
+// downloadPackFilesIdentified resolves pack files and retains verified mod
+// identities for the installation cache, without retaining their contents.
+func (s *Service) downloadPackFilesIdentified(ctx context.Context, root string, lock *PackLock, p progress, verified map[string]verifiedModFile) error {
 	seen := map[string]bool{}
 	for i := range lock.Files {
 		f := &lock.Files[i]
@@ -61,8 +62,12 @@ func (s *Service) downloadPackFiles(ctx context.Context, root string, lock *Pack
 		seen[key] = true
 		p(fmt.Sprintf("下载整合包文件 (%d/%d): %s", i+1, len(lock.Files), filepath.Base(f.Path)), i+1, len(lock.Files))
 		var last error
+		var identity *downloadIdentity
+		if verified != nil && isPackMod(f.Path) {
+			identity = new(downloadIdentity)
+		}
 		for _, raw := range f.URLs {
-			last = s.download(ctx, DownloadFile{Name: f.Path, URL: raw, SHA1: f.SHA1, SHA512: f.SHA512}, target)
+			last = s.downloadWithIdentity(ctx, DownloadFile{Name: f.Path, URL: raw, SHA1: f.SHA1, SHA512: f.SHA512}, target, identity)
 			if last == nil {
 				break
 			}
@@ -73,8 +78,19 @@ func (s *Service) downloadPackFiles(ctx context.Context, root string, lock *Pack
 		if len(f.URLs) == 0 {
 			return errors.New("整合包文件缺少下载地址")
 		}
+		if identity != nil {
+			if st, err := os.Stat(target); err == nil {
+				verified[filepath.Base(target)] = verifiedModFile{downloadIdentity: *identity, mtime: st.ModTime().UnixNano()}
+			}
+		}
 	}
 	return nil
+}
+
+func isPackMod(path string) bool {
+	path = strings.ReplaceAll(path, "\\", "/")
+	return strings.HasPrefix(path, "mods/") && !strings.Contains(strings.TrimPrefix(path, "mods/"), "/") &&
+		(strings.HasSuffix(path, ".jar") || strings.HasSuffix(path, ".jar.disabled"))
 }
 
 // applyPackOverrides records each extracted override in the pack lock.

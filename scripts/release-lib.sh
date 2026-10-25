@@ -3,6 +3,42 @@
 ossl() { "${OPENSSL:-openssl}" "$@"; }
 file_size() { wc -c < "$1" | tr -d '[:space:]'; }
 
+# Compare stable numeric cores without machine-integer limits or GNU sort -V.
+stable_version_after() {
+  local left=$1 right=$2 a b i LC_ALL=C
+  for i in 1 2 3; do
+    a=${left%%.*}; b=${right%%.*}
+    if [[ ${#a} -gt ${#b} || ( ${#a} == ${#b} && "$a" > "$b" ) ]]; then return 0; fi
+    if [[ "$a" != "$b" ]]; then return 1; fi
+    left=${left#*.}; right=${right#*.}
+  done
+  return 1
+}
+
+load_update_policy() {
+  local tag=$1 file=${2:-$mcl_root/scripts/update-policy.conf} line seen=false version core
+  mcl_minimum_version=
+  [[ -f "$file" ]] || fail 'Missing scripts/update-policy.conf.'
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    trim "$line"; line=$mcl_value
+    [[ -n "$line" && "$line" != \#* ]] || continue
+    [[ "$seen" == false && "$line" == minimum_version=* ]] || fail 'Invalid or duplicate update policy setting.'
+    mcl_minimum_version=${line#minimum_version=}; seen=true
+  done < "$file"
+  [[ "$seen" == true && ${#mcl_minimum_version} -le 128 && "$mcl_minimum_version" != *-* ]] || fail 'Set minimum_version to a stable semantic version.'
+  valid_tag "v$mcl_minimum_version" || fail 'Invalid minimum_version.'
+  valid_tag "$tag" || fail 'Invalid release tag.'
+  version=${tag#v}; core=${version%%-*}
+  [[ ${#version} -le 128 ]] || fail 'Release version is too long.'
+  if stable_version_after "$mcl_minimum_version" "$core" || [[ "$core" == "$mcl_minimum_version" && "$version" == *-* ]]; then
+    fail 'minimum_version must not exceed the published release.'
+  fi
+}
+
+policy_payload() {
+  printf 'YoloMCL update policy v1\n%s\n%s\n%s\n%s\n' "$1" "$2" "$3" "$4"
+}
+
 public_der() {
   local public_file=$1 work=$2
   tr -d '[:space:]' < "$public_file" | ossl base64 -d -A > "$work/public.raw"
@@ -41,9 +77,10 @@ checksum_list() {
 
 package_release() {
   local stage=$1 output=$2 tag=$3 commit=$4 target=$5 date=$6 work=$7 repo=$8
-  local exe=YoloMCL base="YoloMCL-${tag#v}-$target" name size signed zipdir system_tar
+  local exe=YoloMCL base="YoloMCL-${tag#v}-$target" name size signed policy_signed zipdir system_tar
   local tar_options=(--format=ustar) exe_options=() data_options=() names=()
   valid_tag "$tag" || fail 'Invalid release tag.'
+  load_update_policy "$tag" "${9:-$mcl_root/scripts/update-policy.conf}"
   case "$target" in windows-amd64|windows-arm64|linux-amd64|linux-arm64|darwin-amd64|darwin-arm64) ;; *) fail 'Invalid release target.' ;; esac
   [[ "$target" != windows-* ]] || exe+=.exe
   mkdir -p "$output"
@@ -74,6 +111,9 @@ package_release() {
   ossl pkeyutl -sign -rawin -keyform DER -inkey "$work/private.der" -in "$work/digest" -out "$work/signature"
   signed=$(base64_line < "$work/signature")
   size=$(file_size "$output/$base.tar.gz")
+  policy_payload "$repo" "$target" "${tag#v}" "$mcl_minimum_version" > "$work/policy"
+  ossl pkeyutl -sign -rawin -keyform DER -inkey "$work/private.der" -in "$work/policy" -out "$work/policy-signature"
+  policy_signed=$(base64_line < "$work/policy-signature")
   # All string fields come from validated tag/repository/commit identifiers.
   cat > "$output/update-$target.json" <<EOF
 {
@@ -83,7 +123,9 @@ package_release() {
   "url": "https://github.com/$repo/releases/download/$tag/$base.tar.gz",
   "size": $size,
   "signature": "$signed",
-  "commit": "$commit"
+  "commit": "$commit",
+  "minimumVersion": "$mcl_minimum_version",
+  "policySignature": "$policy_signed"
 }
 EOF
   names=("$base.tar.gz" "update-$target.json")
@@ -119,6 +161,14 @@ manifest_field() {
 verify_target() {
   local output=$1 tag=$2 commit=$3 target=$4 work=$5 repo=$6
   local base="YoloMCL-${tag#v}-$target" manifest="$output/update-$target.json" names=()
+  load_update_policy "$tag" "${7:-$mcl_root/scripts/update-policy.conf}"
+  manifest_field "$manifest" minimumVersion
+  [[ "$mcl_field" == "$mcl_minimum_version" ]] || fail "$target: wrong minimum supported version."
+  policy_payload "$repo" "$target" "${tag#v}" "$mcl_field" > "$work/policy"
+  manifest_field "$manifest" policySignature
+  [[ "$mcl_field" =~ ^[A-Za-z0-9+/]{86}==$ ]] || fail "$target: invalid policy signature encoding."
+  printf '%s' "$mcl_field" | ossl base64 -d -A > "$work/policy-signature"
+  ossl pkeyutl -verify -pubin -rawin -keyform DER -inkey "$work/public.der" -in "$work/policy" -sigfile "$work/policy-signature" >/dev/null
   manifest_field "$manifest" version
   [[ "$mcl_field" == "${tag#v}" ]] || fail "$target: wrong release version."
   manifest_field "$manifest" commit

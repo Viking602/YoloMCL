@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"bufio"
 	"compress/gzip"
 	"encoding/binary"
 	"errors"
@@ -13,7 +14,7 @@ type LevelInfo struct {
 	Name       string
 	GameType   int32
 	Hardcore   bool
-	LastPlayed int64 // ms since epoch
+	LastPlayed int64
 }
 
 const (
@@ -22,26 +23,21 @@ const (
 )
 
 // ParseLevelDat reads LevelName, GameType, hardcore and LastPlayed from a
-// gzipped NBT level.dat without decoding anything else.
+// gzipped NBT level.dat without decoding anything else. Reading stops once
+// those fields are known, so a huge payload after them is never loaded.
 func ParseLevelDat(r io.Reader) (LevelInfo, error) {
 	gz, e := gzip.NewReader(r)
 	if e != nil {
 		return LevelInfo{}, e
 	}
 	defer gz.Close()
-	b, e := io.ReadAll(io.LimitReader(gz, maxLevelData+1))
-	if e != nil {
-		return LevelInfo{}, e
-	}
-	if len(b) > maxLevelData {
-		return LevelInfo{}, errors.New("level.dat exceeds 64 MiB")
-	}
-	p := &nbtReader{b: b}
+	p := &nbtReader{r: &limitedReader{r: bufio.NewReader(gz), n: maxLevelData}}
 	var li LevelInfo
 	if p.u8() != 10 { // root compound
 		return li, errors.New("not an NBT compound")
 	}
 	p.str()
+	got := 0
 	p.compound(func(path, name string, tag byte) bool {
 		if path != "/Data" {
 			return false
@@ -58,6 +54,10 @@ func ParseLevelDat(r io.Reader) (LevelInfo, error) {
 		default:
 			return false
 		}
+		got++
+		if got == 4 {
+			p.done = true
+		}
 		return true
 	}, "")
 	if p.err != nil {
@@ -66,30 +66,75 @@ func ParseLevelDat(r io.Reader) (LevelInfo, error) {
 	return li, nil
 }
 
+func (p *nbtReader) consumed() int { return p.r.read }
+
+// limitedReader counts bytes and fails past the cap, so a malformed length
+// can never pull more than maxLevelData out of the decompressor.
+type limitedReader struct {
+	r    io.ByteReader
+	n    int
+	read int
+}
+
+func (l *limitedReader) ReadByte() (byte, error) {
+	if l.n <= 0 {
+		return 0, errors.New("level.dat exceeds 64 MiB")
+	}
+	b, err := l.r.ReadByte()
+	if err == nil {
+		l.n--
+		l.read++
+	}
+	return b, err
+}
+
 type nbtReader struct {
-	b     []byte
-	i     int
+	r     *limitedReader
 	depth int
+	done  bool
 	err   error
 }
 
 func (p *nbtReader) take(n int) []byte {
-	if p.err != nil || n < 0 || n > len(p.b)-p.i {
-		if p.err == nil {
-			p.err = errors.New("truncated NBT")
-		}
+	if p.err != nil || n < 0 {
 		return nil
 	}
-	v := p.b[p.i : p.i+n]
-	p.i += n
-	return v
-}
-func (p *nbtReader) u8() byte {
-	if b := p.take(1); len(b) == 1 {
-		return b[0]
+	b := make([]byte, n)
+	for i := range b {
+		v, err := p.r.ReadByte()
+		if err != nil {
+			p.err = errors.New("truncated NBT")
+			return nil
+		}
+		b[i] = v
 	}
-	return 0
+	return b
 }
+
+func (p *nbtReader) discard(n int) {
+	if p.err != nil || n < 0 {
+		return
+	}
+	for range n {
+		if _, err := p.r.ReadByte(); err != nil {
+			p.err = errors.New("truncated NBT")
+			return
+		}
+	}
+}
+
+func (p *nbtReader) u8() byte {
+	if p.err != nil {
+		return 0
+	}
+	b, err := p.r.ReadByte()
+	if err != nil {
+		p.err = errors.New("truncated NBT")
+		return 0
+	}
+	return b
+}
+
 func (p *nbtReader) u16() uint16 {
 	if b := p.take(2); len(b) == 2 {
 		return binary.BigEndian.Uint16(b)
@@ -123,29 +168,30 @@ func (p *nbtReader) enter() bool {
 	return true
 }
 
-// array validates the count before multiplication, including on 32-bit hosts.
+// array validates the count before consuming it, including on 32-bit hosts.
 func (p *nbtReader) array(width int) {
 	n := int32(p.u32())
 	if p.err != nil {
 		return
 	}
-	if n < 0 || int64(n) > int64((len(p.b)-p.i)/width) {
+	if n < 0 || int64(n) > int64(p.r.n/width) {
 		p.err = errors.New("invalid NBT array length")
 		return
 	}
-	p.take(int(n) * width)
+	p.discard(int(n) * width)
 }
 
 // compound walks a compound's entries; want reads a value itself and
-// returns true, else the value is skipped.
+// returns true, else the value is skipped. done stops at the first point
+// the caller has everything it needs.
 func (p *nbtReader) compound(want func(path, name string, tag byte) bool, path string) {
 	if !p.enter() {
 		return
 	}
 	defer func() { p.depth-- }()
-	for p.err == nil {
+	for p.err == nil && !p.done {
 		tag := p.u8()
-		if tag == 0 {
+		if p.err != nil || p.done || tag == 0 {
 			return
 		}
 		name := p.str()
@@ -157,22 +203,22 @@ func (p *nbtReader) compound(want func(path, name string, tag byte) bool, path s
 }
 
 func (p *nbtReader) skip(tag byte, want func(string, string, byte) bool, path string) {
-	if p.err != nil {
+	if p.err != nil || p.done {
 		return
 	}
 	switch tag {
 	case 1:
-		p.take(1)
+		p.discard(1)
 	case 2:
-		p.take(2)
+		p.discard(2)
 	case 3, 5:
-		p.take(4)
+		p.discard(4)
 	case 4, 6:
-		p.take(8)
+		p.discard(8)
 	case 7:
 		p.array(1)
 	case 8:
-		p.str()
+		p.discard(int(p.u16()))
 	case 9:
 		if !p.enter() {
 			return
@@ -183,7 +229,7 @@ func (p *nbtReader) skip(tag byte, want func(string, string, byte) bool, path st
 			return
 		}
 		// Every non-empty list element requires at least one byte.
-		if n < 0 || n > len(p.b)-p.i || (n > 0 && (t == 0 || t > 12)) {
+		if n < 0 || n > p.r.n || (n > 0 && (t == 0 || t > 12)) {
 			p.err = errors.New("invalid NBT list length or type")
 			return
 		}

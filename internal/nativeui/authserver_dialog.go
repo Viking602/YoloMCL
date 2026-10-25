@@ -82,7 +82,7 @@ func (a *App) authServerPicker(c *ui.Context) {
 			}
 		})
 		if _, saved := byName[selected]; saved {
-			label(c, a.form.Server).FillWidth().MinWidth(0).FontSize(typeFootnote * s).SingleLine().Tooltip(a.form.Server)
+			tooltip(c, label(c, a.form.Server).FillWidth().MinWidth(0).FontSize(typeFootnote*s).SingleLine(), a.form.Server)
 		} else {
 			textField(c, &a.form.Server).Label(t.AccThirdServerLabel + "输入").Placeholder("https://example.com/api/yggdrasil").FillWidth()
 		}

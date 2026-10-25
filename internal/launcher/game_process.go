@@ -43,6 +43,7 @@ type gameLog struct {
 	secret  string
 	pending []byte
 	file    *os.File // per-session copy on disk; nil for installer logs
+	out     []byte   // decoded lines of the current write, flushed once
 }
 
 func (l *gameLog) Write(b []byte) (int, error) {
@@ -77,6 +78,17 @@ func (l *gameLog) Write(b []byte) (int, error) {
 	if len(l.lines) > 1200 {
 		l.lines = l.lines[len(l.lines)-1200:]
 	}
+	// One file write per pipe read instead of one syscall per log line.
+	if len(l.out) > 0 {
+		if l.file != nil {
+			_, _ = l.file.Write(l.out)
+		}
+		if cap(l.out) > 64<<10 {
+			l.out = nil
+		} else {
+			l.out = l.out[:0]
+		}
+	}
 	return len(b), nil
 }
 
@@ -92,7 +104,7 @@ func (l *gameLog) addLine(raw []byte) {
 		v = strings.ReplaceAll(v, l.secret, "[REDACTED]")
 	}
 	if l.file != nil {
-		_, _ = l.file.WriteString(v + "\n")
+		l.out = append(append(l.out, v...), '\n')
 	}
 	if l.ring != nil {
 		l.ring.Add(v)

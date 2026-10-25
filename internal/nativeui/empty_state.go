@@ -85,8 +85,8 @@ func emptyPanel(c *ui.Context, key, icon, title, description string) {
 	s := uiScale(c)
 	ui.Column(c.Key(key)).Font(uiSansFamily()).FillWidth().Grow(1).Basis(0).MinHeight(0).Gap(9 * s).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 		emptyArtwork(c, key, icon, s)
-		ui.Text(c, title).FillWidth().FontSize(typeHeadline * s).FontWeight(600).TextColor(inkSecondary).TextAlign(ui.Center).SingleLine().Tooltip(title)
-		ui.Text(c, description).FillWidth().MaxWidth(290 * s).Height(38 * s).Shrink(0).FontSize(typeFootnote * s).TextColor(muted).TextAlign(ui.Center).MaxLines(2).Tooltip(description)
+		tooltip(c, ui.Text(c, title).FillWidth().FontSize(typeHeadline*s).FontWeight(600).TextColor(inkSecondary).TextAlign(ui.Center).SingleLine(), title)
+		tooltip(c, ui.Text(c, description).FillWidth().MaxWidth(290*s).Height(38*s).Shrink(0).FontSize(typeFootnote*s).TextColor(muted).TextAlign(ui.Center).MaxLines(2), description)
 	})
 }
 

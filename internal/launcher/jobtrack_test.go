@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -41,6 +42,56 @@ func TestCancelDeletesOnlyCreated(t *testing.T) {
 	}
 	if _, e := os.Stat(filepath.Dir(made)); !os.IsNotExist(e) {
 		t.Fatal("created folder was left behind")
+	}
+}
+
+func TestCancelledJobStaysBusyUntilCleanupFinishes(t *testing.T) {
+	s := testService(t)
+	started, cleaning, resume := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	release := sync.OnceFunc(func() { close(resume) })
+	t.Cleanup(release)
+	id, err := s.startJob("cancel with slow cleanup", "root", func(ctx context.Context, _ progress) error {
+		s.onUndo(ctx, func() { close(cleaning); <-resume })
+		close(started)
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	if err := s.cancelJob(id); err != nil {
+		t.Fatal(err)
+	}
+	<-cleaning
+	s.mu.Lock()
+	state, finished, busy := s.jobs[id].State, s.jobs[id].Finished, s.rootLocks["root"]
+	s.mu.Unlock()
+	if state != "running" || finished != nil || !busy {
+		t.Fatalf("cleanup published an idle task: state=%s finished=%v rootBusy=%v", state, finished, busy)
+	}
+	if _, err := s.startJob("another install", "root", func(context.Context, progress) error { return nil }); err == nil {
+		t.Fatal("a new task started while the previous task was cleaning its directory")
+	}
+	release()
+	if j := waitJob(t, s, id); j.State != "cancelled" || j.Finished == nil {
+		t.Fatalf("cleanup did not publish cancellation: %+v", j)
+	}
+}
+
+func TestJobSnapshotsOwnTheirStepMaps(t *testing.T) {
+	s := testService(t)
+	s.jobs["job"] = &jobState{Job: Job{ID: "job", State: "running", Steps: map[string]string{"download": "running"}}}
+	first := s.Snapshot().Jobs[0]
+	s.mu.Lock()
+	s.jobs["job"].Steps["download"] = "done"
+	s.mu.Unlock()
+	if first.Steps["download"] != "running" {
+		t.Fatal("background progress mutated a snapshot being observed by the UI")
+	}
+	first.Steps["download"] = "from UI"
+	if got := s.Snapshot().Jobs[0].Steps["download"]; got != "done" {
+		t.Fatalf("a consumer changed live job progress: %s", got)
 	}
 }
 

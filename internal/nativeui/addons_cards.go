@@ -131,7 +131,10 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 			}
 			header.Children(func() {
 				size := 40 * s
-				icon := a.addonIcon(a.root().ID, a.root().SelectedVersion, it.kind, it.file, it.iconURL)
+				var icon ui.ImageSource
+				if !it.pending {
+					icon = a.addonIcon(a.root().ID, a.root().SelectedVersion, it.kind, it.file, it.iconURL, it.sha1)
+				}
 				ui.Box(c).Size(size, size).Shrink(0).Children(func() {
 					if icon != nil {
 						ui.Box(c).Size(size, size).Radius(size * .22).Clip().Background(panel).Center().Children(func() {
@@ -201,12 +204,12 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 					quietTag(c, it.badge, ui.Hex("#248a3d"))
 				}
 				if len(it.missing) > 0 {
-					ui.Box(c).Shrink(0).Tooltip(a.L("缺少前置：", "Missing dependencies: ") + strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("缺少前置", "Missing deps"), danger) })
+					tooltip(c, ui.Box(c).Shrink(0), a.L("缺少前置：", "Missing dependencies: ")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("缺少前置", "Missing deps"), danger) })
 				}
 			})
 			if it.latest != "" {
 				update := a.L("可更新 ", "Update ") + it.latest
-				ui.Box(c.Key("addon-update-dot")).Absolute().Right(14*s).Top(14*s).Size(8*s, 8*s).Radius(999).Background(accent).Label(update).Tooltip(update)
+				tooltip(c, ui.Box(c.Key("addon-update-dot")).Absolute().Right(14*s).Top(14*s).Size(8*s, 8*s).Radius(999).Background(accent).Label(update), update)
 			}
 		}).Clicked() {
 			onToggle()

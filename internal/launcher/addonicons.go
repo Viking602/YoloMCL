@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -45,7 +44,7 @@ func (s *Service) AddonIcon(rootID, versionID, kind, file string) ([]byte, error
 		return nil, e
 	}
 	defer z.Close()
-	files := map[string]*zip.File{}
+	files := make(map[string]*zip.File, len(z.File))
 	for _, f := range z.File {
 		files[strings.TrimPrefix(f.Name, "/")] = f
 	}
@@ -54,12 +53,7 @@ func (s *Service) AddonIcon(rootID, versionID, kind, file string) ([]byte, error
 		if f == nil || f.UncompressedSize64 > 4<<20 {
 			return nil, false
 		}
-		rc, e := f.Open()
-		if e != nil {
-			return nil, false
-		}
-		defer rc.Close()
-		b, e := io.ReadAll(io.LimitReader(rc, 4<<20))
+		b, e := readZipBytes(f, 4<<20)
 		return b, e == nil && len(b) > 0
 	}
 	var candidates []string
@@ -101,7 +95,7 @@ func (s *Service) AddonIcon(rootID, versionID, kind, file string) ([]byte, error
 var logoFileRE = regexp.MustCompile(`(?m)^\s*logoFile\s*=\s*["']([^"']+)["']`)
 
 // iconField reads fabric's icon: a path, or {"16": path, "128": path}
-// (largest wins).
+// (the smallest adequate thumbnail wins, falling back to the largest).
 func iconField(raw json.RawMessage) string {
 	var one string
 	if json.Unmarshal(raw, &one) == nil {
@@ -113,7 +107,7 @@ func iconField(raw json.RawMessage) string {
 	}
 	best, bestN := "", -1
 	for k, v := range many {
-		if n, _ := strconv.Atoi(k); n > bestN {
+		if n, _ := strconv.Atoi(k); (bestN < 128 && n > bestN) || (n >= 128 && n < bestN) {
 			best, bestN = v, n
 		}
 	}

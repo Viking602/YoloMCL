@@ -114,7 +114,7 @@ func (s *Service) stampLock(ctx context.Context, lock *PackLock, path string, lo
 }
 
 func (s *Service) lookupCursePack(ctx context.Context, path string) (ProjectVersion, error) {
-	b, e := os.ReadFile(path)
+	fp, e := fingerprintFile(ctx, path)
 	if e != nil {
 		return ProjectVersion{}, e
 	}
@@ -127,7 +127,7 @@ func (s *Service) lookupCursePack(ctx context.Context, path string) (ProjectVers
 			} `json:"exactMatches"`
 		} `json:"data"`
 	}
-	if e := s.cfJSON(c, "POST", "/fingerprints", map[string]any{"fingerprints": []uint32{curseFingerprint(b)}}, &r); e != nil {
+	if e := s.cfJSON(c, "POST", "/fingerprints", map[string]any{"fingerprints": []uint32{fp}}, &r); e != nil {
 		return ProjectVersion{}, e
 	}
 	if len(r.Data.ExactMatches) == 0 {

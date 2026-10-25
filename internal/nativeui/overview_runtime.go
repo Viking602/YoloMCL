@@ -63,7 +63,7 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 		}
 		shown := swappedContent(a, c, "runtime-java", text, text)
 		a.contentBody(c, "runtime-java").Grow(1).Basis(0).MinWidth(0).Children(func() {
-			ui.Text(c, shown).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).SingleLine().FillWidth().Tooltip(j.Path)
+			tooltip(c, ui.Text(c, shown).FontSize(typeCallout*s).FontWeight(600).TextColor(ink).SingleLine().FillWidth(), j.Path)
 		})
 		switch {
 		case j.Major > 0 && j.Major == need:

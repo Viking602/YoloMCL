@@ -72,6 +72,21 @@ func TestModScanCancellationStopsObsoletePack(t *testing.T) {
 	}
 }
 
+func TestCancelledDependencyPreviewDoesNotScanInstalledJars(t *testing.T) {
+	s := testService(t)
+	r := Root{Path: t.TempDir()}
+	testJar(t, filepath.Join(r.VersionDir(), "mods", "one.jar"), "one", "One", nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	idx, err := s.installedIndexFor(ctx, r)
+	if !errors.Is(err, context.Canceled) || idx.degraded || len(idx.byModID) != 0 {
+		t.Fatalf("cancelled preview continued as an empty/degraded scan: %+v, %v", idx, err)
+	}
+	if _, err := os.Stat(filepath.Join(r.VersionDir(), ".mcl", modCacheFile)); !os.IsNotExist(err) {
+		t.Fatal("closing dependency preview still scanned and persisted metadata")
+	}
+}
+
 func BenchmarkColdLargeJar(b *testing.B) {
 	path := filepath.Join(b.TempDir(), "large.jar")
 	f, err := os.Create(path)

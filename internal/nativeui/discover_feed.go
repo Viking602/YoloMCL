@@ -13,6 +13,10 @@ import (
 func (a *App) search() { a.searchAt(0) }
 
 func (a *App) searchAt(offset int) {
+	a.startDiscoverRequest(a.discoverQuery(offset), false)
+}
+
+func (a *App) discoverQuery(offset int) launcher.SearchQuery {
 	kind := normalizeResourceType(a.resourceType)
 	loader := loaderKey(a.filterLoader)
 	if loader == "vanilla" || (kind != "mod" && kind != "modpack") {
@@ -23,8 +27,7 @@ func (a *App) searchAt(offset int) {
 	if sortKey == "downloads" || sortKey == "updated" {
 		sort = sortKey
 	}
-	q := launcher.SearchQuery{Source: a.provider, Query: a.query, Type: kind, Minecraft: a.filterMC, Loader: loader, Offset: offset, Sort: sort, Categories: append([]string(nil), a.selectedCats()...)}
-	a.startDiscoverRequest(q, false)
+	return launcher.SearchQuery{Source: a.provider, Query: a.query, Type: kind, Minecraft: a.filterMC, Loader: loader, Offset: offset, Sort: sort, Categories: append([]string(nil), a.selectedCats()...)}
 }
 
 type discoverSearchFunc func(context.Context, launcher.SearchQuery) (launcher.SearchResult, error)
@@ -36,6 +39,87 @@ type discoverFeedState struct {
 	err        string
 	cancel     context.CancelFunc
 	fetch      discoverSearchFunc
+	idleCancel context.CancelFunc
+}
+
+const discoverRetention = time.Minute
+
+// A short visit to another page keeps the feed and its scroll position. One
+// cancellable timer expires the cache; navigating among other pages must not
+// extend its lifetime. All retained UI state is released on the UI thread.
+func (a *App) scheduleDiscoverRelease(page string) {
+	f := &a.discoverFeed
+	if page == "discover" {
+		if f.idleCancel != nil {
+			f.idleCancel()
+			f.idleCancel = nil
+		}
+		return
+	}
+	if a.page != "discover" {
+		return
+	}
+	ctx, cancel := context.WithCancel(a.ctx)
+	f.idleCancel = cancel
+	timer := time.NewTimer(discoverRetention)
+	a.bgWG.Add(1)
+	go func() {
+		defer a.bgWG.Done()
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+		a.post(func() {
+			// A return can cancel a timeout already queued for the next frame.
+			if ctx.Err() != nil || a.page == "discover" {
+				return
+			}
+			a.releaseDiscover()
+		})
+	}()
+}
+
+func (a *App) releaseDiscover() {
+	f := &a.discoverFeed
+	if f.idleCancel != nil {
+		f.idleCancel()
+	}
+	if f.cancel != nil {
+		f.cancel()
+	}
+	// A cancelled request may already have posted its result.
+	a.searchRevision++
+	released := len(a.searchResult.Projects) > 0 || len(a.discoverMotion.cardProjects) > 0
+	a.searchResult = launcher.SearchResult{}
+	a.searchLoading, a.searchError = false, ""
+	a.discoverMotion = discoverMotionState{}
+	*f = discoverFeedState{fetch: f.fetch}
+	a.discoverMCOpen = false
+	delete(a.numberRolls, "discover-total")
+	a.imageMu.Lock()
+	for key, use := range a.imageUses {
+		if use.discover {
+			if use.data != nil && use.data.refs == 1 {
+				if bitmap, ok := use.data.source.(*ui.Bitmap); ok {
+					if a.retiredImages == nil {
+						a.retiredImages = make(map[*ui.Bitmap]struct{})
+					}
+					a.retiredImages[bitmap] = struct{}{}
+				}
+			}
+			a.deleteImageLocked(key)
+			released = true
+		}
+	}
+	a.releaseRetiredImagesLocked()
+	a.imageMu.Unlock()
+	if released {
+		// Let normal idle maintenance collect detached data after animations
+		// and active jobs settle, even when no new allocation burst occurred.
+		a.cacheRelease.Add(1)
+	}
 }
 
 func (a *App) startDiscoverRequest(q launcher.SearchQuery, more bool) {

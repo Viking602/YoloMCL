@@ -76,7 +76,15 @@ func (s *Service) ListWorlds(rootID, versionID string) ([]World, error) {
 			continue
 		}
 		w := readWorldSummary(saves, en)
-		w.Size = treeBytes(filepath.Join(saves, en.Name()))
+		dir := filepath.Join(saves, en.Name())
+		if size, ok := s.cachedWorldSize(dir, s.instanceRunning(rootID, versionID)); ok {
+			w.Size = size
+		} else {
+			w.Size = treeBytes(dir)
+			if !s.instanceRunning(rootID, versionID) {
+				s.storeWorldSize(dir, w.Size)
+			}
+		}
 		w.Backups = len(listWorldBackups(filepath.Join(backups, en.Name())))
 		out = append(out, w)
 	}

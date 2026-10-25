@@ -163,6 +163,13 @@ func (s *Service) javaScope() (explicit, roots, allowed []string) {
 		}
 		for _, base := range bases {
 			for _, folder := range []string{"runtime", "runtimes", "java", "jre", ".jdks"} {
+				// Most instances have none of these folders. Avoid validating
+				// every ancestor five times just to discard a missing path in
+				// the walker. Existing candidates still pass safeJoin's checks.
+				info, err := os.Lstat(filepath.Join(base, folder))
+				if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+					continue
+				}
 				if path, err := safeJoin(base, folder); err == nil {
 					roots = append(roots, path)
 				}

@@ -77,3 +77,34 @@ func TestWardrobeWheelZoomAndOrbit(t *testing.T) {
 		t.Fatal("scrolling outside the preview zoomed the character or stopped page scrolling")
 	}
 }
+
+func TestWardrobeAutoSpinIsBoundedAndStopsWhenPaused(t *testing.T) {
+	if err := loadAssets(); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{preview: newSkinPreview()}
+	a.preview.spin = true
+	frames := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		frames++
+		c.SetTheme(theme)
+		ui.Row(c).Fill().Children(func() { a.wardrobeStage(c, 540) })
+	}, 600, 600)
+	tt.Advance(time.Second)
+	before, yaw := frames, a.preview.yaw
+	tt.Advance(time.Second)
+	if frames-before > 34 || frames-before < 25 {
+		t.Fatalf("automatic rotation rendered %d frames in one second", frames-before)
+	}
+	if turn := a.preview.yaw - yaw; turn < .55 || turn > .65 {
+		t.Fatalf("rotation speed changed with its frame rate: %g", turn)
+	}
+	a.preview.spin = false
+	tt.Frame()
+	tt.Advance(time.Second)
+	before = frames
+	tt.Advance(time.Second)
+	if frames != before {
+		t.Fatal("paused preview kept animating")
+	}
+}

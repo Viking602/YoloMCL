@@ -21,10 +21,15 @@ type titlebarLayout struct {
 	CustomControls bool
 }
 
-// titlebarOS is runtime.GOOS, or MCL_TITLEBAR_OS in tests/screenshots.
+// This screenshot-only override is fixed at startup. Font selection calls this
+// path for every label and digit, so avoid a Windows environment lookup (and
+// UTF-16 allocation) for each widget on each animation frame.
+var titlebarPlatform = os.Getenv("MCL_TITLEBAR_OS")
+
+// titlebarOS is runtime.GOOS, or the startup MCL_TITLEBAR_OS override.
 func titlebarOS() string {
-	if v := os.Getenv("MCL_TITLEBAR_OS"); v != "" {
-		return v
+	if titlebarPlatform != "" {
+		return titlebarPlatform
 	}
 	return runtime.GOOS
 }
@@ -36,7 +41,7 @@ const macTrafficInset float32 = 76
 func (a *App) titlebar(c *ui.Context) titlebarLayout {
 	bar := c.TitleBar()
 	l := titlebarLayout{OS: titlebarOS(), Left: max(bar.Left, 0), Right: max(bar.Right, 0)}
-	forced := os.Getenv("MCL_TITLEBAR_OS") != ""
+	forced := titlebarPlatform != ""
 	switch l.OS {
 	case "darwin":
 		if forced && l.Left == 0 && !a.fullScreen() {

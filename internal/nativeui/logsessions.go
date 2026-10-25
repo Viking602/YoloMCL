@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,7 +103,7 @@ func (a *App) sessionLabel(g launcher.GameSession, list []launcher.GameSession) 
 		}
 	}
 	if dup {
-		return g.Name + " #" + itoaN(g.Seq)
+		return g.Name + " #" + strconv.Itoa(g.Seq)
 	}
 	return g.Name
 }
@@ -120,9 +121,9 @@ func (a *App) sessionSwitcher(c *ui.Context, scope string, list []launcher.GameS
 			sel := cur != nil && cur.ID == g.ID
 			name := a.sessionLabel(g, list)
 			if scope != "" { // the pack tab already names the pack
-				name = "#" + itoaN(g.Seq)
+				name = "#" + strconv.Itoa(g.Seq)
 			}
-			b := ui.ButtonBase(c.Key("log-sess-"+g.ID)).Label(name).Tooltip(name+"  "+a.sessionStateText(g.State)).Height(30*s).Padding(0, 10*s, 0, 12*s).Gap(8 * s).Radius(8 * s).AlignItems(ui.Center).MaxWidth(240 * s).Shrink(0)
+			b := tooltip(c, ui.ButtonBase(c.Key("log-sess-"+g.ID)).Label(name), name+"  "+a.sessionStateText(g.State)).Height(30*s).Padding(0, 10*s, 0, 12*s).Gap(8 * s).Radius(8 * s).AlignItems(ui.Center).MaxWidth(240 * s).Shrink(0)
 			bg, fg := ui.RGBA(120, 130, 160, .10), inkSecondary
 			if sel {
 				bg, fg = panel, ink
@@ -139,7 +140,7 @@ func (a *App) sessionSwitcher(c *ui.Context, scope string, list []launcher.GameS
 					a.sessionAccount(c, g, 16*s, muted)
 				}
 				if g.State != "running" {
-					x := ui.ButtonBase(c.Key("log-sess-close-"+g.ID)).Label(a.L("关闭", "Close")).Tooltip(a.L("关闭", "Close")).Size(18*s, 18*s).Radius(5 * s).Center()
+					x := tooltip(c, ui.ButtonBase(c.Key("log-sess-close-"+g.ID)).Label(a.L("关闭", "Close")), a.L("关闭", "Close")).Size(18*s, 18*s).Radius(5 * s).Center()
 					if x.Hovered() {
 						x.Background(ui.RGBA(120, 130, 160, .18))
 					}

@@ -6,17 +6,40 @@ A native Minecraft: Java Edition launcher written in Go, powered by [MyGo](https
 
 [Download](https://github.com/Viking602/YoloMCL/releases/latest) · [中文介绍](docs/README.zh-CN.md) · [Development guidelines](docs/CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Release guide](docs/releases.md)
 
+## Screenshots
+
+### Instance overview
+
+![Instance overview with installed content, recent worlds, Java runtime, and storage usage](docs/screenshots/instance-overview.png)
+
+### Mod management
+
+![Installed mods with search, enabled and update filters, and per-mod actions](docs/screenshots/mod-management.png)
+
+### Resource discovery
+
+![Modpack discovery with Modrinth and CurseForge sources, version filters, and categories](docs/screenshots/resource-discovery.png)
+
 ## Features
 
-- **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, and NeoForge instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), review pack updates, and keep backups of overwritten files.
+- **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, and NeoForge instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), export installed instances in either format, review pack updates, and keep backups of overwritten files.
 - **Content discovery**: Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks with automatic dependency resolution.
 - **Game management**: Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
 - **Java and memory**: Detect system Java installations, environment paths, registered locations, and known runtimes in the background after the first frame. Cache detection across instance switches and allocate memory based on pack size and available RAM.
 - **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services, subject to the platform limits below. Preview skins and switch capes.
 - **Native desktop UI**: Platform-adapted title bar, DPI-aware scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
-- **Verified updates**: Check for launcher updates through GitHub Releases. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
+- **Memory-conscious rendering**: Windows defaults to software rendering with animations retained. Enable interface hardware acceleration in Settings for high-resolution displays; restart the launcher to apply. This does not change Minecraft's renderer.
+- **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
 Minecraft content scans stay within registered Minecraft directories and launcher configuration. Java detection separately checks system Java installations, environment paths, registered locations, and known runtimes; it does not traverse entire disks.
+
+### Export a modpack
+
+Select an instance, then open **Settings → Export modpack → Export…**. Choose **Modrinth (.mrpack)** or **CurseForge (.zip)**, enter a pack name and version, and select the folders/files to include. **Save and export** opens the native save dialog. Progress and cancellation are available in **Tasks & Logs**; a completed task has **Show exported file**.
+
+The export uses the selected instance's Minecraft and loader versions, including isolated version folders. Mods, configuration and scripts are selected by default; worlds, screenshots, server lists and personal options are opt-in. Launcher credentials, runtimes, game libraries, logs and caches are excluded. Disabled mods keep their disabled filenames.
+
+Verified platform files become download references; local, modified or unidentified files go into `overrides/`. If a provider cannot be reached, unidentified files are bundled so local exports can still finish. CurseForge references use project/file IDs, while Modrinth references include download URLs and SHA-1/SHA-512 hashes. Files are streamed with bounded buffers, and an existing export is replaced only after the new archive finishes successfully. Export to a location outside the game directory.
 
 ## Downloads and updates
 
@@ -30,7 +53,7 @@ Release versions come from Git tags, starting with **v1.0.0**. Settings shows th
 
 Extract the complete archive before launching. Keep the `YoloMCL.exe` / `YoloMCL` filename and install in a directory you can write to. On macOS, move the entire `.app` bundle to a writable Applications directory. Linux requires GTK 3, Pango, Cairo, and Fontconfig; install a CJK font for Chinese text.
 
-In **Settings**, use **Check for updates → Download update → Restart launcher**. The automatic check runs once after the first frame and follows stable releases. Development builds, renamed executables, and read-only installations provide a GitHub download link instead of in-place updates. Update signing is separate from operating-system trust: Windows packages currently have no Authenticode certificate, and macOS bundles are ad-hoc signed, not notarized.
+The launcher checks once after the first frame and offers available stable updates with confirmation and cancellation. You can also use **Check for updates** in **Settings**. A verified minimum-version policy can require an update before continuing; publisher configuration and compatibility limits are described in the [release guide](docs/releases.md#require-a-security-update). Restarting after installation remains an explicit action. Development builds, renamed executables, and read-only installations provide a GitHub download link instead of in-place updates. Update signing is separate from operating-system trust: Windows packages currently have no Authenticode certificate, and macOS bundles are ad-hoc signed, not notarized.
 
 ### Current platform limits
 
@@ -77,7 +100,6 @@ See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup,
 - `internal/config`: publisher service configuration, identity, and credential loading.
 - `internal/buildinfo`: version, commit, repository, and update verification key.
 - `Makefile` → `scripts/*.sh`: build, checks, signed releases, and publisher setup.
-- `plugins/startup`: repository-owned MyGo startup integration.
 
 See [Architecture](docs/architecture.md) for package boundaries and [Development guidelines](docs/CONTRIBUTING.md) for coding standards. Formatting and import ordering are enforced by `gofmt`/`goimports` and `.editorconfig`.
 

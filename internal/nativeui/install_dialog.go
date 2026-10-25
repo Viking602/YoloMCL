@@ -124,7 +124,7 @@ func (a *App) installHeader(c *ui.Context) {
 				}
 				if p.Downloads > 0 {
 					hint := fmt.Sprintf(a.L("项目总下载量：%s 次", "Total project downloads: %s"), exactDownloadCount(p.Downloads))
-					ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Tooltip(hint).Children(func() {
+					tooltip(c, ui.Row(c).Gap(4*s).AlignItems(ui.Center).Shrink(0), hint).Children(func() {
 						ui.Icon(c, icons["download"]).Size(10*s, 10*s).TextColor(muted)
 						numText(c, downloadCountText(p.Downloads, a.isEN()), typeCaption*s, muted)
 					})
@@ -141,7 +141,7 @@ func (a *App) installHeader(c *ui.Context) {
 				if b.Hovered() {
 					fg = accent
 				}
-				b.Tooltip(a.L("项目主页", "Project page")).Size(btnSm*s+2*s, btnSm*s+2*s).PaddingX(0).Justify(ui.Center)
+				tooltip(c, b, a.L("项目主页", "Project page")).Size(btnSm*s+2*s, btnSm*s+2*s).PaddingX(0).Justify(ui.Center)
 				if b.Hovered() {
 					b.Background(ui.RGBA(120, 130, 160, .10))
 				}
@@ -173,13 +173,13 @@ func (a *App) installFooter(c *ui.Context) {
 			if job != nil && job.State == "running" {
 				ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 					statusSpinner(c, 14*s)
-					ui.Text(c, job.Message).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Grow(1).Basis(0).MinWidth(0).Tooltip(job.Message)
+					tooltip(c, ui.Text(c, job.Message).FontSize(typeFootnote*s).TextColor(inkSecondary).SingleLine().Grow(1).Basis(0).MinWidth(0), job.Message)
 					if job.Total > 0 {
 						numText(c, fmt.Sprintf("%d/%d", job.Done, job.Total), typeFootnote*s, muted)
 					}
 				})
 			} else if job != nil && job.State == "failed" {
-				ui.Text(c, classifyError(a.isEN(), job.Message, nil).Title).FontSize(typeFootnote * s).TextColor(danger).FillWidth().MinWidth(0).MaxLines(2).Ellipsis("…").Tooltip(classifyError(a.isEN(), job.Message, nil).Hint)
+				tooltip(c, ui.Text(c, classifyError(a.isEN(), job.Message, nil).Title).FontSize(typeFootnote*s).TextColor(danger).FillWidth().MinWidth(0).MaxLines(2).Ellipsis("…"), classifyError(a.isEN(), job.Message, nil).Hint)
 			} else if job != nil && job.State == "completed" {
 				ui.Row(c).FillWidth().Gap(6 * s).AlignItems(ui.Center).Children(func() {
 					ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(successInk)
@@ -223,7 +223,7 @@ func (a *App) installTarget(c *ui.Context, r launcher.Instance) {
 	w = float32(math.Ceil(float64(w + (18+7+6*2)*s)))
 	ui.Row(c).FillWidth().MinWidth(0).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, a.L("安装到", "Install to")).FontSize(typeFootnote * s).TextColor(muted).Shrink(0)
-		ui.Row(c.Key("install-target")).Label("安装目标").Width(w).Height(28 * s).PaddingX(6 * s).Gap(7 * s).Radius(8 * s).Background(ui.RGBA(120, 130, 160, .10)).Font(uiSansFamily()).AlignItems(ui.Center).Shrink(1).MinWidth(0).Tooltip(name).Children(func() {
+		tooltip(c, ui.Row(c.Key("install-target")).Label("安装目标").Width(w).Height(28*s).PaddingX(6*s).Gap(7*s).Radius(8*s).Background(ui.RGBA(120, 130, 160, .10)).Font(uiSansFamily()).AlignItems(ui.Center).Shrink(1).MinWidth(0), name).Children(func() {
 			a.instIcon(c, r, v, 18*s)
 			ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0)
 		})

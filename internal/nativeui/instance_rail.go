@@ -82,7 +82,7 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(2 * s).Children(func() {
 			title, subText := n.Title, n.Sub
 			ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(typeBody * s).FontWeight(600).TextColor(fg).SingleLine().Tooltip(v.ID)
+				tooltip(c, ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(typeBody*s).FontWeight(600).TextColor(fg).SingleLine(), v.ID)
 				if n.MCTag && v.Minecraft != "" {
 					ui.Spacer(c).Grow(1)
 					a.mcTag(c, v.Minecraft, sel)
@@ -91,7 +91,7 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 			if subText == "" {
 				subText = a.loaderLine(v)
 			}
-			ui.Row(c).Height(18 * s).MinWidth(0).Gap(5 * s).AlignItems(ui.Center).Tooltip(subText).Children(func() {
+			tooltip(c, ui.Row(c).Height(18*s).MinWidth(0).Gap(5*s).AlignItems(ui.Center), subText).Children(func() {
 				ui.Box(c).Size(20*s, 18*s).Shrink(0).Radius(4 * s).Background(panel).Center().Children(func() {
 					if !loaderLogo(c, v.Loader, 14*s) {
 						ui.Icon(c, icons[loaderIconName(v.Loader)]).Size(12*s, 12*s).TextColor(inkSecondary)
@@ -106,7 +106,7 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 			ui.Box(c).Size(8*s, 8*s).Radius(999).Background(ui.Hex("#34c759")).Shrink(0)
 		} else if packHasUpdate(r, v.ID) {
 			// a pack update is waiting: a small arrow, the word is on the page
-			ui.Box(c).Size(16*s, 16*s).Radius(999).Background(ui.Hex("#ff9500").Alpha(.16)).Center().Shrink(0).Tooltip(a.tr().PackUpdateBadge).Children(func() {
+			tooltip(c, ui.Box(c).Size(16*s, 16*s).Radius(999).Background(ui.Hex("#ff9500").Alpha(.16)).Center().Shrink(0), a.tr().PackUpdateBadge).Children(func() {
 				ui.Icon(c, icons["download"]).Size(9*s, 9*s).TextColor(warningInk)
 			})
 		}

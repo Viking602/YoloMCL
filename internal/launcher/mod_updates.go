@@ -64,7 +64,7 @@ func (s *Service) ModChecksAge(rootID, versionID string) time.Duration {
 // a bounded pool. A failing step is recorded and the others still run; an
 // error is returned only when nothing could be checked.
 func (s *Service) checkModsIn(ctx context.Context, r Root, vDir string, p progress, partial func(map[string]Mod)) error {
-	mods, e := scanModsStreamContext(ctx, vDir, nil)
+	mods, e := s.scanModDirectory(ctx, vDir, nil)
 	if e != nil {
 		return e
 	}
@@ -145,11 +145,10 @@ func (s *Service) checkModsIn(ctx context.Context, r Root, vDir string, p progre
 				if st, e := os.Stat(path); e != nil || st.Size() > 256<<20 {
 					continue
 				}
-				b, e := os.ReadFile(path)
+				fp, e = fingerprintFile(ctx, path)
 				if e != nil {
 					continue
 				}
-				fp = curseFingerprint(b)
 			}
 			fps = append(fps, fp)
 			byFP[fp] = m.SHA1
@@ -194,7 +193,10 @@ func (s *Service) checkModsIn(ctx context.Context, r Root, vDir string, p progre
 									stepErrs = append(stepErrs, "CurseForge "+m.Name+": "+e.Error())
 								}
 							} else if len(vs) > 0 && vs[0].ID != m.VersionID && vs[0].Published > match.File.FileDate {
-								m.Latest = &vs[0]
+								// An element pointer would retain the backing array and
+								// every historical release for this mod until eviction.
+								latest := vs[0]
+								m.Latest = &latest
 								m.Status = "update"
 							}
 							checks[hash] = m

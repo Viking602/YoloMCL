@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
@@ -32,7 +33,7 @@ func (a *App) tasks(c *ui.Context) {
 		card(c, "job-"+j.ID, func() {
 			ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["tasks"]).Size(20*s, 20*s).TextColor(accent)
-				ui.Text(c, a.jobTitle(j)).Grow(1).Basis(0).MinWidth(0).SingleLine().FontSize(typeTitle * s).Bold().TextColor(ink).Tooltip(a.jobTitle(j))
+				tooltip(c, ui.Text(c, a.jobTitle(j)).Grow(1).Basis(0).MinWidth(0).SingleLine().FontSize(typeTitle*s).Bold().TextColor(ink), a.jobTitle(j))
 				color := muted
 				if j.State == "failed" {
 					color = danger
@@ -60,7 +61,11 @@ func (a *App) tasks(c *ui.Context) {
 						a.execute("removeJob", map[string]string{"id": j.ID}, nil)
 					}
 				}
-				if j.State == "completed" && j.ResultRef != "" && a.rootByID(j.ResultRoot) != nil {
+				if j.State == "completed" && j.TitleKey == "pack.export" && j.ResultRef != "" {
+					if button(c, "job-export-open-"+j.ID, a.L("查看导出文件", "Show exported file"), "folder", false, false) {
+						a.executeDialog(func() error { mygo.Shell.ShowItemInFolder(j.ResultRef); return nil })
+					}
+				} else if j.State == "completed" && j.ResultRef != "" && a.rootByID(j.ResultRoot) != nil {
 					a.packJobButtons(c, j)
 				} else if j.State == "completed" && j.ResultRoot != "" && a.rootByID(j.ResultRoot) != nil {
 					if button(c, "job-open-"+j.ID, t.TaskOpenDirBtn, "folder", false, false) {

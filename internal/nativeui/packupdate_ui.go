@@ -22,6 +22,7 @@ func packHasUpdate(r launcher.Instance, versionID string) bool {
 
 // packSection is the 整合包 block at the bottom of the version 设置 dialog.
 func (a *App) packSection(c *ui.Context, r launcher.Instance) {
+	a.packExportSection(c, r)
 	if r.Pack == nil {
 		return
 	}

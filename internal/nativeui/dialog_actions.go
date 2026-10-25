@@ -46,7 +46,16 @@ func (a *App) openVersionConfig(rootID, versionID string) {
 }
 
 func (a *App) openDialog(name string) {
+	if a.launcherUpdateRequired() && name != "launcherUpdate" {
+		return
+	}
+	if name == "launcherUpdate" {
+		a.launcherUpdate.prompt = false
+	}
 	a.dialogGen++
+	if name != "export" {
+		a.packExport = nil
+	}
 	t := a.tr()
 	a.dialog = name
 	a.dialogOpen = true
@@ -107,6 +116,9 @@ func (a *App) openDialog(name string) {
 }
 
 func (a *App) closeDialog() {
+	if a.dialog == "launcherUpdate" && a.launcherUpdateRequired() {
+		return
+	}
 	a.dialogGen++
 	a.cancelProjectRequests()
 	if a.device != nil {
@@ -173,4 +185,5 @@ func (a *App) chooseFiles(kind string, done func([]string)) {
 func (a *App) closeDialogNow() {
 	a.closeDialog()
 	a.dialogShown = ""
+	a.packExport = nil
 }

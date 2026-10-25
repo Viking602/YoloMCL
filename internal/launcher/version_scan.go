@@ -8,20 +8,31 @@ import (
 	"strings"
 )
 
-func findVersionJSON(root, dirName string) (string, error) {
+// findVersionJSON locates and parses a version's metadata in one read.
+func findVersionJSON(root, dirName string) (string, gameVersion, error) {
+	parse := func(p string) (gameVersion, error) {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return gameVersion{}, err
+		}
+		var gv gameVersion
+		err = json.Unmarshal(b, &gv)
+		return gv, err
+	}
 	p, e := safeJoin(root, "versions/"+dirName+"/"+dirName+".json")
 	if e == nil {
 		if _, err := os.Stat(p); err == nil {
-			return p, nil
+			gv, err := parse(p)
+			return p, gv, err
 		}
 	}
 	vDir, e := safeJoin(root, "versions/"+dirName)
 	if e != nil {
-		return "", e
+		return "", gameVersion{}, e
 	}
 	files, e := os.ReadDir(vDir)
 	if e != nil {
-		return "", e
+		return "", gameVersion{}, e
 	}
 	for _, f := range files {
 		if f.IsDir() || !strings.HasSuffix(strings.ToLower(f.Name()), ".json") {
@@ -31,16 +42,11 @@ func findVersionJSON(root, dirName string) (string, error) {
 		if err != nil {
 			continue
 		}
-		b, err := os.ReadFile(cand)
-		if err != nil {
-			continue
-		}
-		var gv gameVersion
-		if json.Unmarshal(b, &gv) == nil && (gv.MainClass != "" || gv.InheritsFrom != "" || len(gv.Libraries) > 0) {
-			return cand, nil
+		if gv, err := parse(cand); err == nil && (gv.MainClass != "" || gv.InheritsFrom != "" || len(gv.Libraries) > 0) {
+			return cand, gv, nil
 		}
 	}
-	return "", os.ErrNotExist
+	return "", gameVersion{}, os.ErrNotExist
 }
 func scanVersions(root string) []VersionSummary {
 	versions, _ := scanVersionsWithFiles(root)
@@ -63,19 +69,14 @@ func scanVersionsWithFiles(root string) ([]VersionSummary, []string) {
 			continue
 		}
 		files = append(files, filepath.Join("versions", entry.Name()))
-		p, e := findVersionJSON(root, entry.Name())
-		if e != nil {
+		p, v, e := findVersionJSON(root, entry.Name())
+		if p == "" {
 			continue
 		}
 		if rel, err := filepath.Rel(root, p); err == nil {
 			files = append(files, rel)
 		}
-		b, e := os.ReadFile(p)
 		if e != nil {
-			continue
-		}
-		var v gameVersion
-		if json.Unmarshal(b, &v) != nil {
 			continue
 		}
 		metadata[entry.Name()] = v

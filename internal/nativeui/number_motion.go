@@ -19,6 +19,11 @@ type numberRollState struct {
 	target, displayed string
 	columns           []numberColumns
 	digits            map[string]*numberDigitState
+	size              float32
+	weight            int
+	color             ui.Color
+	digitWidth        float32
+	height            float32
 }
 
 type numberColumns struct{ integer, fraction int }
@@ -51,9 +56,13 @@ func (a *App) rollNumber(c *ui.Context, key, text string, size float32, weight i
 		a.numberRolls[key] = state
 	}
 	span := ui.Span{Text: "0", Font: uiSansFamily(), Features: "tnum", Size: size, Weight: weight}
-	digitWidth, height := c.MeasureText(0, span)
-	_, fullHeight := c.MeasureText(0, ui.Span{Text: text, Font: span.Font, Features: span.Features, Size: size, Weight: weight})
-	height = max(height, fullHeight)
+	digitWidth, height := state.digitWidth, state.height
+	if fresh || state.size != size || state.weight != weight || state.color != color || digitWidth == 0 {
+		digitWidth, height = c.MeasureText(0, span)
+		_, fullHeight := c.MeasureText(0, ui.Span{Text: text, Font: span.Font, Features: span.Features, Size: size, Weight: weight})
+		height = max(height, fullHeight)
+		state.size, state.weight, state.color, state.digitWidth, state.height = size, weight, color, digitWidth, height
+	}
 	box := ui.Row(c.Key("number-" + key)).Label("动态数字 " + key).Height(height).MinWidth(0).AlignItems(ui.Center)
 	if right {
 		box.Justify(ui.End)
@@ -118,7 +127,7 @@ func (a *App) rollNumber(c *ui.Context, key, text string, size float32, weight i
 						slot.Left(x)
 						if p.point {
 							slot.Label("小数点 " + id).Children(func() { numberFace(c, string(p.char), 0, span, digitWidth, height, color) })
-						} else if !state.rollDigit(c, slot, id, p.char, direction, delays[i], fresh, span, digitWidth, height, color) {
+						} else if !state.rollDigit(c, slot, id, p.char, direction, delays[i], fresh, old == "", span, digitWidth, height, color) {
 							settled = false
 						}
 					}
@@ -135,8 +144,7 @@ func (a *App) rollNumber(c *ui.Context, key, text string, size float32, weight i
 	state.target = text
 	return box
 }
-
-func (st *numberRollState) rollDigit(c *ui.Context, slot ui.Element, id string, char byte, direction float32, delay time.Duration, fresh bool, span ui.Span, width, height float32, color ui.Color) bool {
+func (st *numberRollState) rollDigit(c *ui.Context, slot ui.Element, id string, char byte, direction float32, delay time.Duration, fresh, initial bool, span ui.Span, width, height float32, color ui.Color) bool {
 	d := st.digits[id]
 	if d == nil {
 		d = &numberDigitState{char: ' ', anim: motionNumber}
@@ -153,12 +161,17 @@ func (st *numberRollState) rollDigit(c *ui.Context, slot ui.Element, id string, 
 	if char >= '0' && char <= '9' {
 		presence = 1
 	}
-	if fresh || c.Preferences().ReduceMotion {
+	if fresh || initial || c.Preferences().ReduceMotion {
 		if presence == 1 {
 			d.target = float32(char - '0')
 		}
 		position = slot.Jump("roll", d.target)
-		slot.Jump("presence", presence)
+		// A loading placeholder has no previous numeric value. Fade in the
+		// real digits instead of rolling every column from an invented zero.
+		// Subsequent values still use the normal staggered odometer motion.
+		if fresh || c.Preferences().ReduceMotion {
+			slot.Jump("presence", presence)
+		}
 	} else if d.char != char {
 		moving := position != d.target
 		d.anim = motionNumber

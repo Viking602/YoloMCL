@@ -108,7 +108,9 @@ func (a *App) logsDialog(c *ui.Context) {
 		// native transition retains an inert copy while the list returns.
 		lv.gen++
 		lv.file, lv.key, lv.path, lv.err = "", "", "", ""
-		lv.lines, lv.loading, lv.loadingOlder = nil, false, false
+		lv.loading, lv.loadingOlder = false, false
+		lv.clearLines()
+		a.logText = ""
 		c.AnimationFrame()
 	}
 }
@@ -327,7 +329,7 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 			if levelRank(head.Level) == 0 {
 				msgFg = inkSecondary
 			}
-			ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 " + fmt.Sprint(i)).Grow(1).MinWidth(0).Tooltip(l.Raw)
+			tooltip(c, ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 "+fmt.Sprint(i)).Grow(1).MinWidth(0), l.Raw)
 			return
 		}
 		if l.Structured() {
@@ -335,7 +337,7 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 			if full == "" {
 				full = l.Time
 			}
-			ui.Text(c, l.Time).Width(84 * s).Shrink(0).FontSize(typeCaption * s).FontFeatures("tnum").TextColor(muted).SingleLine().Tooltip(full)
+			tooltip(c, ui.Text(c, l.Time).Width(84*s).Shrink(0).FontSize(typeCaption*s).FontFeatures("tnum").TextColor(muted).SingleLine(), full)
 			if l.Level != "" {
 				ui.Row(c).Width(52 * s).Height(16 * s).Shrink(0).Radius(4 * s).Background(chip).Center().Unselectable().Children(func() {
 					ui.Text(c, l.Level).FontSize(typeCaption2 * s).FontWeight(700).TextColor(fg).NoWrap()
@@ -347,9 +349,9 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 			if who == "" {
 				who = l.Thread
 			}
-			ui.Text(c, who).Width(140 * s).Shrink(0).FontSize(typeCaption * s).TextColor(muted).SingleLine().Tooltip(strings.TrimSpace(l.Thread + "  " + l.Logger))
+			tooltip(c, ui.Text(c, who).Width(140*s).Shrink(0).FontSize(typeCaption*s).TextColor(muted).SingleLine(), strings.TrimSpace(l.Thread+"  "+l.Logger))
 		}
-		text := ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 " + fmt.Sprint(i)).Grow(1).MinWidth(0).Tooltip(l.Raw)
+		text := tooltip(c, ui.RichText(c, highlightSpans(logMessage(l), q, msgFg, typeCaption*s, mark == 2)...).Label("日志正文 "+fmt.Sprint(i)).Grow(1).MinWidth(0), l.Raw)
 		if l.Structured() {
 			text.SingleLine()
 		}

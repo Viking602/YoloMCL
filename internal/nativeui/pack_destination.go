@@ -93,7 +93,7 @@ func (a *App) packDestFields(c *ui.Context) {
 				col, icon = danger, "info"
 			}
 			ui.Icon(c, icons[icon]).Size(11*s, 11*s).TextColor(col).Shrink(0)
-			ui.Text(c, msg).FontSize(typeCaption * s).TextColor(col).SingleLine().Shrink(1).MinWidth(0).Tooltip(msg)
+			tooltip(c, ui.Text(c, msg).FontSize(typeCaption*s).TextColor(col).SingleLine().Shrink(1).MinWidth(0), msg)
 		})
 	})
 }

@@ -103,7 +103,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 							names = append(names, sel)
 							paths[sel] = a.form.VerJava
 						}
-						if selectBox(c, "ver-java-select", t.RootCfgVerJavaLabel, &sel, names).Grow(1).MinWidth(0).Changed() {
+						if a.javaSelectBox(c, "ver-java-select", t.RootCfgVerJavaLabel, &sel, names, paths).Grow(1).MinWidth(0).Changed() {
 							a.form.VerJava = paths[sel]
 						}
 						has := false

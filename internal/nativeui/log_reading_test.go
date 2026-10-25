@@ -3,6 +3,7 @@ package nativeui
 import (
 	"bytes"
 	"fmt"
+	"hash/maphash"
 	"math"
 	"net/url"
 	"path/filepath"
@@ -293,4 +294,28 @@ func TestLogNavigationCanReverseWhileReading(t *testing.T) {
 		t.Fatalf("rapid navigation left a stale or displaced view: reader=%+v viewport=%+v", reader, viewport)
 	}
 	snapshotUI(t, tt, "log-navigation-interrupted")
+}
+
+func TestReturningFromLogReleasesTextCaches(t *testing.T) {
+	a, tt := logNavigationTester(t)
+	clickUI(t, tt, "latest.log")
+	a.logView.key = "file:latest.log"
+	a.logView.lines = parseLogLines([]string{"A report line"}, "")
+	a.logView.ver++
+	tt.Frame()
+	tt.Advance(400 * time.Millisecond)
+	// Wrapped lines and expanded stacks can keep an old multi-megabyte tail
+	// alive even after the parsed lines themselves have been cleared.
+	text := strings.Repeat("retained old log ", 1<<16)
+	a.logView.measured = map[logMeasureKey]float32{{text: maphash.String(logHashSeed, text)}: 48}
+	a.logView.open = map[string]bool{text: true}
+	clickUI(t, tt, a.L("返回", "Back"))
+	tt.Advance(400 * time.Millisecond)
+	lv := &a.logView
+	if len(lv.lines)+len(lv.measured)+len(lv.open)+len(lv.vis)+len(lv.hits)+len(lv.offsets) != 0 {
+		t.Fatal("closed log still retains its text or derived layout")
+	}
+	if !tt.HasText("日志文件列表") || len(lv.recent) != 2 {
+		t.Fatal("clearing log contents removed the recent-file list")
+	}
 }

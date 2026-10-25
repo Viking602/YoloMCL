@@ -2,7 +2,6 @@ package nativeui
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -15,15 +14,8 @@ func uiScale(c *ui.Context) float32 {
 }
 
 func (a *App) View(c *ui.Context) {
-	for {
-		select {
-		case fn := <-a.events:
-			fn()
-		default:
-			goto ready
-		}
-	}
-ready:
+	a.frameSerial.Add(1)
+	a.drainEvents()
 	a.refreshSystemLanguage()
 	s := uiScale(c)
 	localTheme := *theme
@@ -37,7 +29,11 @@ ready:
 	localTheme.Scrollbar = ui.Transparent
 	localTheme.ScrollbarWidth = scrollHitWidth
 	c.SetTheme(&localTheme)
-	c.After(250 * time.Millisecond)
+	a.prepareLauncherUpdateDialog()
+	if a.launcherUpdateRequired() {
+		a.launcherUpdateGate(c)
+		return
+	}
 	if a.dialog != "" && !a.dialogOpen {
 		a.closeDialog()
 	}
@@ -111,7 +107,7 @@ func (a *App) windowBar(c *ui.Context) {
 	tb := a.titlebar(c)
 	height := max(barHeight*s, 36)
 	ui.Row(c.Key("window-title")).Label("主导航").Height(height).FillWidth().Padding(0, tb.Right, 0, tb.Left+18*s).Gap(10 * s).AlignItems(ui.Center).DragWindow().Children(func() {
-		ui.Row(c.Key("sidebar-brand")).Label(t.BrandAria).Tooltip(t.AppTitle).AlignItems(ui.Center).Gap(space2 * s).Shrink(0).Children(func() {
+		tooltip(c, ui.Row(c.Key("sidebar-brand")).Label(t.BrandAria), t.AppTitle).AlignItems(ui.Center).Gap(space2 * s).Shrink(0).Children(func() {
 			brandMark(c, 23.5*s)
 			ui.Text(c, "YoloMCL").FontSize(typeHeadline * s).FontWeight(800).TextColor(ink).NoWrap()
 		})
@@ -119,7 +115,7 @@ func (a *App) windowBar(c *ui.Context) {
 		a.navBar(c)
 		ui.Spacer(c).Grow(1)
 		a.jobPill(c)
-		langBtn := ui.ButtonBase(c.Key("lang-toggle")).Label(t.LangToggleLabel).Tooltip(t.LangToggleTooltip).Height(btnSm*s).PaddingX(12*s).Gap(5*s).Radius(999).Border(1, glassEdge).Shadow(0, 1, 3, 0, ui.RGBA(40, 52, 110, .08)).AlignItems(ui.Center)
+		langBtn := tooltip(c, ui.ButtonBase(c.Key("lang-toggle")).Label(t.LangToggleLabel), t.LangToggleTooltip).Height(btnSm*s).PaddingX(12*s).Gap(5*s).Radius(999).Border(1, glassEdge).Shadow(0, 1, 3, 0, ui.RGBA(40, 52, 110, .08)).AlignItems(ui.Center)
 		if langBtn.Hovered() {
 			langBtn.Background(panel)
 		} else {
@@ -210,8 +206,7 @@ func (a *App) settingsBack(c *ui.Context) {
 		prev = "home"
 	}
 	name := map[string]string{"home": t.NavHome, "mods": t.NavMods, "discover": t.NavDiscover, "wardrobe": t.NavWardrobe, "tasks": t.NavTasks}[prev]
-	b := ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel).
-		Tooltip(fmt.Sprintf(a.L("返回%s", "Back to %s"), name)).Size(34*s, 34*s).Shrink(0).Radius(11 * s).Center()
+	b := tooltip(c, ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel), fmt.Sprintf(a.L("返回%s", "Back to %s"), name)).Size(34*s, 34*s).Shrink(0).Radius(11 * s).Center()
 	styleButton(b, s, false, false)
 	if b.Children(func() {
 		ui.Icon(c, icons["chevron-left"]).Size(15*s, 15*s).TextColor(inkSecondary)
@@ -237,8 +232,10 @@ func (a *App) scrollEndPad(s float32) float32 {
 // chromeBg is the shared title bar + sidebar material.
 var chromeBg = ui.Hex("#edf0f7")
 
+var contentBackground = ui.Hex("#f9fafd")
+
 // contentPanel is the lighter, inset content surface: one hairline, one
 // radius, the same 10-DIP margin to the window edges everywhere.
 func contentPanel(e ui.Element, s float32) ui.Element {
-	return e.Margin(0, 10*s, 10*s, 0).Radius(14*s).Background(ui.Hex("#f9fafd")).Border(1, ui.RGBA(60, 70, 110, .10)).Clip().Shadow(0, 1*s, 3*s, 0, ui.RGBA(30, 40, 80, .04))
+	return e.Margin(0, 10*s, 10*s, 0).Radius(14*s).Background(contentBackground).Border(1, ui.RGBA(60, 70, 110, .10)).Clip().Shadow(0, 1*s, 3*s, 0, ui.RGBA(30, 40, 80, .04))
 }

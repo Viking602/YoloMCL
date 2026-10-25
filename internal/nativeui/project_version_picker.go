@@ -144,7 +144,7 @@ func (a *App) versionRow(c *ui.Context, v launcher.ProjectVersion, recommended b
 			fg = accent
 		}
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
-			ui.Text(c, num).FontFeatures("tnum").FontSize(typeCallout * s).FontWeight(650).TextColor(fg).SingleLine().FillWidth().Tooltip(num + "\n" + v.Name)
+			tooltip(c, ui.Text(c, num).FontFeatures("tnum").FontSize(typeCallout*s).FontWeight(650).TextColor(fg).SingleLine().FillWidth(), num+"\n"+v.Name)
 			ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Clip().Children(func() {
 				a.versionGameBadge(c, v)
 				for _, l := range v.Loaders {
