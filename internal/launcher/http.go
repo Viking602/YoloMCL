@@ -256,7 +256,7 @@ func (s *Service) downloadOnceIdentified(ctx context.Context, f DownloadFile, de
 	}
 	defer res.Body.Close()
 	a, b, c := sha1.New(), sha512.New(), sha256.New()
-	var hashes io.Writer = io.MultiWriter(a, b, c)
+	hashes := io.MultiWriter(a, b, c)
 	var measured downloadIdentity
 	if identity != nil {
 		hashes = io.MultiWriter(hashes, &measured)
