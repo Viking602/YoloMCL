@@ -2,7 +2,7 @@
 
 # YoloMCL
 
-A native Minecraft: Java Edition launcher written in Go, powered by [MyGo](https://github.com/egoist/mygo). No WebView, HTML frontend, or local web server.
+A native Minecraft: Java Edition launcher written in Go with [MyGo](https://github.com/egoist/mygo) for Windows, macOS, and Linux.
 
 [Download](https://github.com/Viking602/YoloMCL/releases/latest) · [中文介绍](docs/README.zh-CN.md) · [Development guidelines](docs/CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Release guide](docs/releases.md)
 
@@ -25,13 +25,11 @@ A native Minecraft: Java Edition launcher written in Go, powered by [MyGo](https
 - **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, and NeoForge instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), export installed instances in either format, review pack updates, and keep backups of overwritten files.
 - **Content discovery**: Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks with automatic dependency resolution.
 - **Game management**: Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
-- **Java and memory**: Detect system Java installations, environment paths, registered locations, and known runtimes in the background after the first frame. Cache detection across instance switches and allocate memory based on pack size and available RAM.
+- **Java and memory**: Detect installed Java runtimes and allocate memory from pack size and available RAM.
 - **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services, subject to the platform limits below. Preview skins and switch capes.
-- **Native desktop UI**: Platform-adapted title bar, DPI-aware scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
-- **Memory-conscious rendering**: Windows defaults to software rendering with animations retained. Enable interface hardware acceleration in Settings for high-resolution displays; restart the launcher to apply. This does not change Minecraft's renderer.
+- **Desktop UI**: High-DPI scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
+- **Rendering**: Windows defaults to software rendering; interface hardware acceleration can be enabled in Settings (restart required).
 - **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
-
-Minecraft content scans stay within registered Minecraft directories and launcher configuration. Java detection separately checks system Java installations, environment paths, registered locations, and known runtimes; it does not traverse entire disks.
 
 ### Export a modpack
 
@@ -39,7 +37,7 @@ Select an instance, then open **Settings → Export modpack → Export…**. Cho
 
 The export uses the selected instance's Minecraft and loader versions, including isolated version folders. Mods, configuration and scripts are selected by default; worlds, screenshots, server lists and personal options are opt-in. Launcher credentials, runtimes, game libraries, logs and caches are excluded. Disabled mods keep their disabled filenames.
 
-Verified platform files become download references; local, modified or unidentified files go into `overrides/`. If a provider cannot be reached, unidentified files are bundled so local exports can still finish. CurseForge references use project/file IDs, while Modrinth references include download URLs and SHA-1/SHA-512 hashes. Files are streamed with bounded buffers, and an existing export is replaced only after the new archive finishes successfully. Export to a location outside the game directory.
+Verified platform files become download references; local, modified or unidentified files go into `overrides/`. If a provider cannot be reached, unidentified files are bundled so local exports can still finish. CurseForge references use project/file IDs, while Modrinth references include download URLs and SHA-1/SHA-512 hashes. Files are streamed with bounded buffers, and an existing export is replaced only after the new archive finishes. Save exports outside the game directory.
 
 ## Downloads and updates
 
@@ -64,7 +62,7 @@ All six targets are built by the release workflow. Some existing features are no
 
 ## Build from source
 
-Use the Go version in [`go.mod`](go.mod), currently **Go 1.27.3**, GNU Make, and Bash. Checks and signed releases also require OpenSSL 3 and standard archive tools (tar, gzip, and zip; Windows uses its built-in tar for ZIP). Configuration, compilation, and packaging run in Shell scripts. No frontend toolchain or Python runtime is required. On Windows, run Make from Git Bash; install GNU Make separately if needed.
+Use the Go version in [`go.mod`](go.mod), currently **Go 1.27.3**, GNU Make, and Bash. Checks and signed releases also require OpenSSL 3 and standard archive tools (`tar`, `gzip`, and `zip`; Windows uses its built-in `tar` for ZIP). On Windows, run Make from Git Bash and install GNU Make if needed.
 
 ```sh
 make build                      # development executable in .cache/
@@ -74,7 +72,7 @@ make fmt                        # format code and check import boundaries
 make build BUILD_ARGS="--goos linux --goarch arm64 --output build/YoloMCL-linux-arm64"
 ```
 
-`make build` produces `.cache/MCL-dev.exe` on Windows and `.cache/MCL-dev` on macOS/Linux. Launch that file to run the application. `Makefile` is the common entry point; `scripts/build.sh` calls `go build` directly. `--release` removes the MyGo inspector and requires publisher configuration; a modified or untagged checkout still identifies itself as `dev`. Use `make build BUILD_ARGS="--release --output build/YoloMCL.exe"` for a Windows production build. Shell scripts can also be invoked directly with Bash.
+`make build` writes `.cache/MCL-dev.exe` on Windows and `.cache/MCL-dev` on macOS/Linux. `--release` disables the MyGo inspector and requires publisher configuration; a modified or untagged checkout still reports `dev`. Use `make build BUILD_ARGS="--release --output build/YoloMCL.exe"` for a Windows release binary.
 
 Publisher configuration is read from the environment or a local, ignored `.env`:
 
@@ -89,7 +87,7 @@ Use your own CurseForge API key and Microsoft application client ID for forks. N
 
 [Release](.github/workflows/release.yml) runs on `v*` tags. It checks the code on Windows, macOS, and Linux, builds amd64/arm64 packages, signs platform update archives, verifies all six sets, and publishes a complete GitHub Release. Failed checks or builds leave the release unpublished. The tag must be a valid version such as `v1.0.0` and point to a clean commit.
 
-See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup, and publishing. The updater uses MyGo's public API; no MyGo source files are patched.
+See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup, and publishing.
 
 ## Project layout
 
