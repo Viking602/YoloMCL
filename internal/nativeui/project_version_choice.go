@@ -15,7 +15,7 @@ type projectChoiceState struct {
 // snapshots and old releases. Editing text never commits a partial version.
 func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 	s, st := uiScale(c), &a.projectMCChoice
-	all := a.L("全部游戏版本", "All game versions")
+	all := a.L("discover_versions.all_game_versions")
 	selected := a.verFilter.mc
 	if selected == "" {
 		selected = all
@@ -32,8 +32,8 @@ func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 	arrowClicked := false
 	row.Children(func() {
 		cb = ui.ComboboxBase(c.Key("project-mc"), &st.text)
-		tooltip(c, cb.Input.Label(a.L("项目游戏版本筛选", "Project game version filter")).FontSize(typeBody*s).TextColor(ink).Grow(1).Basis(0).MinWidth(0), selected)
-		if ui.ButtonBase(c.Key("project-mc-arrow")).Label(a.L("展开游戏版本", "Choose game version")).Size(18*s, 18*s).Center().Shrink(0).Children(func() {
+		tooltip(c, cb.Input.Label(a.L("project_version_choice.project_game_version_filter")).FontSize(typeBody*s).TextColor(ink).Grow(1).Basis(0).MinWidth(0), selected)
+		if ui.ButtonBase(c.Key("project-mc-arrow")).Label(a.L("project_version_choice.choose_game_version")).Size(18*s, 18*s).Center().Shrink(0).Children(func() {
 			ui.Icon(c, icons["chevron-down"]).Size(15*s, 15*s).TextColor(muted)
 		}).Clicked() {
 			arrowClicked = true
@@ -66,7 +66,7 @@ func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 		scrollArea(c, "project-mc-options").Label("游戏版本选项").MaxHeight(250*s).FillWidth().Padding(0, scrollGutter*s, 0, 0).Children(func() {
 			ui.Column(c).FillWidth().Gap(2 * s).Children(func() {
 				if len(shown) == 0 {
-					ui.Text(c, a.L("没有匹配的游戏版本", "No matching game version")).FontSize(typeFootnote * s).TextColor(muted).Padding(10 * s)
+					ui.Text(c, a.L("project_version_choice.no_matching_game_version")).FontSize(typeFootnote * s).TextColor(muted).Padding(10 * s)
 				}
 				for _, opt := range shown {
 					item := cb.Item(opt).Label("游戏版本选项 "+opt).FillWidth().Padding(8*s, 12*s).Radius(8 * s).AlignItems(ui.Center).Gap(8 * s)

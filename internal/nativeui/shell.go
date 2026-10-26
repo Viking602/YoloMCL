@@ -206,7 +206,7 @@ func (a *App) settingsBack(c *ui.Context) {
 		prev = "home"
 	}
 	name := map[string]string{"home": t.NavHome, "mods": t.NavMods, "discover": t.NavDiscover, "wardrobe": t.NavWardrobe, "tasks": t.NavTasks}[prev]
-	b := tooltip(c, ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel), fmt.Sprintf(a.L("返回%s", "Back to %s"), name)).Size(34*s, 34*s).Shrink(0).Radius(11 * s).Center()
+	b := tooltip(c, ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel), fmt.Sprintf(a.L("shell.back_to"), name)).Size(34*s, 34*s).Shrink(0).Radius(11 * s).Center()
 	styleButton(b, s, false, false)
 	if b.Children(func() {
 		ui.Icon(c, icons["chevron-left"]).Size(15*s, 15*s).TextColor(inkSecondary)

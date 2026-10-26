@@ -73,14 +73,14 @@ func (a *App) preferences(c *ui.Context) {
 func (a *App) accountSettings(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	settingsGroup(c, "账号面板", a.L("账号", "Account"), "", func() {
+	settingsGroup(c, "账号面板", a.L("logpanels.account"), "", func() {
 		ac := a.account()
-		name, desc := t.SideAccountAdd, a.L("还没有账号，添加后所有实例共用", "No account yet; one account is shared by every instance")
+		name, desc := t.SideAccountAdd, a.L("settings.no_account_yet_one_account_is_shared_by")
 		if ac != nil {
 			name = ac.Name
 			desc = a.accountKindTag(*ac)
 			if n := len(a.snapshot.Accounts); n > 1 {
-				desc += fmt.Sprintf(a.L("，共 %d 个账号", ", %d accounts"), n)
+				desc += fmt.Sprintf(a.L("settings.accounts"), n)
 			}
 		}
 		lead := func() {
@@ -91,7 +91,7 @@ func (a *App) accountSettings(c *ui.Context) {
 			})
 		}
 		settingRow(c, lead, name, desc, func() {
-			text, icon := a.L("管理账号", "Manage"), "account"
+			text, icon := a.L("settings.manage"), "account"
 			if ac == nil {
 				text, icon = t.SideAccountAdd, "plus"
 			}
@@ -117,7 +117,7 @@ func (a *App) settingsHeader(c *ui.Context) {
 		ui.Row(c.Key("settings-actions")).Label("设置操作栏").Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			tooltip(c, ui.Row(c).Label("设置自动保存提示"), t.SettingsDefaultHint).Padding(5*s, 9*s).Gap(5 * s).Radius(999).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["check"]).Size(11*s, 11*s).TextColor(successInk)
-				ui.Text(c, a.L("自动保存", "Auto-save")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
+				ui.Text(c, a.L("settings.auto_save")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
 			})
 			if fixedButton(c, "reset-settings", t.SettingsResetBtn, "refresh", 0, btnMd*s, false, false) {
 				recommended := 4096
@@ -200,7 +200,7 @@ func (a *App) javaRow(c *ui.Context) {
 	t := a.tr()
 	hint := t.SettingsJavaAutoHint
 	if a.settings.JavaPath != "" {
-		hint = a.L("使用所选的 Java 运行时启动游戏。", "Launch games with the selected Java runtime.")
+		hint = a.L("settings.launch_games_with_the_selected_java_runtime")
 	} else if a.javaScanning {
 		hint = t.SettingsJavaScanningHint
 	}
@@ -342,19 +342,20 @@ func (a *App) versionAndLangSettings(c *ui.Context) {
 	rows := []func(){
 		func() {
 			settingRow(c, rowIcon(c, "globe", [2]ui.Color{ui.Hex("#0a84ff"), ui.Hex("#5e5ce6")}), t.SettingsLanguageLabel, "", func() {
-				auto := a.L("跟随系统", "System")
+				auto := a.L("settings.system")
+				zh, en := a.L("language.zh"), a.L("language.en")
 				current := auto
 				switch launcher.NormalizeLanguage(a.settings.Language) {
 				case LangZH:
-					current = "简体中文"
+					current = zh
 				case LangEN:
-					current = "English"
+					current = en
 				}
-				if picked, ok := segmented(c, "lang", []string{auto, "简体中文", "English"}, current, 25*s); ok {
+				if picked, ok := segmented(c, "lang", []string{auto, zh, en}, current, 25*s); ok {
 					switch picked {
-					case "English":
+					case en:
 						a.setLanguage(LangEN)
-					case "简体中文":
+					case zh:
 						a.setLanguage(LangZH)
 					default:
 						a.setLanguage("")
@@ -372,10 +373,10 @@ func (a *App) versionAndLangSettings(c *ui.Context) {
 	}
 	if runtime.GOOS == "windows" {
 		rows = append(rows, func() {
-			settingRow(c, nil, a.L("界面硬件加速", "Interface hardware acceleration"),
-				a.L("默认使用低内存渲染并保留动画；高分辨率下可开启加速。重启启动器后生效。", "Off uses less memory and keeps animations. Enable for high-resolution displays. Restart to apply."), func() {
-					if nativeToggle(c, "hardware-acceleration", a.L("界面硬件加速开关", "Enable interface hardware acceleration"), &a.settings.HardwareAcceleration).Changed() {
-						a.persistSettings(a.L("已保存渲染设置，重启启动器后生效", "Rendering preference saved. Restart the launcher to apply."))
+			settingRow(c, nil, a.L("settings.interface_hardware_acceleration"),
+				a.L("settings.off_uses_less_memory_and_keeps_animations_enable"), func() {
+					if nativeToggle(c, "hardware-acceleration", a.L("settings.enable_interface_hardware_acceleration"), &a.settings.HardwareAcceleration).Changed() {
+						a.persistSettings(a.L("settings.rendering_preference_saved_restart_the_launcher_to_apply"))
 					}
 				}, nil)
 		})

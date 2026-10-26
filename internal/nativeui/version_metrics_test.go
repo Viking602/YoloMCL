@@ -83,7 +83,7 @@ func TestVersionDownloadsAcrossResourceTypes(t *testing.T) {
 					date, _ := tt.Find(updatedAgo(a.isEN(), published, tt.Now()) + "  116 MB")
 					tt.Move(date.X+date.W/2, date.Y+date.H/2)
 					tt.Advance(time.Second)
-					hint := fmt.Sprintf(a.L("发布时间：%s", "Published: %s"), published.Local().Format("2006-01-02 15:04:05"))
+					hint := fmt.Sprintf(a.L("version_metrics.published"), published.Local().Format("2006-01-02 15:04:05"))
 					if !strings.Contains(strings.Join(tt.Texts(), "\n"), hint) {
 						t.Fatalf("version hover does not show its full local release time: %v", tt.Texts())
 					}

@@ -32,7 +32,7 @@ func (a *App) applyJobNotice(old, cur []launcher.Job) {
 		}
 		switch {
 		case j.State == "completed" && j.TitleKey == "pack.export":
-			a.message, a.errorMessage = a.L("整合包已导出，可在任务中查看文件。", "Modpack exported. Show the file from Tasks."), false
+			a.message, a.errorMessage = a.L("task_notices.modpack_exported_show_the_file_from_tasks"), false
 		case j.State == "completed" && j.TitleKey == "pack.update":
 			a.message, a.errorMessage = t.PackUpdateDone, false
 		case j.State == "completed" && j.TitleKey == "pack.rollback":

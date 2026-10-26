@@ -43,7 +43,7 @@ func TestOverviewRefreshButtonRecalculatesNestedStorage(t *testing.T) {
 	waitUI(t, tt, func() bool { return !a.statusLoading && a.instStatus.Sizes["saves"] == 3 })
 	tt.Advance(400 * time.Millisecond)
 	write("saves/world/region/b.mca", "newregion")
-	clickUI(t, tt, a.L("刷新概览", "Refresh overview"))
+	clickUI(t, tt, a.L("overview.refresh_overview"))
 	waitUI(t, tt, func() bool { return !a.statusLoading && a.instStatus.Sizes["saves"] == 12 })
 	if a.instStatus.RecentWorld == nil || a.instStatus.RecentWorld.Size != 12 {
 		t.Fatal("manual refresh did not update the recent world's size")

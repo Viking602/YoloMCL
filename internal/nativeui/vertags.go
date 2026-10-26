@@ -312,5 +312,5 @@ func (a *App) releaseLabel(t string) (string, ui.Color) {
 	case "alpha":
 		return "Alpha", danger
 	}
-	return a.L("正式", "Release"), successInk
+	return a.L("vertags.release"), successInk
 }

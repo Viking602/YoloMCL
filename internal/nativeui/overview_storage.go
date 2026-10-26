@@ -9,15 +9,15 @@ import (
 )
 
 var dirParts = []struct {
-	sub, zh, en, tab string
-	tone             ui.Color
+	sub, tab string
+	tone     ui.Color
 }{
-	{"mods", "模组", "Mods", "mods", ui.Hex("#007aff")},
-	{"resourcepacks", "资源包", "Resource packs", "resourcepack", ui.Hex("#34c759")},
-	{"shaderpacks", "光影", "Shaders", "shader", ui.Hex("#ff9500")},
-	{"saves", "存档", "Worlds", "worlds", ui.Hex("#af52de")},
-	{"screenshots", "截图", "Screenshots", "", ui.Hex("#5ac8fa")},
-	{"other", "其他", "Other", "", ui.Hex("#8b96b0")},
+	{"mods", "mods", ui.Hex("#007aff")},
+	{"resourcepacks", "resourcepack", ui.Hex("#34c759")},
+	{"shaderpacks", "shader", ui.Hex("#ff9500")},
+	{"saves", "worlds", ui.Hex("#af52de")},
+	{"screenshots", "", ui.Hex("#5ac8fa")},
+	{"other", "", ui.Hex("#8b96b0")},
 }
 
 func storageBytes(st launcher.InstanceStatus, sub string) int64 {
@@ -49,7 +49,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 			if st.Total > 0 {
 				share = float32(float64(n) / float64(st.Total))
 			}
-			segment := tooltip(c, ui.Box(c.Key("storage-segment-"+p.sub)).Label("存储占比 "+p.sub).FillHeight().Basis(0).MinWidth(0).Background(p.tone), a.L(p.zh, p.en)+"  "+fmtSize(n))
+			segment := tooltip(c, ui.Box(c.Key("storage-segment-"+p.sub)).Label("存储占比 "+p.sub).FillHeight().Basis(0).MinWidth(0).Background(p.tone), a.L("storage.label."+p.sub)+"  "+fmtSize(n))
 			segment.Grow(segment.AnimateTo("share", share, motionPack))
 		}
 	})
@@ -60,7 +60,6 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 		}
 	}
 	counts := map[string]int{"mods": st.Mods, "resourcepacks": st.ResourcePacks, "shaderpacks": st.Shaders, "saves": st.Saves, "screenshots": st.Screenshots}
-	units := map[string][2]string{"mods": {"%d 个", "%d mods"}, "resourcepacks": {"%d 个", "%d packs"}, "shaderpacks": {"%d 个", "%d shaders"}, "saves": {"%d 个世界", "%d worlds"}, "screenshots": {"%d 张", "%d shots"}}
 	for _, p := range dirParts {
 		p := p
 		size := storageBytes(st, p.sub)
@@ -68,7 +67,7 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 		if p.sub != "mods" && size == 0 && n == 0 {
 			continue // empty: nothing to show
 		}
-		b := ui.ButtonBase(c.Key("ov-dir-"+p.sub)).Label(a.L(p.zh, p.en)).FillWidth().Height(30*s).Shrink(0).PaddingX(8*s).Margin(0, -8*s, 0, -8*s).Radius(7 * s).Gap(10 * s).AlignItems(ui.Center)
+		b := ui.ButtonBase(c.Key("ov-dir-"+p.sub)).Label(a.L("storage.label."+p.sub)).FillWidth().Height(30*s).Shrink(0).PaddingX(8*s).Margin(0, -8*s, 0, -8*s).Radius(7 * s).Gap(10 * s).AlignItems(ui.Center)
 		if !c.Preferences().ReduceMotion {
 			b.Transition(ui.ElementTransition{Animation: &motionPack, Position: true, Enter: &ui.Motion{Opacity: 0, Y: 6 * s}})
 		}
@@ -79,16 +78,16 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 		b.Background(b.AnimateColor("bg", bg, fastAnim))
 		if b.Children(func() {
 			ui.Box(c).Size(8*s, 8*s).Radius(2 * s).Background(p.tone).Shrink(0)
-			ui.Box(c).Width(116 * s).Shrink(0).Clip().Children(func() { label(c, a.L(p.zh, p.en)).FontSize(typeCallout * s).NoWrap() })
+			ui.Box(c).Width(116 * s).Shrink(0).Clip().Children(func() { label(c, a.L("storage.label."+p.sub)).FontSize(typeCallout * s).NoWrap() })
 			ui.Row(c).Grow(1).Basis(0).MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Clip().Children(func() {
 				if p.sub == "other" {
-					label(c, a.L("配置、日志、备份等", "Config, logs, backups…")).FontSize(typeCaption * s).SingleLine().MinWidth(0).Shrink(1)
+					label(c, a.L("overview_storage.config_logs_backups")).FontSize(typeCaption * s).SingleLine().MinWidth(0).Shrink(1)
 				}
 				if p.sub == "mods" && updates > 0 {
-					quietTag(c, fmt.Sprintf(a.L("%d 个可更新", "%d updates"), updates), accent)
-				} else if u, ok := units[p.sub]; ok {
+					quietTag(c, fmt.Sprintf(a.L("overview_storage.updates"), updates), accent)
+				} else if _, ok := counts[p.sub]; ok {
 					key := "storage-count-" + p.sub
-					text := fmt.Sprintf(a.L(u[0], u[1]), n)
+					text := fmt.Sprintf(a.L("storage.count."+p.sub), n)
 					a.rollNumber(c, key, text, typeCallout*s, 600, ink).FillWidth()
 				}
 			})
@@ -132,11 +131,11 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 			text = swappedContent(a, c, "storage-path", text, text)
 			a.contentBody(c, "storage-path").Children(func() { ui.Text(c, text).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth() })
 		})
-		if fixedButton(c, "ov-copy-path", a.L("复制路径", "Copy path"), "doc", 0, btnSm*s, false, false) && a.overviewActionReady("storage-path") {
+		if fixedButton(c, "ov-copy-path", a.L("java_installed.copy_path"), "doc", 0, btnSm*s, false, false) && a.overviewActionReady("storage-path") {
 			c.WriteClipboard(dir)
-			a.notice(a.L("已复制路径", "Path copied"))
+			a.notice(a.L("java_installed.path_copied"))
 		}
-		if fixedButton(c, "ov-open-folder", a.L("打开文件夹", "Open folder"), "folder", 0, btnSm*s, false, false) && a.overviewActionReady("storage-path") {
+		if fixedButton(c, "ov-open-folder", a.L("addons_tab.open_folder"), "folder", 0, btnSm*s, false, false) && a.overviewActionReady("storage-path") {
 			a.openSub("")
 		}
 	})

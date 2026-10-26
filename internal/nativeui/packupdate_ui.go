@@ -284,7 +284,7 @@ func (a *App) packUpdateFooter(c *ui.Context) {
 	}
 	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
 		ui.Icon(c, icons["refresh"]).Size(12*s, 12*s).TextColor(muted).Shrink(0)
-		ui.Text(c, a.L("更新前自动备份，可随时回滚", "Backed up first; you can roll back")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
+		ui.Text(c, a.L("packupdate_ui.backed_up_first_you_can_roll_back")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
 		if button(c, "pack-cancel", t.PackCancelBtn, "", false, a.pendingOp("applyPackUpdate")) {
 			go a.service.DiscardPackUpdate(p.ID)
 			a.closeDialog()
@@ -326,7 +326,7 @@ func prettyGame(g string) string {
 func (a *App) gameChangeText(old, new string) string {
 	of, nf := strings.Fields(old), strings.Fields(new)
 	if len(of) == 3 && len(nf) == 3 && of[0] == nf[0] && of[1] == nf[1] {
-		return fmt.Sprintf(a.L("加载器将变更：%s %s → %s", "Loader changes: %s %s → %s"), loaderLabel(nf[1]), of[2], nf[2])
+		return fmt.Sprintf(a.L("packupdate_ui.loader_changes"), loaderLabel(nf[1]), of[2], nf[2])
 	}
-	return a.L("游戏版本将变更：", "Game changes: ") + prettyGame(old) + " → " + prettyGame(new)
+	return a.L("packupdate_ui.game_changes") + prettyGame(old) + " → " + prettyGame(new)
 }

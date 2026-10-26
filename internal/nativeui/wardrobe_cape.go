@@ -169,7 +169,7 @@ func (a *App) wardrobeCapeCard(c *ui.Context) {
 		if a.appearanceLoading && len(a.appearance.Capes) == 0 {
 			ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				statusSpinner(c, 12*s)
-				ui.Text(c, a.L("正在读取披风", "Loading capes")).FontSize(typeFootnote * s).TextColor(muted)
+				ui.Text(c, a.L("wardrobe_cape.loading_capes")).FontSize(typeFootnote * s).TextColor(muted)
 			})
 			return
 		}
@@ -190,16 +190,16 @@ func (a *App) wardrobeCapeCard(c *ui.Context) {
 			}
 		})
 		if len(a.appearance.Capes) == 0 {
-			emptyNote(c, "capes-empty", "account", a.L("这个账号还没有披风", "This account has no capes yet"), "")
+			emptyNote(c, "capes-empty", "account", a.L("wardrobe_cape.this_account_has_no_capes_yet"), "")
 		}
 		ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			changed := a.selectedCape != active
 			hint := ""
 			if changed {
-				hint = a.L("预览中，应用后对游戏生效", "Previewing. Apply to use it in game")
+				hint = a.L("wardrobe_cape.previewing_apply_to_use_it_in_game")
 			}
 			ui.Text(c, hint).FontSize(typeCaption * s).TextColor(muted).Grow(1).MinWidth(0)
-			if raw := a.capeBytes(a.selectedCape); len(raw) > 0 && fixedButton(c, "save-cape", a.L("保存", "Save"), "download", 0, btnMd*s, false, false) {
+			if raw := a.capeBytes(a.selectedCape); len(raw) > 0 && fixedButton(c, "save-cape", a.L("wardrobe_cape.save"), "download", 0, btnMd*s, false, false) {
 				a.saveTexture(safePNGName(a.selectedCape, "_cape"), raw, true)
 			}
 			why := whyOf(a.texturePending("cape") || w.applying, t.WhyBusy, !a.appearance.CanCape, a.skinWhy())
@@ -217,10 +217,10 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 	failed := a.wd().capeFailed[cape.URL]
 	tip := name
 	if cape.Active {
-		tip = name + a.L("（使用中）", " (in use)")
+		tip = name + a.L("wardrobe_cape.in_use")
 	}
 	if failed {
-		tip += a.L("\n加载失败，点击重试", "\nCouldn't load preview. Click to retry")
+		tip += a.L("wardrobe_cape.couldn_t_load_preview_click_to_retry")
 	}
 	// Fixed box: thumbnail, one name line, nothing else, so rows align.
 	b := tooltip(c, ui.ButtonBase(c.Key("cape-"+key)).Label(name), tip).Size(w, h).Shrink(0).Column().Gap(5 * s).AlignItems(ui.Center)
@@ -239,7 +239,7 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 			} else if failed {
 				ui.Column(c).Label("披风加载失败 " + name).Gap(5 * s).AlignItems(ui.Center).Children(func() {
 					ui.Icon(c, icons["refresh"]).Size(16*s, 16*s).TextColor(muted)
-					ui.Text(c, a.L("重试", "Retry")).FontSize(typeCaption * s).TextColor(muted)
+					ui.Text(c, a.L("discover_feed.retry")).FontSize(typeCaption * s).TextColor(muted)
 				})
 			} else if a.wd().capeAsked[cape.URL] {
 				ui.Box(c).Label("披风正在加载 " + name).Children(func() { statusSpinner(c, 12*s) })

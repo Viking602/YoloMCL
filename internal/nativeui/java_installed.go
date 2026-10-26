@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -18,20 +19,20 @@ func (a *App) javaSection(c *ui.Context) {
 	ui.Column(c.Key("java-section")).Label("Java 运行环境面板").Font(uiSansFamily()).FillWidth().Gap(14 * s).Children(func() {
 		ui.Row(c).FillWidth().Wrap().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(180 * s).Gap(5 * s).Children(func() {
-				ui.Text(c, a.L("Java 运行环境", "Java runtimes")).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink)
+				ui.Text(c, a.L("java_installed.java_runtimes")).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink)
 				ui.Row(c).Height(18 * s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 					if len(g.list) == 0 && (busy || !a.javaScannedOnce) {
-						ui.Text(c, a.L("正在查找可用环境", "Finding available runtimes")).FontSize(typeFootnote * s).TextColor(muted)
+						ui.Text(c, a.L("java_installed.finding_available_runtimes")).FontSize(typeFootnote * s).TextColor(muted)
 						return
 					}
-					a.rollNumber(c, "java-installed-count", fmt.Sprintf(a.L("%d 个环境", "%d installed"), len(g.list)), typeFootnote*s, 500, muted)
+					a.rollNumber(c, "java-installed-count", fmt.Sprintf(a.L("java_installed.installed"), len(g.list)), typeFootnote*s, 500, muted)
 					var total int64
 					for _, j := range g.list {
 						total += max(0, j.Size)
 					}
 					if total > 0 {
 						ui.Box(c).Width(1).Height(10 * s).Background(line)
-						tooltip(c, a.rollNumber(c, "java-installed-size", fmtSize(total), typeFootnote*s, 500, muted), a.L("已检测到的安装目录占用空间", "Disk space of the detected installations"))
+						tooltip(c, a.rollNumber(c, "java-installed-size", fmtSize(total), typeFootnote*s, 500, muted), a.L("java_installed.disk_space_of_the_detected_installations"))
 					}
 					if busy {
 						statusSpinner(c, 12*s)
@@ -39,10 +40,10 @@ func (a *App) javaSection(c *ui.Context) {
 				})
 			})
 			ui.Row(c).Shrink(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				if fixedButton(c, "java-rescan", a.L("重新扫描", "Rescan"), "refresh", 0, btnSm*s, false, busy) {
+				if fixedButton(c, "java-rescan", a.L("java_installed.rescan"), "refresh", 0, btnSm*s, false, busy) {
 					a.refreshJavaList(true)
 				}
-				if fixedButton(c, "java-get-open", a.L("下载 Java", "Download Java"), "download", 0, btnSm*s, true, false) {
+				if fixedButton(c, "java-get-open", a.L("i18n.download_java"), "download", 0, btnSm*s, true, false) {
 					need := 0
 					if r := a.root(); r != nil {
 						if v := a.versionInfo(r.ID, r.SelectedVersion); v != nil {
@@ -55,9 +56,9 @@ func (a *App) javaSection(c *ui.Context) {
 		})
 		if len(g.list) == 0 {
 			if busy || !a.javaScannedOnce {
-				loadingState(c, "java-none", a.L("正在检测已安装的 Java", "Looking for installed Java"))
+				loadingState(c, "java-none", a.L("java_installed.looking_for_installed_java"))
 			} else {
-				emptyState(c, "java-none", "terminal", a.L("还没有 Java 运行环境", "No Java runtimes yet"), a.L("下载所需版本后，就可以启动对应的游戏。", "Download a compatible Java version to launch your game."), nil)
+				emptyState(c, "java-none", "terminal", a.L("java_installed.no_java_runtimes_yet"), a.L("java_installed.download_a_compatible_java_version_to_launch_your"), nil)
 			}
 			return
 		}
@@ -92,7 +93,7 @@ func (a *App) javaGroups(c *ui.Context) {
 							tooltip(c, ui.Text(c, javaSuits(a, major)).FontSize(typeFootnote*s).TextColor(muted).SingleLine(), javaSuits(a, major))
 						})
 						ui.Row(c).Shrink(0).Padding(4*s, 9*s).Radius(999).Background(panel).Border(1, line.Alpha(.65)).Children(func() {
-							a.rollNumber(c, fmt.Sprintf("java-group-count-%d", major), fmt.Sprintf(a.L("%d 个环境", "%d installed"), len(by[major])), typeCaption*s, 500, inkSecondary)
+							a.rollNumber(c, fmt.Sprintf("java-group-count-%d", major), fmt.Sprintf(a.L("java_installed.installed"), len(by[major])), typeCaption*s, 500, inkSecondary)
 						})
 					})
 					for i, j := range by[major] {
@@ -118,13 +119,13 @@ func (a *App) javaListRow(c *ui.Context, j launcher.InstalledJava, used int, isA
 				tooltip(c, ui.Text(c, vendor).Label("Java 发行方 "+j.Path).MaxWidth(190*s).MinWidth(0).Shrink(1).FontSize(typeCallout*s).FontWeight(650).TextColor(ink).SingleLine(), vendor)
 				tooltip(c, numText(c, j.Version, typeFootnote*s, inkSecondary).MaxWidth(160*s).MinWidth(0).Shrink(1).SingleLine(), j.Version)
 				if isAuto {
-					tooltip(c, ui.Row(c).Shrink(0).Padding(3*s, 7*s).Gap(4*s).Radius(999).Background(successInk.Alpha(.08)).AlignItems(ui.Center), a.L("自动选择此 Java 主版本时，优先使用这个环境", "Preferred when automatically choosing this Java major version")).Children(func() {
+					tooltip(c, ui.Row(c).Shrink(0).Padding(3*s, 7*s).Gap(4*s).Radius(999).Background(successInk.Alpha(.08)).AlignItems(ui.Center), a.L("java_installed.preferred_when_automatically_choosing_this_java_major_version")).Children(func() {
 						ui.Icon(c, icons["check"]).Size(10*s, 10*s).TextColor(successInk)
-						ui.Text(c, a.L("自动选用", "Auto pick")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
+						ui.Text(c, a.L("java_installed.auto_pick")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
 					})
 				}
 				if j.Managed {
-					quietTag(c, a.L("YoloMCL 安装", "By YoloMCL"), accent)
+					quietTag(c, a.L("java_installed.by_yolomcl"), accent)
 				}
 			})
 			// Measure the actual text column; system installations no longer
@@ -143,13 +144,10 @@ func (a *App) javaListRow(c *ui.Context, j launcher.InstalledJava, used int, isA
 		})
 		ui.Column(c).Label("Java 使用情况 " + j.Path).Width(100 * s).Shrink(0).Gap(6 * s).AlignItems(ui.End).Children(func() {
 			if used > 0 {
-				text := fmt.Sprintf(a.L("%d 个实例在用", "%d instances"), used)
-				if a.isEN() && used == 1 {
-					text = "1 instance"
-				}
+				text := fmt.Sprintf(i18n.Plural(a.isEN(), "java.used", used), used)
 				a.rollNumber(c, "java-use-"+j.Path, text, typeFootnote*s, 550, accent, true)
 			} else {
-				ui.Text(c, a.L("暂未使用", "Not in use")).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
+				ui.Text(c, a.L("java_installed.not_in_use")).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 			}
 			if j.Size > 0 {
 				a.rollNumber(c, "java-size-"+j.Path, fmtSize(j.Size), typeCaption*s, 400, muted, true)
@@ -185,11 +183,11 @@ func javaBrandIcon(c *ui.Context, vendor string, size float32) {
 func (a *App) javaListActions(c *ui.Context, j launcher.InstalledJava) {
 	s := uiScale(c)
 	g := &a.javaGet
-	if iconOnlyButton(c, "java-copy-"+j.Path, "doc", a.L("复制路径", "Copy path"), btnSm*s, false) {
+	if iconOnlyButton(c, "java-copy-"+j.Path, "doc", a.L("java_installed.copy_path"), btnSm*s, false) {
 		c.WriteClipboard(j.Path)
-		a.notice(a.L("已复制路径", "Path copied"))
+		a.notice(a.L("java_installed.path_copied"))
 	}
-	if iconOnlyButton(c, "java-open-"+j.Path, "folder", a.L("打开文件夹", "Open folder"), btnSm*s, false) {
+	if iconOnlyButton(c, "java-open-"+j.Path, "folder", a.L("addons_tab.open_folder"), btnSm*s, false) {
 		if e := openPath(j.Home); e != nil {
 			a.message, a.errorMessage = a.friendlyErr(e), true
 		}
@@ -198,15 +196,15 @@ func (a *App) javaListActions(c *ui.Context, j launcher.InstalledJava) {
 		return
 	}
 	if g.confirm != j.Home {
-		if fixedButton(c, "java-uninstall-"+j.Path, a.L("卸载", "Uninstall"), "trash", 76*s, btnSm*s, false, false) {
+		if fixedButton(c, "java-uninstall-"+j.Path, a.L("java_installed.uninstall"), "trash", 76*s, btnSm*s, false, false) {
 			g.confirm = j.Home
 		}
-	} else if dangerButton(c, "java-uninstall-ok-"+j.Path, a.L("确认卸载", "Confirm"), btnSm*s, false) {
+	} else if dangerButton(c, "java-uninstall-ok-"+j.Path, a.L("java_installed.confirm"), btnSm*s, false) {
 		g.confirm = ""
 		if e := a.service.UninstallJava(j.Home); e != nil {
 			a.message, a.errorMessage = a.friendlyErr(e), true
 		} else {
-			a.notice(a.L("已卸载 ", "Uninstalled ") + "Java " + j.Version)
+			a.notice(a.L("java_installed.uninstalled") + "Java " + j.Version)
 		}
 		a.refreshJavaList(true)
 	}

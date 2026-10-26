@@ -36,16 +36,16 @@ func TestRecentServerOnlineAndUnreachableCards(t *testing.T) {
 					})
 				}, width, 1024)
 				tt.Advance(400 * time.Millisecond)
-				if !tt.HasText("42 ms") || !tt.HasText("NeoForge 1.21.1") || !tt.HasText("8 / 20") || !tt.HasText(a.L("在线玩家", "Players online")) {
+				if !tt.HasText("42 ms") || !tt.HasText("NeoForge 1.21.1") || !tt.HasText("8 / 20") || !tt.HasText(a.L("server_ui.players_online")) {
 					t.Fatalf("missing server information: %v", tt.Texts())
 				}
-				card, _ := tt.Find(a.L("最近服务器", "Recent server"))
+				card, _ := tt.Find(a.L("server_ui.recent_server"))
 				info, _ := tt.Find("服务器信息")
 				copy, _ := tt.Find("按钮文字 ov-copy-server")
 				if info.Y+info.H > copy.Y || copy.Y+copy.H > card.Y+card.H {
 					t.Fatalf("card content overlaps: %+v %+v %+v", card, info, copy)
 				}
-				clickUI(t, tt, a.L("复制地址", "Copy address"))
+				clickUI(t, tt, a.L("server_ui.copy_address"))
 				if tt.Clipboard() != strings.TrimSuffix(address, ":25565") {
 					t.Fatal("copy did not match the displayed server address")
 				}
@@ -60,7 +60,7 @@ func TestRecentServerOnlineAndUnreachableCards(t *testing.T) {
 				a.recentPing.cache[address] = serverProbe{checked: checked}
 				tt.Frame()
 				tt.Advance(400 * time.Millisecond)
-				if !tt.HasText(a.L("服务器不可达", "Server unreachable")) || tt.HasText("42 ms") || tt.HasText("NeoForge 1.21.1") || a.message != previousMessage || a.errorMessage != previousError {
+				if !tt.HasText(a.L("server_ui.server_unreachable")) || tt.HasText("42 ms") || tt.HasText("NeoForge 1.21.1") || a.message != previousMessage || a.errorMessage != previousError {
 					t.Fatalf("unreachable card retained stale data or raised an error: %v error=%v %s", tt.Texts(), a.errorMessage, a.message)
 				}
 				snapshotUI(t, tt, fmt.Sprintf("server-offline-%d-%s", width, lang))

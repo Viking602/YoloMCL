@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -44,25 +45,25 @@ func (a *App) tasks(c *ui.Context) {
 				}
 				badge(c, a.jobStateText(j.State), color)
 				if j.Attempt > 0 {
-					quietTag(c, fmt.Sprintf(a.L("重试 %d", "Retry %d"), j.Attempt), muted)
+					quietTag(c, fmt.Sprintf(a.L("tasks.retry"), j.Attempt), muted)
 				}
-				if j.State == "running" && iconOnlyButton(c, "cancel-"+j.ID, "cross", a.L("取消并清理已下载的文件", "Cancel and clean up"), btnSm*s, false) {
+				if j.State == "running" && iconOnlyButton(c, "cancel-"+j.ID, "cross", a.L("tasks.cancel_and_clean_up"), btnSm*s, false) {
 					a.execute("cancelJob", map[string]string{"id": j.ID}, nil)
 				}
-				if j.State == "failed" && iconOnlyButton(c, "job-retry-"+j.ID, "refresh", a.L("从中断处继续重试", "Retry from where it stopped"), btnSm*s, false) {
+				if j.State == "failed" && iconOnlyButton(c, "job-retry-"+j.ID, "refresh", a.L("tasks.retry_from_where_it_stopped"), btnSm*s, false) {
 					a.execute("retryJob", map[string]string{"id": j.ID}, nil)
 				}
 				if j.State != "running" {
-					tip := a.L("移除任务并清理未完成的文件", "Remove and clean up")
+					tip := a.L("tasks.remove_and_clean_up")
 					if j.State == "completed" {
-						tip = a.L("从列表移除（不删除内容）", "Remove from list (keeps content)")
+						tip = a.L("tasks.remove_from_list_keeps_content")
 					}
 					if iconOnlyButton(c, "job-remove-"+j.ID, "trash", tip, btnSm*s, false) {
 						a.execute("removeJob", map[string]string{"id": j.ID}, nil)
 					}
 				}
 				if j.State == "completed" && j.TitleKey == "pack.export" && j.ResultRef != "" {
-					if button(c, "job-export-open-"+j.ID, a.L("查看导出文件", "Show exported file"), "folder", false, false) {
+					if button(c, "job-export-open-"+j.ID, a.L("tasks.show_exported_file"), "folder", false, false) {
 						a.executeDialog(func() error { mygo.Shell.ShowItemInFolder(j.ResultRef); return nil })
 					}
 				} else if j.State == "completed" && j.ResultRef != "" && a.rootByID(j.ResultRoot) != nil {
@@ -164,14 +165,8 @@ func jobMetrics(en bool, j launcher.Job) []jobMetric {
 
 func etaText(en bool, sec float64) string {
 	n := int(sec + .5)
-	if en {
-		if n >= 60 {
-			return fmt.Sprintf("%dm %ds left", n/60, n%60)
-		}
-		return fmt.Sprintf("%ds left", n)
-	}
 	if n >= 60 {
-		return fmt.Sprintf("剩余 %d 分 %d 秒", n/60, n%60)
+		return fmt.Sprintf(i18n.Text(en, "time.eta.minutes"), n/60, n%60)
 	}
-	return fmt.Sprintf("剩余 %d 秒", n)
+	return fmt.Sprintf(i18n.Text(en, "time.eta.seconds"), n)
 }

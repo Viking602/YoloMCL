@@ -212,9 +212,9 @@ func (a *App) filteredAddons(all []addonEntry) []addonEntry {
 func (a *App) addonKindWord() string {
 	switch a.addonTab {
 	case "resourcepack":
-		return a.L("资源包", "resource packs")
+		return a.L("addon_entries.resource_packs")
 	case "shader":
-		return a.L("光影", "shaders")
+		return a.L("addon_entries.shaders")
 	}
-	return a.L("模组", "mods")
+	return a.L("addon_entries.mods")
 }

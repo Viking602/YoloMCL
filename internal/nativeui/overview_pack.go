@@ -16,8 +16,8 @@ func (a *App) heroPackStatus(c *ui.Context, r launcher.Instance) {
 	u := r.PackUpdate
 	switch {
 	case packHasUpdate(r, ""):
-		text := a.L("更新到 ", "Update to ") + u.Latest.Number
-		b := tooltip(c, ui.ButtonBase(c.Key("hero-pack-update")).Label(text), text+"\n"+a.L("查看变更并更新整合包", "Review and update")).Height(24*s).MinWidth(0).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(warning.Alpha(.14)).Border(1, warning.Alpha(.30)).AlignItems(ui.Center).Shrink(1)
+		text := a.L("overview_pack.update_to") + u.Latest.Number
+		b := tooltip(c, ui.ButtonBase(c.Key("hero-pack-update")).Label(text), text+"\n"+a.L("overview_pack.review_and_update")).Height(24*s).MinWidth(0).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(warning.Alpha(.14)).Border(1, warning.Alpha(.30)).AlignItems(ui.Center).Shrink(1)
 		if b.Children(func() {
 			ui.Icon(c, icons["download"]).Size(12*s, 12*s).TextColor(ui.Hex("#b26a00")).Shrink(0)
 			ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(650).TextColor(ui.Hex("#b26a00")).SingleLine().MinWidth(0).Shrink(1)
@@ -25,7 +25,7 @@ func (a *App) heroPackStatus(c *ui.Context, r launcher.Instance) {
 			a.planPackUpdate(r.ID, "", u.Latest.ID)
 		}
 	case u != nil && u.Latest != nil:
-		heroChip(c, "check", a.L("已是最新", "Up to date"), false)
+		heroChip(c, "check", a.L("overview_pack.up_to_date"), false)
 	}
 }
 
@@ -34,20 +34,20 @@ func (a *App) playSummary(r launcher.Instance, st launcher.InstanceStatus) strin
 	p := st.Play
 	switch {
 	case verRunning(&r):
-		return a.L("正在运行", "Running")
+		return a.L("overview_pack.running")
 	case p.Launches > 0:
-		out := a.L("上次游玩 ", "Played ") + agoText(a, p.LastStart) + a.L("  时长 ", "  for ") + durText(a, p.LastSec)
+		out := a.L("overview.played") + agoText(a, p.LastStart) + a.L("overview_pack.for") + durText(a, p.LastSec)
 		if p.Launches > 1 {
-			out += a.L("  累计 ", "  total ") + durText(a, p.TotalSec)
+			out += a.L("overview_pack.total") + durText(a, p.TotalSec)
 		}
 		if p.LastExit == "crashed" {
-			out += a.L("  上次崩溃", "  crashed")
+			out += a.L("overview_pack.crashed")
 		}
 		return out
 	case !st.LastLog.IsZero():
-		return a.L("上次游玩 ", "Played ") + agoText(a, st.LastLog)
+		return a.L("overview.played") + agoText(a, st.LastLog)
 	}
-	return a.L("还没有运行记录", "Not launched yet")
+	return a.L("overview_pack.not_launched_yet")
 }
 
 // ovPackActions keeps 检查更新 / 从文件更新 / 回滚 in one small row.
@@ -57,10 +57,10 @@ func (a *App) ovPackActions(c *ui.Context, r launcher.Instance) {
 	p := r.Pack
 	ui.Box(c).FillWidth().Height(1).Shrink(0).Background(line).Margin(4*s, 0, 6*s, 0)
 	ui.Row(c).FillWidth().Height(28 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-		label(c, a.L("整合包", "Modpack")).FontSize(typeCallout * s).NoWrap().Width(kvLabelW * s).Shrink(0)
+		label(c, a.L("overview_pack.modpack")).FontSize(typeCallout * s).NoWrap().Width(kvLabelW * s).Shrink(0)
 		txt := p.Version
 		if len(r.PackBackups) > 0 {
-			txt += a.L("   可回滚到 ", "   rollback to ") + r.PackBackups[0].FromVersion
+			txt += a.L("overview_pack.rollback_to") + r.PackBackups[0].FromVersion
 		}
 		ui.Text(c, txt).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0)
 	})
@@ -83,7 +83,7 @@ func (a *App) ovPackActions(c *ui.Context, r launcher.Instance) {
 		}
 		if len(r.PackBackups) > 0 {
 			b := r.PackBackups[0]
-			if fixedButton(c, "pack-rollback", a.L("回滚", "Roll back"), "refresh", 0, btnSm*s, false, blocked) && a.overviewActionReady("ov-run") {
+			if fixedButton(c, "pack-rollback", a.L("overview_pack.roll_back"), "refresh", 0, btnSm*s, false, blocked) && a.overviewActionReady("ov-run") {
 				a.execute("rollbackPack", map[string]string{"rootId": r.ID, "id": b.ID}, a.taskAdded)
 			}
 		}

@@ -6,27 +6,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
-
-// jobTitles renders a task title from its key at display time, so it
-// follows the UI language and re-renders on a live switch.
-var jobTitles = map[string][2]string{
-	"pack.download":      {"下载 %s", "Download %s"},
-	"pack.export":        {"导出 %s", "Export %s"},
-	"pack.update":        {"更新 %s", "Update %s"},
-	"pack.rollback":      {"回滚 %s", "Roll back %s"},
-	"game.install":       {"安装 Minecraft %s", "Install Minecraft %s"},
-	"java.download":      {"下载 Java %s", "Download Java %s"},
-	"game.launch":        {"启动 %s", "Launch %s"},
-	"world.restore":      {"还原存档 %s", "Restore world %s"},
-	"world.backup":       {"备份存档 %s", "Back up world %s"},
-	"world.backupAll":    {"备份全部存档%s", "Back up all worlds%s"},
-	"mods.installDeps":   {"安装模组及前置%s", "Install mods and dependencies%s"},
-	"mods.detect":        {"检测模组版本%s", "Check mod versions%s"},
-	"addon.resourcepack": {"安装材质包%s", "Install resource packs%s"},
-	"addon.shader":       {"安装光影包%s", "Install shaders%s"},
-}
 
 // jobTitle is a task's display name in the current language.
 func (a *App) jobTitle(j launcher.Job) string {
@@ -34,11 +16,8 @@ func (a *App) jobTitle(j launcher.Job) string {
 	if key == "" {
 		key, arg, _ = launcher.JobTitleKey(j.Title)
 	}
-	if f, ok := jobTitles[key]; ok {
-		if a.isEN() {
-			return fmt.Sprintf(f[1], arg)
-		}
-		return fmt.Sprintf(f[0], arg)
+	if format, ok := i18n.Lookup(a.isEN(), "job.title."+key); ok {
+		return fmt.Sprintf(format, arg)
 	}
 	return j.Title
 }
@@ -78,7 +57,7 @@ func (a *App) jobPill(c *ui.Context) {
 		tip += fmt.Sprintf("  (%d/%d)", run[0].Done, run[0].Total)
 	}
 	if len(run) > 1 {
-		name = fmt.Sprintf(a.L("%d 个任务", "%d tasks"), len(run))
+		name = fmt.Sprintf(a.L("task_indicator.tasks"), len(run))
 		tip = ""
 		for _, j := range run {
 			tip += a.jobTitle(j) + "\n"
@@ -91,7 +70,7 @@ func (a *App) jobPill(c *ui.Context) {
 	} else if len(run) == 1 {
 		mid = jobStep(a.jobMsg(run[0].Message))
 	}
-	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("查看下载", "View downloads")), strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(999).Clip().Background(accentSoft)
+	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("task_indicator.view_downloads")), strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(999).Clip().Background(accentSoft)
 	if b.Hovered() {
 		b.Background(accent.Alpha(.16))
 	}

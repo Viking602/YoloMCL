@@ -174,9 +174,9 @@ func (a *App) installDeps(c *ui.Context) {
 			if noteH > 0 {
 				ui.Row(c.Key("installed-mod-note")).FillWidth().Height(38 * s).PaddingX(14 * s).Radius(10 * s).Background(accentSoft).Gap(10 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
 					ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
-					msg := a.L("当前实例已安装此模组", "This mod is already installed")
+					msg := a.L("project_dependencies.this_mod_is_already_installed")
 					if target.Note != "" {
-						msg += a.L("，版本 ", ", version ") + target.Note
+						msg += a.L("project_dependencies.version") + target.Note
 					}
 					tooltip(c, ui.Text(c, msg).FontSize(typeFootnote*s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0).SingleLine(), msg)
 				})
@@ -184,7 +184,7 @@ func (a *App) installDeps(c *ui.Context) {
 		})
 		ui.Column(c.Key("dependency-content")).FillWidth().Gap(10 * s).Children(func() {
 			ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L("前置", "Dependencies")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
+				ui.Text(c, a.L("project_dependencies.dependencies")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
 				if len(deps) > 0 {
 					numText(c, fmt.Sprint(len(deps)), typeFootnote*s, muted)
 				}
@@ -194,7 +194,7 @@ func (a *App) installDeps(c *ui.Context) {
 				ui.Spacer(c).Grow(1)
 				for _, v := range a.projectVersions {
 					if v.ID == a.form.VersionID {
-						tooltip(c, ui.Text(c, a.L("所选版本 ", "Selected version ")+v.Number).Label("前置所选版本 "+v.Number).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), v.Number)
+						tooltip(c, ui.Text(c, a.L("project_dependencies.selected_version")+v.Number).Label("前置所选版本 "+v.Number).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), v.Number)
 						break
 					}
 				}
@@ -202,7 +202,7 @@ func (a *App) installDeps(c *ui.Context) {
 			if !a.selectedProjectVersionFits() {
 				ui.Row(c.Key("dependency-incompatible")).FillWidth().MinHeight(54 * s).Padding(12 * s).Radius(10 * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
 					ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(warningInk).Shrink(0)
-					ui.Text(c, a.L("此版本不兼容当前实例，请选择匹配的游戏版本和加载器。", "This version does not match the instance. Choose a compatible game version and loader.")).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0)
+					ui.Text(c, a.L("project_dependencies.this_version_does_not_match_the_instance_choose")).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0)
 				})
 				return
 			}
@@ -223,10 +223,10 @@ func (a *App) installDeps(c *ui.Context) {
 						ui.Text(c, u.Hint).FontSize(typeCaption * s).TextColor(inkSecondary).FillWidth()
 					}
 					ui.Row(c).Gap(8 * s).Children(func() {
-						if fixedButton(c, "plan-retry", a.L("重试", "Retry"), "refresh", 0, btnSm*s, false, false) {
+						if fixedButton(c, "plan-retry", a.L("discover_feed.retry"), "refresh", 0, btnSm*s, false, false) {
 							a.planKey = ""
 						}
-						if u.Path != "" && fixedButton(c, "plan-open", a.L("打开文件夹", "Open folder"), "folder", 0, btnSm*s, false, false) {
+						if u.Path != "" && fixedButton(c, "plan-open", a.L("addons_tab.open_folder"), "folder", 0, btnSm*s, false, false) {
 							c.OpenURL("file:///" + filepath.ToSlash(u.Path))
 						}
 					})
@@ -240,9 +240,9 @@ func (a *App) installDeps(c *ui.Context) {
 			box.Height(box.AnimateTo("height", h, motionMove)).Children(func() {
 				ui.Column(c.Key("dependency-rows-" + a.planKey)).FillWidth().Shrink(0).Transition(heroSwap(c)).Children(func() {
 					if len(deps) == 0 {
-						key, txt, icon := "empty", a.L("无需前置", "No dependencies"), "check"
+						key, txt, icon := "empty", a.L("project_dependencies.no_dependencies"), "check"
 						if a.planLoading {
-							key, txt = "loading", a.L("正在检查前置", "Checking dependencies")
+							key, txt = "loading", a.L("project_dependencies.checking_dependencies")
 						}
 						ui.Row(c.Key("dependency-" + key)).Label("前置状态").FillWidth().Height(54 * s).PaddingX(14 * s).Gap(10 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
 							if a.planLoading {
@@ -300,7 +300,7 @@ func (a *App) depRow(c *ui.Context, it launcher.PlanItem) {
 				ui.Text(c, sub).FontSize(typeCaption * s).TextColor(muted).SingleLine().FillWidth().MinWidth(0)
 			}
 		})
-		role := map[string]string{"required": a.L("必需", "Required"), "optional": a.L("可选", "Optional"), "incompatible": a.L("不兼容", "Incompatible")}[it.Role]
+		role := map[string]string{"required": a.L("project_dependencies.required"), "optional": a.L("project_dependencies.optional"), "incompatible": a.L("project_dependencies.incompatible")}[it.Role]
 		if role != "" {
 			quietTag(c, role, inkSecondary)
 		}
@@ -325,9 +325,9 @@ func (a *App) depStatus(c *ui.Context, it launcher.PlanItem, job *launcher.Job) 
 			case st == "running":
 				statusSpinner(c, 14*s)
 			case st == "done":
-				quietTag(c, a.L("完成", "Done"), successInk)
+				quietTag(c, a.L("install_dialog.done"), successInk)
 			default:
-				quietTag(c, a.L("失败", "Failed"), danger)
+				quietTag(c, a.L("job.state.failed"), danger)
 				tooltip(c, ui.Box(c).Size(0, 0), classifyError(a.isEN(), strings.TrimPrefix(st, "failed: "), nil).Text())
 			}
 			return
@@ -338,17 +338,17 @@ func (a *App) depStatus(c *ui.Context, it launcher.PlanItem, job *launcher.Job) 
 		statusSpinner(c, 14*s)
 	case "install":
 		if it.Unverified {
-			tooltip(c, ui.Box(c).Shrink(0), a.L("模组文件夹暂时无法读取，未能确认是否已安装", "The mods folder could not be read, so presence is unconfirmed")).Children(func() { quietTag(c, a.L("待确认", "Unconfirmed"), warningInk) })
+			tooltip(c, ui.Box(c).Shrink(0), a.L("project_dependencies.the_mods_folder_could_not_be_read_so")).Children(func() { quietTag(c, a.L("project_dependencies.unconfirmed"), warningInk) })
 			return
 		}
-		quietTag(c, a.L("将安装", "Will install"), accent)
+		quietTag(c, a.L("project_dependencies.will_install"), accent)
 	case "installed":
-		quietTag(c, a.L("已安装", "Installed"), successInk)
+		quietTag(c, a.L("discover.installed"), successInk)
 	case "disabled":
-		quietTag(c, a.L("已禁用", "Disabled"), warningInk)
+		quietTag(c, a.L("addon_filter.disabled"), warningInk)
 	case "none":
-		quietTag(c, a.L("无兼容版本", "No compatible file"), danger)
+		quietTag(c, a.L("project_dependencies.no_compatible_file"), danger)
 	case "conflict":
-		quietTag(c, a.L("冲突", "Conflict"), danger)
+		quietTag(c, a.L("project_dependencies.conflict"), danger)
 	}
 }

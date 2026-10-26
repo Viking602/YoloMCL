@@ -95,7 +95,7 @@ func TestAccountMenuDistinctDialogs(t *testing.T) {
 					tt.Advance(250 * time.Millisecond)
 				}
 				openMenu()
-				clickUI(t, tt, a.L("账号管理", "Manage accounts"))
+				clickUI(t, tt, a.L("account_menu.manage_accounts"))
 				assertManage()
 				snapshotUI(t, tt, fmt.Sprintf("account-manage-%s-%d", lang, width))
 				closeDialog()
@@ -124,7 +124,7 @@ func TestAccountMenuDistinctDialogs(t *testing.T) {
 				assertAdd()
 				closeDialog()
 				openMenu()
-				clickUI(t, tt, a.L("账号管理", "Manage accounts"))
+				clickUI(t, tt, a.L("account_menu.manage_accounts"))
 				assertManage()
 			})
 		}

@@ -93,7 +93,8 @@ See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup,
 
 - `main.go`: the launcher's single executable entry point.
 - `internal/app`: command-line options, application assembly, startup coordination, and explicitly requested diagnostic reports.
-- `internal/nativeui`: native UI views, interaction state, and view helpers; translation tables live in `i18n`.
+- `internal/nativeui`: native UI views, interaction state, and view helpers.
+- `internal/i18n`: shared translations loaded from bundled JSON catalogs; see [Translation guide](docs/i18n.md).
 - `internal/launcher`: Minecraft services, instances, accounts, and background jobs, with isolated platform packages `memory`, `proctree`, `textenc`, and `vault`.
 - `internal/config`: publisher service configuration, identity, and credential loading.
 - `internal/buildinfo`: version, commit, repository, and update verification key.

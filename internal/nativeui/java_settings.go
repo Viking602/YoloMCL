@@ -146,7 +146,7 @@ func (a *App) startJavaScan(deep bool) {
 			if e == context.Canceled {
 				a.javaPhase = "扫描已停止"
 			} else if e != nil {
-				a.javaPhase = a.L("快速扫描已结束，可继续深入扫描", "Quick scan finished; check deeper in the same folders")
+				a.javaPhase = a.L("java_settings.quick_scan_finished_check_deeper_in_the_same")
 			} else {
 				a.javaPhase = a.formatJavaScanSummary(len(a.java), a.javaElapsed)
 			}

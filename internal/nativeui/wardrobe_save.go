@@ -78,15 +78,15 @@ func (a *App) currentSkinBytes() []byte {
 func (a *App) saveTexture(defName string, b []byte, cape bool) {
 	w := a.wd()
 	if len(b) == 0 || !validTexture(b, cape) {
-		w.saveMsg, w.savePath, w.saveErr = a.L("没有可保存的皮肤", "Nothing to save"), "", true
+		w.saveMsg, w.savePath, w.saveErr = a.L("wardrobe_save.nothing_to_save"), "", true
 		if cape {
-			w.saveMsg = a.L("没有可保存的披风", "Nothing to save")
+			w.saveMsg = a.L("wardrobe_save.nothing_to_save_2")
 		}
 		return
 	}
-	title := a.L("保存皮肤", "Save skin")
+	title := a.L("wardrobe.save_skin")
 	if cape {
-		title = a.L("保存披风", "Save cape")
+		title = a.L("wardrobe_save.save_cape")
 	}
 	data := append([]byte(nil), b...)
 	if a.win == nil {
@@ -104,10 +104,10 @@ func (a *App) saveTexture(defName string, b []byte, cape bool) {
 		a.post(func() {
 			if e != nil {
 				u := a.uiErr(e)
-				w.saveMsg, w.savePath, w.saveErr = a.L("没能保存：", "Could not save: ")+u.Title, "", true
+				w.saveMsg, w.savePath, w.saveErr = a.L("wardrobe_save.could_not_save")+u.Title, "", true
 				return
 			}
-			w.saveMsg, w.savePath, w.saveErr = a.L("已保存 ", "Saved ")+filepath.Base(p), p, false
+			w.saveMsg, w.savePath, w.saveErr = a.L("wardrobe_save.saved")+filepath.Base(p), p, false
 		})
 	}()
 }
@@ -138,10 +138,10 @@ func (a *App) saveNotice(c *ui.Context) {
 		}
 		ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(col).Shrink(0)
 		tooltip(c, ui.Text(c, w.saveMsg).FontSize(typeFootnote*s).TextColor(inkSecondary).SingleLine().Ellipsis("…").Grow(1).MinWidth(0), w.savePath)
-		if w.savePath != "" && fixedButton(c, "save-open-folder", a.L("打开文件夹", "Open folder"), "folder", 0, btnSm*s, false, false) {
+		if w.savePath != "" && fixedButton(c, "save-open-folder", a.L("addons_tab.open_folder"), "folder", 0, btnSm*s, false, false) {
 			c.OpenURL("file:///" + filepath.ToSlash(filepath.Dir(w.savePath)))
 		}
-		if b := ui.ButtonBase(c.Key("save-notice-x")).Label(a.L("关闭", "Close")).Size(22*s, 22*s).Radius(6 * s).Center(); b.Children(func() {
+		if b := ui.ButtonBase(c.Key("save-notice-x")).Label(a.L("logsessions.close")).Size(22*s, 22*s).Radius(6 * s).Center(); b.Children(func() {
 			ui.Icon(c, icons["cross"]).Size(9*s, 9*s).TextColor(muted)
 		}).Clicked() {
 			w.saveMsg, w.savePath = "", ""

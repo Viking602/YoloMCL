@@ -29,7 +29,7 @@ func logMessage(l logLine) string {
 }
 
 func (a *App) logStackLabel(l logLine) string {
-	return fmt.Sprintf(a.L("堆栈 %d 行", "Stack %d lines"), l.Kids)
+	return fmt.Sprintf(a.L("log_layout.stack_lines"), l.Kids)
 }
 
 // Heights and prefix offsets replace fixed-line arithmetic for reports and

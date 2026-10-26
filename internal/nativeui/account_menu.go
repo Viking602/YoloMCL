@@ -145,7 +145,7 @@ func (a *App) accountMenu(c *ui.Context, anchor ui.Element) {
 					})
 				}).Clicked()
 			}
-			if item("qs-manage", a.L("账号管理", "Manage accounts"), "account") {
+			if item("qs-manage", a.L("account_menu.manage_accounts"), "account") {
 				a.accountMenuOpen = false
 				a.openDialog("account")
 			}

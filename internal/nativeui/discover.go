@@ -67,7 +67,7 @@ func (a *App) discoverRail(c *ui.Context) {
 		})
 		// Type: rows like the instance list.
 		ui.Column(c).FillWidth().Gap(2 * s).Children(func() {
-			railTitle(c, a.L("类型", "Type"))
+			railTitle(c, a.L("discover.type"))
 			for _, ty := range []struct{ label, key, icon string }{
 				{t.DiscoverTypeModpack, "modpack", "layers"},
 				{t.DiscoverTypeMod, "mod", "mods"},
@@ -95,7 +95,7 @@ func (a *App) discoverRail(c *ui.Context) {
 			}
 		})
 		ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
-			railTitle(c, a.L("筛选", "Filters"))
+			railTitle(c, a.L("discover.filters"))
 			a.discoverVersionFilter(c)
 			kind := normalizeResourceType(a.resourceType)
 			if kind == "mod" || kind == "modpack" {
@@ -107,7 +107,7 @@ func (a *App) discoverRail(c *ui.Context) {
 				a.search()
 			}
 			if v := a.gameVersion(); v != nil && kind != "modpack" && a.filterMC != v.Minecraft {
-				b := ui.ButtonBase(c.Key("discover-use-inst")).Label(a.L("用当前实例的版本", "Use this instance's version")).Height(28 * s).PaddingX(8 * s).Radius(7 * s).Gap(6 * s).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("discover-use-inst")).Label(a.L("discover.use_this_instance_s_version")).Height(28 * s).PaddingX(8 * s).Radius(7 * s).Gap(6 * s).AlignItems(ui.Center)
 				bg := ui.Transparent
 				if b.Hovered() {
 					bg = accentSoft
@@ -115,7 +115,7 @@ func (a *App) discoverRail(c *ui.Context) {
 				b.Background(b.AnimateColor("bg", bg, fastAnim))
 				if b.Children(func() {
 					ui.Icon(c, icons["refresh"]).Size(11*s, 11*s).TextColor(accent)
-					ui.Text(c, fmt.Sprintf(a.L("用当前实例的版本 %s", "Use this instance's %s"), v.Minecraft)).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
+					ui.Text(c, fmt.Sprintf(a.L("discover.use_this_instance_s"), v.Minecraft)).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
 				}).Clicked() {
 					a.filterMC = v.Minecraft
 					a.discoverMCText = v.Minecraft
@@ -132,7 +132,7 @@ func (a *App) discoverRail(c *ui.Context) {
 			ui.Row(c).FillWidth().Padding(10*s, 12*s).Radius(10 * s).Background(ui.RGBA(120, 130, 160, .07)).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 				a.instIcon(c, *r, a.gameVersion(), 26*s)
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
-					label(c, a.L("安装到", "Installs to")).FontSize(typeCaption * s)
+					label(c, a.L("discover.installs_to")).FontSize(typeCaption * s)
 					name := r.Name
 					if v := a.gameVersion(); v != nil {
 						name, _ = a.cardText(*r, *v)
@@ -159,7 +159,7 @@ func (a *App) discoverToolbar(c *ui.Context) {
 			submit = true
 		}
 		if strings.TrimSpace(a.query) != "" {
-			cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("清空搜索", "Clear search")).Size(24*s, 24*s).Radius(999).Center().Shrink(0)
+			cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("discover.clear_search")).Size(24*s, 24*s).Radius(999).Center().Shrink(0)
 			if cb.Hovered() {
 				cb.Background(ui.RGBA(120, 130, 160, .14))
 			}
@@ -272,7 +272,7 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 						if p.Author != "" {
 							ui.Row(c).Gap(3 * s).AlignItems(ui.Center).Shrink(2).MinWidth(0).Children(func() {
 								ui.Icon(c, icons["account"]).Size(9*s, 9*s).TextColor(muted).Shrink(0)
-								tooltip(c, ui.Text(c, p.Author).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), a.L("作者 ", "By ")+p.Author)
+								tooltip(c, ui.Text(c, p.Author).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), a.L("discover.by")+p.Author)
 							})
 						}
 					})
@@ -294,7 +294,7 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 					catTag(c, cat, l, false)
 					continue
 				}
-				tb := tooltip(c, ui.ButtonBase(c.Key("ctag-"+p.ID+"-"+id)).Label(l), a.L("按此分类筛选", "Filter by this tag")).Radius(5 * s)
+				tb := tooltip(c, ui.ButtonBase(c.Key("ctag-"+p.ID+"-"+id)).Label(l), a.L("discover.filter_by_this_tag")).Radius(5 * s)
 				if tb.Children(func() { catTag(c, cat, l, a.catSelected(id)) }).Clicked() && ready && !a.searchLoading && !a.catSelected(id) {
 					a.toggleCat(id)
 				}
@@ -306,16 +306,16 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 				numText(c, compactCount(p.Downloads), typeCaption*s, muted)
 			})
 			if relative, exact := a.resourceTime(c, p.Updated); relative != "" {
-				tooltip(c, numText(c, relative, typeCaption*s, muted).Shrink(0), fmt.Sprintf(a.L("更新时间：%s", "Updated: %s"), exact))
+				tooltip(c, numText(c, relative, typeCaption*s, muted).Shrink(0), fmt.Sprintf(a.L("discover.updated"), exact))
 			}
 			ui.Spacer(c).Grow(1)
 			if installed {
 				ui.Row(c).Height(28 * s).PaddingX(10 * s).Gap(5 * s).Radius(8 * s).Background(ui.RGBA(52, 199, 89, .12)).AlignItems(ui.Center).Shrink(0).Children(func() {
 					ui.Icon(c, icons["check"]).Size(10*s, 10*s).TextColor(successInk)
-					ui.Text(c, a.L("已安装", "Installed")).FontSize(typeFootnote * s).FontWeight(600).TextColor(successInk).NoWrap()
+					ui.Text(c, a.L("discover.installed")).FontSize(typeFootnote * s).FontWeight(600).TextColor(successInk).NoWrap()
 				})
 			} else {
-				text := a.L("下载", "Download")
+				text := a.L("discover.download")
 				if fixedButton(c, "view-"+p.ID, text, "download", 0, 28*s, true, false) && ready {
 					a.openProject(p)
 				}

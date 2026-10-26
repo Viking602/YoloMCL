@@ -101,7 +101,7 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 	s := uiScale(c)
 	primary, secondary := a.itemNames(it)
 	ui.Box(c.Key("addon-card-" + it.key)).Label("资源卡片 " + primary).Grow(1).Basis(0).MinWidth(0).FillHeight().Children(func() {
-		b := ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("切换启用 ", "Toggle ")+it.name).Description(it.file).Absolute().Left(0).Top(0).Right(0).Bottom(0).Radius(radiusCard*s).Clip().Padding(14*s, 14*s, 12*s).Gap(10 * s).Column()
+		b := ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name).Description(it.file).Absolute().Left(0).Top(0).Right(0).Bottom(0).Radius(radiusCard*s).Clip().Padding(14*s, 14*s, 12*s).Gap(10 * s).Column()
 		bg, edge := panel, ui.RGBA(60, 70, 110, .08)
 		if b.Hovered() {
 			bg, edge = ui.Hex("#f2f5fb"), ui.RGBA(60, 70, 110, .16)
@@ -181,7 +181,7 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 			// Facts as chips; room is left on the right for the actions.
 			ui.Row(c).FillWidth().Padding(0, 64*s, 0, 0).Clip().Gap(6 * s).AlignItems(ui.Center).Children(func() {
 				if !it.enabled {
-					quietTag(c, a.L("已禁用", "Disabled"), muted)
+					quietTag(c, a.L("addon_filter.disabled"), muted)
 				}
 				if logo := sourceLogo(it.source); logo != nil {
 					ui.Row(c).Shrink(0).Height(18 * s).PaddingX(5 * s).Radius(5 * s).Background(ui.RGBA(120, 130, 160, .10)).Center().Children(func() {
@@ -204,11 +204,11 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 					quietTag(c, it.badge, ui.Hex("#248a3d"))
 				}
 				if len(it.missing) > 0 {
-					tooltip(c, ui.Box(c).Shrink(0), a.L("缺少前置：", "Missing dependencies: ")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("缺少前置", "Missing deps"), danger) })
+					tooltip(c, ui.Box(c).Shrink(0), a.L("addons_cards.missing_dependencies")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("addons_cards.missing_deps"), danger) })
 				}
 			})
 			if it.latest != "" {
-				update := a.L("可更新 ", "Update ") + it.latest
+				update := a.L("addons_cards.update") + it.latest
 				tooltip(c, ui.Box(c.Key("addon-update-dot")).Absolute().Right(14*s).Top(14*s).Size(8*s, 8*s).Radius(999).Background(accent).Label(update), update)
 			}
 		}).Clicked() {

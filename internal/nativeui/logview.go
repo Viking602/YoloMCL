@@ -92,7 +92,7 @@ func (a *App) logsDialog(c *ui.Context) {
 			a.logToolbar(c, cur, sk)
 			if lv.start > 0 && lv.file != "" {
 				ui.Row(c.Key("log-truncated")).FillWidth().Height(20 * s).Shrink(0).AlignItems(ui.Center).Children(func() {
-					label(c, fmt.Sprintf(a.L("已载入最近 %d 行，向上滚动可加载更早内容", "Latest %d lines loaded; scroll up for more"), len(lv.lines))).FontSize(typeFootnote * s).SingleLine().Shrink(1)
+					label(c, fmt.Sprintf(a.L("logview.latest_lines_loaded_scroll_up_for_more"), len(lv.lines))).FontSize(typeFootnote * s).SingleLine().Shrink(1)
 				})
 			}
 			a.logFrame(c, sk)
@@ -135,16 +135,16 @@ func (a *App) logFrame(c *ui.Context, sk string) {
 	a.layoutLogRows(c, max(100*s, viewW-10*s))
 	frame.Children(func() {
 		if n == 0 {
-			msg := a.L("还没有日志", "No log lines yet")
+			msg := a.L("logview.no_log_lines_yet")
 			switch {
 			case lv.loading && len(lv.lines) == 0:
-				msg = a.L("正在读取日志", "Reading log")
+				msg = a.L("logview.reading_log")
 			case lv.err != "":
 				msg = lv.err
 			case lv.clearAt > 0:
-				msg = a.L("已清空，新的日志会继续显示在这里", "Cleared; new lines appear here")
+				msg = a.L("logview.cleared_new_lines_appear_here")
 			case len(lv.lines) > 0:
-				msg = a.L("没有符合筛选的行", "No lines match the filter")
+				msg = a.L("logview.no_lines_match_the_filter")
 			}
 			ui.Column(c.Key("log-frame-empty")).Font(uiSansFamily()).Fill().Padding(16*s, 24*s).Gap(12 * s).Center().Children(func() {
 				if lv.loading && len(lv.lines) == 0 {
@@ -153,7 +153,7 @@ func (a *App) logFrame(c *ui.Context, sk string) {
 					emptyArtwork(c, "log-lines", "terminal", .85*s)
 				}
 				label(c, msg).FillWidth().MaxWidth(520 * s).FontSize(typeCallout * s).TextAlign(ui.Center)
-				if lv.clearAt > 0 && fixedButton(c, "log-unclear", a.L("显示全部", "Show all"), "", 0, btnSm*s, false, false) {
+				if lv.clearAt > 0 && fixedButton(c, "log-unclear", a.L("logview.show_all"), "", 0, btnSm*s, false, false) {
 					lv.clearAt = 0
 				}
 			})
@@ -237,7 +237,7 @@ func (a *App) logFrame(c *ui.Context, sk string) {
 		})
 		if !lv.follow && lv.maxY > 0 {
 			ui.Box(c).Absolute().Right(14 * s).Bottom(12 * s).Children(func() {
-				if fixedButton(c, "log-jump-latest", a.L("跳到最新", "Jump to latest"), "chevron-down", 0, btnSm*s, true, false) {
+				if fixedButton(c, "log-jump-latest", a.L("logview.jump_to_latest"), "chevron-down", 0, btnSm*s, true, false) {
 					a.logJumpLatest()
 				}
 			})

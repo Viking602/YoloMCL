@@ -103,7 +103,7 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	tt.Advance(300 * time.Millisecond)
 	clickUI(t, tt, a.tr().SideAccountManage)
 	tt.Advance(250 * time.Millisecond)
-	clickUI(t, tt, a.L("账号管理", "Manage accounts"))
+	clickUI(t, tt, a.L("account_menu.manage_accounts"))
 	tt.Advance(250 * time.Millisecond)
 	if _, ok := tt.Find("账号行 " + a.snapshot.Accounts[0].ID); !ok {
 		t.Fatal("Manage did not show the newly saved account")

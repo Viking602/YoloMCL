@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -41,8 +42,8 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 	ui.Box(c.Key("overview-stage")).Label("概览过渡区域").FillWidth().Children(func() {
 		ui.Column(c.Key("overview")).Label("整合包概览").FillWidth().Gap(16 * s).Children(func() {
 			if a.instStatusErr != "" && st.Dir == "" {
-				emptyState(c, "overview-error", "info", a.L("概览读取失败", "Couldn't read this instance"), a.instStatusErr, func() {
-					if button(c, "overview-retry", a.L("重新读取概览", "Reload overview"), "refresh", true, false) {
+				emptyState(c, "overview-error", "info", a.L("overview.couldn_t_read_this_instance"), a.instStatusErr, func() {
+					if button(c, "overview-retry", a.L("overview.reload_overview"), "refresh", true, false) {
 						a.loadInstanceStatus()
 					}
 				})
@@ -64,8 +65,8 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 			// Reserve the full row height for every pack, including cold reads.
 			// Storage categories and pack actions must not move the panel footer.
 			ovPair(c, "ov-details", narrow, 340, func() {
-				a.ovPanel(c, "ov-run", a.L("运行环境", "Runtime"), st, func() {
-					if iconOnlyButton(c, "ov-config", "settings", a.L("版本设置", "Version settings"), 28*s, false) && a.overviewActionReady("ov-run") {
+				a.ovPanel(c, "ov-run", a.L("overview.runtime"), st, func() {
+					if iconOnlyButton(c, "ov-config", "settings", a.L("overview.version_settings"), 28*s, false) && a.overviewActionReady("ov-run") {
 						a.setInstTab("settings")
 					}
 				}, func() {
@@ -84,15 +85,15 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 					a.ovLastSession(c, r, st)
 				})
 			}, func() {
-				a.ovPanel(c, "ov-dir", a.L("存储空间", "Storage"), st, func() {
+				a.ovPanel(c, "ov-dir", a.L("overview.storage"), st, func() {
 					text := "—"
 					if st.StoragePending {
-						text = a.L("统计中…", "Calculating…")
+						text = a.L("overview.calculating")
 					} else if st.Dir != "" {
 						text = fmtSize(st.Total)
 					}
 					a.rollNumber(c, "storage-total", text, typeHeadline*s, 700, ink, true).Width(104 * s)
-					if iconOnlyButton(c, "ov-refresh", "refresh", a.L("刷新概览", "Refresh overview"), 26*s, false) && a.overviewActionReady("ov-dir") {
+					if iconOnlyButton(c, "ov-refresh", "refresh", a.L("overview.refresh_overview"), 26*s, false) && a.overviewActionReady("ov-dir") {
 						a.refreshInstanceStatus(true)
 					}
 				}, func() { a.ovDir(c, st, r, false) })
@@ -125,27 +126,27 @@ func (a *App) ovStats(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 		}
 		return strconv.Itoa(n)
 	}
-	modHint := a.L("管理模组与更新", "Manage installed mods")
+	modHint := a.L("overview.manage_installed_mods")
 	if ready {
-		modHint = fmt.Sprintf(a.L("%d 个已启用", "%d enabled"), st.EnabledMods)
+		modHint = fmt.Sprintf(a.L("overview.enabled"), st.EnabledMods)
 	}
-	play, playHint := "—", a.L("从这里启动后记录时长", "Tracked when launched here")
+	play, playHint := "—", a.L("overview.tracked_when_launched_here")
 	if st.Play.Launches > 0 {
 		play = durText(a, st.Play.TotalSec)
-		playHint = fmt.Sprintf(a.L("累计 %d 次启动", "%d recorded launches"), st.Play.Launches)
+		playHint = fmt.Sprintf(a.L("overview.recorded_launches"), st.Play.Launches)
 	}
-	visualHint := a.L("资源包与光影", "Resource packs and shaders")
+	visualHint := a.L("overview.resource_packs_and_shaders")
 	if ready {
-		visualHint = fmt.Sprintf(a.L("%d 资源包，%d 光影", "%d packs, %d shaders"), st.ResourcePacks, st.Shaders)
+		visualHint = fmt.Sprintf(a.L("overview.packs_shaders"), st.ResourcePacks, st.Shaders)
 	}
 	items := []struct {
 		key, title, value, hint, icon, tab string
 		tone                               ui.Color
 	}{
-		{"mods", a.L("已安装模组", "Installed mods"), count(st.Mods), modHint, "mods", "mods", accent},
-		{"worlds", a.L("本地世界", "Local worlds"), count(st.Saves), a.L("管理存档与备份", "Manage saves and backups"), "globe", "worlds", successInk},
-		{"visuals", a.L("画面扩展", "Visual extras"), count(st.ResourcePacks + st.Shaders), visualHint, "layers", "resourcepack", accentViolet},
-		{"play", a.L("累计游玩", "Play time"), play, playHint, "gamepad", "logs", accentIndigo},
+		{"mods", a.L("overview.installed_mods"), count(st.Mods), modHint, "mods", "mods", accent},
+		{"worlds", a.L("overview.local_worlds"), count(st.Saves), a.L("overview.manage_saves_and_backups"), "globe", "worlds", successInk},
+		{"visuals", a.L("overview.visual_extras"), count(st.ResourcePacks + st.Shaders), visualHint, "layers", "resourcepack", accentViolet},
+		{"play", a.L("overview.play_time"), play, playHint, "gamepad", "logs", accentIndigo},
 	}
 	cols := 4
 	if narrow {
@@ -198,8 +199,8 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 	}
 	r, st = swappedOverviewPanel(a, c, "ov-world", signature, r, st)
 	a.resetContentChildren("ov-world", "world-size", "world-backups")
-	a.ovPanel(c, "ov-world", a.L("最近世界", "Recent world"), st, func() {
-		if fixedButton(c, "ov-worlds", a.L("全部存档", "All worlds"), "chevron", 0, 26*s, false, false) && a.overviewActionReady("ov-world") {
+	a.ovPanel(c, "ov-world", a.L("overview.recent_world"), st, func() {
+		if fixedButton(c, "ov-worlds", a.L("overview.all_worlds"), "chevron", 0, 26*s, false, false) && a.overviewActionReady("ov-world") {
 			a.setInstTab("worlds")
 		}
 	}, func() {
@@ -209,7 +210,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 		}
 		w := st.RecentWorld
 		if w == nil {
-			emptyPanel(c, "world-empty", "world", a.L("还没有存档", "No worlds yet"), a.L("创建并游玩世界后，最近存档会显示在这里", "Create and play a world to see your latest save here"))
+			emptyPanel(c, "world-empty", "world", a.L("overview.no_worlds_yet"), a.L("overview.create_and_play_a_world_to_see_your"))
 			return
 		}
 		ui.Row(c).FillWidth().PaddingY(12 * s).Gap(16 * s).AlignItems(ui.Center).Children(func() {
@@ -231,21 +232,21 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(9 * s).Children(func() {
 				tooltip(c, ui.Text(c, w.Name).FontSize(typeTitle1*s).FontWeight(700).TextColor(ink).SingleLine().FillWidth(), w.Name)
 				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-					if mode, ok := worldModes[w.Mode]; ok {
-						quietTag(c, a.L(mode[0], mode[1]), successInk)
+					if mode, ok := i18n.Lookup(a.isEN(), "world.mode."+w.Mode); ok {
+						quietTag(c, mode, successInk)
 					}
-					ui.Text(c, a.L("上次游玩 ", "Played ")+agoText(a, w.LastPlayed)).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).MinWidth(0)
+					ui.Text(c, a.L("overview.played")+agoText(a, w.LastPlayed)).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).MinWidth(0)
 				})
 			})
 		})
 		ui.Row(c).FillWidth().Height(64*s).Shrink(0).Padding(10*s, 14*s).Gap(20 * s).Radius(10 * s).Background(raised).Children(func() {
 			size := fmtSize(w.Size)
 			if st.StoragePending {
-				size = a.L("统计中…", "Calculating…")
+				size = a.L("overview.calculating")
 			}
 			for _, it := range [][3]string{
-				{a.L("世界大小", "World size"), size, "world-size"},
-				{a.L("本地备份", "Local backups"), fmt.Sprintf(a.L("%d 份", "%d saved"), w.Backups), "world-backups"},
+				{a.L("overview.world_size"), size, "world-size"},
+				{a.L("overview.local_backups"), fmt.Sprintf(a.L("overview.saved"), w.Backups), "world-backups"},
 			} {
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
 					ui.Text(c, it[0]).FontSize(typeCaption * s).TextColor(muted).SingleLine()
@@ -256,7 +257,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 		ui.Spacer(c).Grow(1)
 		ui.Row(c).FillWidth().Height(30 * s).Shrink(0).AlignItems(ui.Center).Children(func() {
 			tooltip(c, ui.Text(c, w.Dir).FontSize(typeCaption*s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0), w.Dir)
-			if fixedButton(c, "ov-world-backups", a.L("管理备份", "Manage backups"), "folder", 0, btnSm*s, false, false) && a.overviewActionReady("ov-world") {
+			if fixedButton(c, "ov-world-backups", a.L("overview.manage_backups"), "folder", 0, btnSm*s, false, false) && a.overviewActionReady("ov-world") {
 				a.setInstTab("worlds")
 				a.wv.open = w.Dir
 			}
@@ -276,11 +277,11 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 		ImageKey string
 	}{st.Dir != "", st.Screenshots, imageKey}
 	r, st = swappedOverviewPanel(a, c, "ov-shot", signature, r, st)
-	a.ovPanel(c, "ov-shot", a.L("游戏截图", "Screenshots"), st, func() {
+	a.ovPanel(c, "ov-shot", a.L("overview.screenshots"), st, func() {
 		if st.Screenshots > 0 {
-			quietTag(c, fmt.Sprintf(a.L("%d 张", "%d shots"), st.Screenshots), muted)
+			quietTag(c, fmt.Sprintf(a.L("storage.count.screenshots"), st.Screenshots), muted)
 		}
-		if iconOnlyButton(c, "ov-shots-open", "folder", a.L("打开截图文件夹", "Open screenshots folder"), 28*s, false) && a.overviewActionReady("ov-shot") {
+		if iconOnlyButton(c, "ov-shots-open", "folder", a.L("overview.open_screenshots_folder"), 28*s, false) && a.overviewActionReady("ov-shot") {
 			a.openSub("screenshots")
 		}
 	}, func() {
@@ -289,9 +290,9 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 			return
 		}
 		if st.LatestShot == nil {
-			title, hint := a.L("还没有游戏截图", "No screenshots yet"), a.L("在游戏中按 F2，保存的画面会显示在这里", "Press F2 in game to save a moment here")
+			title, hint := a.L("overview.no_screenshots_yet"), a.L("overview.press_f2_in_game_to_save_a_moment")
 			if st.Screenshots > 0 {
-				title, hint = a.L("截图预览暂不可用", "Screenshot preview unavailable"), a.L("可打开截图文件夹查看原图", "Open the folder to view the original")
+				title, hint = a.L("overview.screenshot_preview_unavailable"), a.L("overview.open_the_folder_to_view_the_original")
 			}
 			emptyPanel(c, "screenshot-empty", "image", title, hint)
 			return
@@ -309,7 +310,7 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 			}
 			ui.Image(c, landscape).Absolute().Left(0).Top(0).Right(0).Bottom(0).Fit(ui.Cover).Opacity(.16)
 			ui.Column(c).Fill().Center().PaddingX(16 * s).Gap(9 * s).Children(func() {
-				title, hint := a.L("最新截图", "Latest screenshot"), a.L("可打开截图文件夹查看原图", "Open the folder to view the original")
+				title, hint := a.L("overview.latest_screenshot"), a.L("overview.open_the_folder_to_view_the_original")
 				ui.Text(c, title).FontSize(typeTitle * s).FontWeight(650).TextColor(ink).SingleLine()
 				ui.Text(c, hint).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth().TextAlign(ui.Center)
 			})
@@ -374,22 +375,22 @@ func (a *App) prepareOverviewImages(ctx context.Context, id, ver string, st laun
 
 func (a *App) ovLastSession(c *ui.Context, r launcher.Instance, st launcher.InstanceStatus) {
 	s := uiScale(c)
-	title, detail, tone := a.L("尚无游玩记录", "No recorded sessions"), a.L("启动后可在日志中查看运行记录", "Launch to start recording sessions"), muted
+	title, detail, tone := a.L("overview.no_recorded_sessions"), a.L("overview.launch_to_start_recording_sessions"), muted
 	switch {
 	case verRunning(&r):
-		title, detail, tone = a.L("游戏正在运行", "Game is running"), a.L("打开日志查看实时输出", "View live output in logs"), successInk
+		title, detail, tone = a.L("overview.game_is_running"), a.L("overview.view_live_output_in_logs"), successInk
 	case st.Play.Launches > 0:
-		title = a.L("上次游玩 ", "Last played ") + durText(a, st.Play.LastSec)
+		title = a.L("overview.last_played") + durText(a, st.Play.LastSec)
 		detail = agoText(a, st.Play.LastStart)
 		if st.Play.LastExit == "crashed" {
-			title, tone = a.L("上次运行异常退出", "Last session crashed"), danger
+			title, tone = a.L("overview.last_session_crashed"), danger
 		} else if st.Play.LastExit == "exited" || st.Play.LastExit == "stopped" {
-			detail += a.L("，已结束", ", finished")
+			detail += a.L("overview.finished")
 		}
 	case !st.LastLog.IsZero():
-		title, detail = a.L("最近日志", "Recent log"), agoText(a, st.LastLog)
+		title, detail = a.L("overview.recent_log"), agoText(a, st.LastLog)
 	}
-	b := ui.ButtonBase(c.Key("ov-last-session")).Font(uiSansFamily()).Label(a.L("查看运行日志", "View session logs")).FillWidth().Height(58*s).Shrink(0).Padding(10*s, 12*s).Gap(10 * s).Radius(10 * s).Background(raised).AlignItems(ui.Center)
+	b := ui.ButtonBase(c.Key("ov-last-session")).Font(uiSansFamily()).Label(a.L("overview.view_session_logs")).FillWidth().Height(58*s).Shrink(0).Padding(10*s, 12*s).Gap(10 * s).Radius(10 * s).Background(raised).AlignItems(ui.Center)
 	if b.Children(func() {
 		ui.Box(c).Size(30*s, 32*s).Radius(8*s).Background(panel).Border(1, line).Shrink(0).Center().Children(func() {
 			ui.Icon(c, icons["terminal"]).Size(16*s, 16*s).TextColor(tone)

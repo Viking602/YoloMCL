@@ -9,7 +9,7 @@ import (
 // Version choices reuse the install manifest and the in-memory instance
 // inventory. Opening a filter never scans Minecraft folders or Java again.
 func (a *App) discoverVersionOptions() []string {
-	options := []string{a.L("全部游戏版本", "All game versions")}
+	options := []string{a.L("discover_versions.all_game_versions")}
 	seen := map[string]bool{"": true}
 	add := func(id string) {
 		id = strings.TrimSpace(id)
@@ -56,7 +56,7 @@ func matchingVersionOptions(options []string, query string) []string {
 
 func (a *App) discoverVersionFilter(c *ui.Context) {
 	s := uiScale(c)
-	allLabel := a.L("全部游戏版本", "All game versions")
+	allLabel := a.L("discover_versions.all_game_versions")
 	selected := a.filterMC
 	if selected == "" {
 		selected = allLabel
@@ -73,7 +73,7 @@ func (a *App) discoverVersionFilter(c *ui.Context) {
 		cb = ui.ComboboxBase(c.Key("discover-mc"), &a.discoverMCText)
 		cb.Input.Label(a.tr().DiscoverFilterMCAria).FontSize(typeBody * s).TextColor(ink).Grow(1).Shrink(1).Basis(0).MinWidth(0)
 		if a.filterMC != "" {
-			clr := tooltip(c, ui.ButtonBase(c.Key("discover-mc-clear")).Label(a.L("清除版本筛选", "Clear version filter")), allLabel).Size(18*s, 18*s).Radius(999).Center().Shrink(0)
+			clr := tooltip(c, ui.ButtonBase(c.Key("discover-mc-clear")).Label(a.L("discover_versions.clear_version_filter")), allLabel).Size(18*s, 18*s).Radius(999).Center().Shrink(0)
 			if clr.Hovered() {
 				clr.Background(ui.RGBA(120, 130, 160, .16))
 			}
@@ -83,7 +83,7 @@ func (a *App) discoverVersionFilter(c *ui.Context) {
 				clearClicked = true
 			}
 		}
-		arrow := ui.ButtonBase(c.Key("discover-mc-arrow")).Label(a.L("展开版本列表", "Toggle version list")).Size(18*s, 18*s).Center().Shrink(0)
+		arrow := ui.ButtonBase(c.Key("discover-mc-arrow")).Label(a.L("discover_versions.toggle_version_list")).Size(18*s, 18*s).Center().Shrink(0)
 		if arrow.Children(func() {
 			ui.Icon(c, icons["chevron-down"]).Size(15*s, 15*s).TextColor(muted)
 		}).Clicked() {
@@ -166,7 +166,7 @@ func (a *App) discoverVersionFilter(c *ui.Context) {
 	}
 	a.discoverMCOpen = cb.Open()
 	if a.manifestError != "" {
-		if button(c, "discover-versions-retry", a.L("重新获取版本列表", "Retry version list"), "refresh", false, a.manifestLoading) {
+		if button(c, "discover-versions-retry", a.L("discover_versions.retry_version_list"), "refresh", false, a.manifestLoading) {
 			a.loadManifest()
 		}
 	}

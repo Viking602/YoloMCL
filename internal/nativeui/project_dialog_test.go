@@ -251,7 +251,7 @@ func TestProjectDialogMotionAndDismissal(t *testing.T) {
 			case "backdrop":
 				tt.ClickAt(24, 24)
 			case "cancel":
-				clickUI(t, tt, a.L("取消", "Cancel"))
+				clickUI(t, tt, a.L("install_dialog.cancel"))
 			}
 			if a.dialogOpen {
 				t.Fatal("dismissal left dialog open")

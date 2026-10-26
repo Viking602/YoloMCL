@@ -2,8 +2,8 @@
 function allowed(pkg, dep) {
   if (pkg == ".") return dep == "internal/app"
   if (pkg == "internal/app") return dep ~ /^internal\/(buildinfo|launcher|nativeui)$/
-  if (pkg == "internal/nativeui") return dep ~ /^internal\/(launcher|buildinfo|nativeui\/i18n)$/
-  if (pkg == "internal/launcher") return dep ~ /^internal\/(config|launcher\/(memory|proctree|textenc|vault))$/
+  if (pkg == "internal/nativeui") return dep ~ /^internal\/(launcher|buildinfo|i18n)$/
+  if (pkg == "internal/launcher") return dep ~ /^internal\/(config|i18n|launcher\/(memory|proctree|textenc|vault))$/
   return 0
 }
 function inspect(line, name, first, group, dep) {

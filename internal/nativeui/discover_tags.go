@@ -164,7 +164,7 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 	}
 	if a.catFailed[k] {
 		a.discoverCategoryBody(c).Children(func() {
-			railTitle(c, a.L("分类", "Tags"))
+			railTitle(c, a.L("discover_tags.tags"))
 			if a.loadFailed(c, "cats-failed", failInline, false) {
 				delete(a.catFailed, k)
 				delete(a.catAsked, k)
@@ -178,16 +178,16 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 	}
 	a.discoverCategoryBody(c).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
-			railTitle(c, a.L("分类", "Tags"))
+			railTitle(c, a.L("discover_tags.tags"))
 			ui.Spacer(c).Grow(1)
 			if n := len(a.selectedCats()); n > 0 {
-				b := ui.ButtonBase(c.Key("cats-clear")).Label(a.L("清除", "Clear")).Height(22 * s).PaddingX(8 * s).Radius(6 * s).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("cats-clear")).Label(a.L("discover_tags.clear")).Height(22 * s).PaddingX(8 * s).Radius(6 * s).AlignItems(ui.Center)
 				fg := accent
 				if b.Hovered() {
 					b.Background(accentSoft)
 				}
 				if b.Children(func() {
-					ui.Text(c, a.L("清除", "Clear")+" "+strconv.Itoa(n)).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
+					ui.Text(c, a.L("discover_tags.clear")+" "+strconv.Itoa(n)).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
 				}).Clicked() {
 					a.catSel[a.catKey()] = nil
 					a.search()

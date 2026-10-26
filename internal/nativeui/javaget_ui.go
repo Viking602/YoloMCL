@@ -39,13 +39,13 @@ var needJavaRE = regexp.MustCompile(`需要 Java (\d+)，还没有安装`)
 func javaSourceName(a *App, src string) string {
 	switch src {
 	case "mojang":
-		return a.L("Mojang 官方", "Mojang")
+		return a.L("javaget_ui.mojang")
 	case "temurin":
 		return "Eclipse Temurin"
 	case "zulu":
 		return "Azul Zulu"
 	}
-	return a.L("本机", "This PC")
+	return a.L("javaget_ui.this_pc")
 }
 
 func (a *App) refreshJavaList(force bool) {
@@ -146,7 +146,7 @@ func (a *App) javaJobEnded(j launcher.Job) bool {
 	}
 	switch j.State {
 	case "completed":
-		a.notice(fmt.Sprintf(a.L("已安装 Java %d", "Java %d installed"), g.jobMajor))
+		a.notice(fmt.Sprintf(a.L("javaget_ui.java_installed"), g.jobMajor))
 		a.refreshJavaList(true)
 		if g.thenLaunch {
 			g.thenLaunch = false
@@ -166,13 +166,13 @@ func (a *App) javaJobEnded(j launcher.Job) bool {
 func javaHint(a *App, major int) string {
 	switch major {
 	case 8:
-		return a.L("1.16.5 及更早", "1.16.5 and older")
+		return a.L("javaget_ui.1_16_5_and_older")
 	case 17:
 		return "1.17–1.20.4"
 	case 21:
 		return "1.20.5–1.21.x"
 	}
-	return a.L("26.1 及更新", "26.1 and newer")
+	return a.L("javaget_ui.26_1_and_newer")
 }
 
 // javaGetDialog: pick a version and a source, then follow the download.
@@ -182,7 +182,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 	if g.needFor != "" {
 		ui.Row(c.Key("java-need")).FillWidth().Height(52*s).Padding(0, 14*s).Gap(10 * s).Radius(12 * s).Background(accentSoft).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
-			ui.Text(c, fmt.Sprintf(a.L("%s 需要 Java %d，这台电脑还没有。下载完成后会继续启动。", "%s needs Java %d, which is not installed. The launch continues after the download."), g.needFor, g.major)).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
+			ui.Text(c, fmt.Sprintf(a.L("javaget_ui.needs_java_which_is_not_installed_the_launch"), g.needFor, g.major)).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
 		})
 	}
 	if j := a.javaJob(); j != nil && j.State == "running" {
@@ -191,7 +191,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 	}
 	if g.offersBusy && g.offers == nil {
 		ui.Row(c.Key("java-offers-wait")).FillWidth().Height(120 * s).Center().Children(func() {
-			statusLine(c, a.L("正在读取可下载的版本", "Reading available versions"), muted, true)
+			statusLine(c, a.L("javaget_ui.reading_available_versions"), muted, true)
 		})
 		return
 	}
@@ -213,7 +213,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 	for _, j := range g.list {
 		installed[j.Major] = true
 	}
-	label(c, a.L("版本", "Version")).FontSize(typeFootnote * s).FontWeight(600)
+	label(c, a.L("javaget_ui.version")).FontSize(typeFootnote * s).FontWeight(600)
 	// Two by two: every card the same size, nothing clipped or cut short.
 	ui.Column(c.Key("java-majors")).FillWidth().Gap(10 * s).Padding(2 * s).Children(func() {
 		for r := 0; r < len(majors); r += 2 {
@@ -238,7 +238,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 			})
 		}
 	})
-	label(c, a.L("来源", "Source")).FontSize(typeFootnote * s).FontWeight(600)
+	label(c, a.L("javaget_ui.source")).FontSize(typeFootnote * s).FontWeight(600)
 	var pick *launcher.JavaOffer
 	// Resolve availability before handling clicks. A source row can change
 	// g.source before the previously selected row is built; treating a missing
@@ -283,15 +283,15 @@ func (a *App) javaGetDialog(c *ui.Context) {
 				javaBrandIcon(c, javaVendor(a, launcher.InstalledJava{Managed: true, Source: src}), 30*s)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2 * s).Children(func() {
 					ui.Text(c, javaSourceName(a, src)).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).NoWrap()
-					desc := a.L("官方启动器同款运行环境，逐个文件校验", "What the official launcher uses, each file checked")
+					desc := a.L("javaget_ui.what_the_official_launcher_uses_each_file_checked")
 					switch src {
 					case "temurin":
-						desc = a.L("开源 JRE，连接慢时自动换用国内镜像", "Open-source JRE; switches to a China mirror when slow")
+						desc = a.L("javaget_ui.open_source_jre_switches_to_a_china_mirror")
 					case "zulu":
-						desc = a.L("Azul 构建，支持 Java 8 到最新版", "Azul build, Java 8 to the newest")
+						desc = a.L("javaget_ui.azul_build_java_8_to_the_newest")
 					}
 					if off == nil {
-						desc = a.L("这个来源没有此版本", "Not offered for this version")
+						desc = a.L("javaget_ui.not_offered_for_this_version")
 					}
 					ui.Text(c, desc).FontSize(typeCaption * s).TextColor(muted).SingleLine()
 				})
@@ -308,8 +308,8 @@ func (a *App) javaGetDialog(c *ui.Context) {
 		}
 	})
 	ui.Row(c.Key("java-get-foot")).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		label(c, a.L("安装到 YoloMCL 数据目录，装好后自动加入 Java 列表", "Installs into YoloMCL's data folder and joins the Java list")).FontSize(typeCaption * s).Grow(1).MinWidth(0).SingleLine()
-		if button(c, "java-get-go", fmt.Sprintf(a.L("下载 Java %d", "Download Java %d"), g.major), "download", true, pick == nil) && pick != nil {
+		label(c, a.L("javaget_ui.installs_into_yolomcl_s_data_folder_and_joins")).FontSize(typeCaption * s).Grow(1).MinWidth(0).SingleLine()
+		if button(c, "java-get-go", fmt.Sprintf(a.L("instance_settings.download_java"), g.major), "download", true, pick == nil) && pick != nil {
 			id, e := a.service.InstallJava(pick.Major, pick.Source)
 			if e != nil {
 				a.message, a.errorMessage = a.friendlyErr(e), true
@@ -346,14 +346,14 @@ func (a *App) javaProgress(c *ui.Context, j *launcher.Job) {
 	}
 	ui.Column(c.Key("java-progress")).FillWidth().Gap(10*s).Padding(16*s).Radius(14*s).Background(raised).Border(1, glassEdge).Children(func() {
 		ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, fmt.Sprintf(a.L("正在下载 Java %d", "Downloading Java %d"), g.jobMajor)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).Grow(1)
+			ui.Text(c, fmt.Sprintf(a.L("javaget_ui.downloading_java"), g.jobMajor)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).Grow(1)
 			ui.Text(c, javaSourceName(a, g.source)).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 		})
 		ui.Box(c).FillWidth().Height(8 * s).Radius(999).Background(ui.RGBA(120, 130, 160, .16)).Clip().Children(func() {
 			ui.Box(c).WidthPercent(frac * 100).Height(8 * s).Radius(999).Background(accent)
 		})
 		ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
-			size := a.L("正在准备", "Preparing")
+			size := a.L("javaget_ui.preparing")
 			if j.Total > 0 {
 				size = fmt.Sprintf("%s / %s", fmtSize(int64(j.Done)<<10), fmtSize(int64(j.Total)<<10))
 			} else if j.Message != "" {
@@ -364,10 +364,10 @@ func (a *App) javaProgress(c *ui.Context, j *launcher.Job) {
 				ui.Text(c, fmtSize(int64(g.speed*1024))+"/s").FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap()
 			}
 			if j.Total > 0 && j.Done >= j.Total {
-				ui.Text(c, a.L("正在校验与安装", "Verifying and installing")).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
+				ui.Text(c, a.L("javaget_ui.verifying_and_installing")).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 			}
 			ui.Spacer(c).Grow(1)
-			if fixedButton(c, "java-cancel", a.L("取消", "Cancel"), "cross", 0, btnSm*s, false, false) {
+			if fixedButton(c, "java-cancel", a.L("install_dialog.cancel"), "cross", 0, btnSm*s, false, false) {
 				a.execute("cancelJob", map[string]string{"id": j.ID}, nil)
 				g.thenLaunch = false
 			}
@@ -394,7 +394,7 @@ func (a *App) javaMajorCard(c *ui.Context, m int, installed bool) {
 	})
 	if installed {
 		ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(successInk.Alpha(.12)).Children(func() {
-			ui.Text(c, a.L("已安装", "Installed")).FontSize(typeCaption2 * s).FontWeight(700).TextColor(successInk).NoWrap()
+			ui.Text(c, a.L("discover.installed")).FontSize(typeCaption2 * s).FontWeight(700).TextColor(successInk).NoWrap()
 		})
 	}
 }
@@ -431,13 +431,13 @@ func javaVendor(a *App, j launcher.InstalledJava) string {
 func javaSuits(a *App, major int) string {
 	switch {
 	case major >= 25:
-		return a.L("适合 26.1 及以上", "For 26.1 and newer")
+		return a.L("javaget_ui.for_26_1_and_newer")
 	case major >= 21:
-		return a.L("适合 1.20.5 到 1.21.x", "For 1.20.5 to 1.21.x")
+		return a.L("javaget_ui.for_1_20_5_to_1_21_x")
 	case major >= 17:
-		return a.L("适合 1.17 到 1.20.4", "For 1.17 to 1.20.4")
+		return a.L("javaget_ui.for_1_17_to_1_20_4")
 	case major >= 8:
-		return a.L("适合 1.16.5 及更早", "For 1.16.5 and older")
+		return a.L("javaget_ui.for_1_16_5_and_older")
 	}
 	return ""
 }

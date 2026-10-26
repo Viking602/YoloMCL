@@ -53,7 +53,7 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 		return
 	}
 	used := a.inUseAccounts(*r)
-	ui.Text(c, a.L("同一个整合包再开一个窗口，选择这次用哪个账号。", "Run one more copy of this pack. Pick the account for it.")).FontSize(typeFootnote * s).TextColor(inkSecondary)
+	ui.Text(c, a.L("launchagain.run_one_more_copy_of_this_pack_pick")).FontSize(typeFootnote * s).TextColor(inkSecondary)
 	ui.Column(c.Key("again-accounts")).FillWidth().Gap(6 * s).Children(func() {
 		for _, acc := range a.snapshot.Accounts {
 			ac := acc
@@ -80,7 +80,7 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 				})
 				tooltip(c, ui.Text(c, ac.Name).FontSize(typeCallout*s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).MinWidth(0), ac.Name)
 				if used[ac.ID] {
-					ui.Text(c, a.L("游戏中", "Playing")).FontSize(typeCaption * s).TextColor(successInk).NoWrap()
+					ui.Text(c, a.L("launchagain.playing")).FontSize(typeCaption * s).TextColor(successInk).NoWrap()
 				}
 				a.accountTypeTag(c, ac)
 			}).Clicked() {
@@ -92,12 +92,12 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 	ui.Row(c.Key("again-note")).FillWidth().Height(36 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 		if used[g.account] && a.accountKind(g.account) == "microsoft" {
 			ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(warning).Shrink(0)
-			ui.Text(c, a.L("同一个正版账号不能同时进入同一个服务器，单人世界不受影响。", "One Microsoft account can't join the same server twice; single player is fine.")).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
+			ui.Text(c, a.L("launchagain.one_microsoft_account_can_t_join_the_same")).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
 		}
 	})
 	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L("两个窗口共用存档、配置和模组。", "Both copies share saves, config and mods.")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
-		if fixedButton(c, "again-go", a.L("启动", "Launch"), "play", 0, btnMd*s, true, g.account == "" || a.pendingAt("launchAgain", "rootId", g.rootID)) {
+		ui.Text(c, a.L("launchagain.both_copies_share_saves_config_and_mods")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
+		if fixedButton(c, "again-go", a.L("launchagain.launch"), "play", 0, btnMd*s, true, g.account == "" || a.pendingAt("launchAgain", "rootId", g.rootID)) {
 			id, acc := g.rootID, g.account
 			a.closeDialog()
 			a.execute("launchAgain", map[string]string{"rootId": id, "accountId": acc}, func(json.RawMessage) { a.notice(a.tr().InstallLaunchPreparing) })

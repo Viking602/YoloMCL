@@ -49,7 +49,7 @@ func (a *App) clearModCache() {
 				a.notice(a.friendlyErr(err))
 				a.errorMessage = true
 			} else {
-				a.notice(a.L("模组信息缓存已清理，下次打开时自动重建", "Mod metadata cache cleared; it will rebuild when needed"))
+				a.notice(a.L("settings_cache.mod_metadata_cache_cleared_it_will_rebuild_when"))
 			}
 			if a.page == "home" && a.instTab == "mods" {
 				a.ensureAddons()
@@ -77,18 +77,18 @@ func (a *App) discardModCache() {
 
 func (a *App) modCacheSettings(c *ui.Context) {
 	s := uiScale(c)
-	settingsGroup(c, "mod-cache-settings", a.L("缓存", "Cache"), "", func() {
-		desc := a.L("共享缓存最多 8 MiB，每个实例最多 4 MiB；清理后按需重建", "Up to 8 MiB shared and 4 MiB per instance; rebuilt when needed")
-		settingRow(c, nil, a.L("模组信息缓存", "Mod metadata cache"), desc, func() {
+	settingsGroup(c, "mod-cache-settings", a.L("settings_cache.cache"), "", func() {
+		desc := a.L("settings_cache.up_to_8_mib_shared_and_4_mib")
+		settingRow(c, nil, a.L("settings_cache.mod_metadata_cache"), desc, func() {
 			ui.Row(c).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				usage := fmt.Sprintf("%.1f MiB", float64(a.modCacheInfo.Bytes)/(1<<20))
 				if a.modCacheLoading {
-					usage = a.L("统计中…", "Checking…")
+					usage = a.L("settings_cache.checking")
 				}
 				ui.Text(c, usage).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
-				label := a.L("清理缓存", "Clear cache")
+				label := a.L("settings_cache.clear_cache")
 				if a.modCacheClearing {
-					label = a.L("清理中…", "Clearing…")
+					label = a.L("settings_cache.clearing")
 				}
 				if fixedButton(c, "clear-mod-cache", label, "trash", 0, btnSm*s, false, a.modCacheClearing) {
 					a.clearModCache()

@@ -13,15 +13,15 @@ import (
 func jvmPresetName(a *App, args string) string {
 	switch strings.TrimSpace(args) {
 	case "":
-		return a.L("默认", "Default")
+		return a.L("overview_runtime.default")
 	case jvmPresetG1:
-		return a.L("G1 优化", "G1 tuned")
+		return a.L("overview_runtime.g1_tuned")
 	case jvmPresetZGC:
 		return "ZGC"
 	case jvmPresetCompact:
-		return a.L("低内存", "Low memory")
+		return a.L("overview_runtime.low_memory")
 	}
-	return a.L("自定义", "Custom")
+	return a.L("overview_runtime.custom")
 }
 
 // ovJava picks the runtime this version will use: its own path, else a
@@ -51,7 +51,7 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 	}
 	j, need := a.ovJava(r, *v)
 	kvRow(c, "Java", func() {
-		text := a.L("自动匹配", "Automatic")
+		text := a.L("overview_runtime.automatic")
 		if need > 0 {
 			text = fmt.Sprintf("Java %d", need)
 		}
@@ -67,11 +67,11 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 		})
 		switch {
 		case j.Major > 0 && j.Major == need:
-			quietTag(c, a.L("推荐", "Recommended"), success)
+			quietTag(c, a.L("overview_runtime.recommended"), success)
 		case j.Major > 0 && need > 0:
-			quietTag(c, fmt.Sprintf(a.L("建议 Java %d", "Java %d advised"), need), warning)
+			quietTag(c, fmt.Sprintf(a.L("overview_runtime.java_advised"), need), warning)
 		case j.Version == "" && need > 0:
-			quietTag(c, a.L("启动时下载", "Downloads on launch"), muted)
+			quietTag(c, a.L("overview_runtime.downloads_on_launch"), muted)
 		}
 	})
 	auto, mb := r.MemoryPlan(v.ID, a.settings)
@@ -83,30 +83,30 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 	}
 	mem := fmt.Sprintf("%.1f GB", float64(mb)/1024)
 	if auto {
-		mem = a.L("自动  约 ", "Auto  about ") + mem
+		mem = a.L("overview_runtime.auto_about") + mem
 	}
-	kvRow(c, a.L("内存", "Memory"), func() {
+	kvRow(c, a.L("instance_settings.memory"), func() {
 		a.rollNumber(c, "runtime-memory", mem, typeCallout*s, 600, ink).Width(188 * s).Shrink(1)
 		if a.memoryInfo.TotalMB > 0 {
-			numText(c, fmt.Sprintf(a.L("系统 %.0f GB", "of %.0f GB"), float64(a.memoryInfo.TotalMB)/1024), typeFootnote*s, muted)
+			numText(c, fmt.Sprintf(a.L("overview_runtime.of_gb"), float64(a.memoryInfo.TotalMB)/1024), typeFootnote*s, muted)
 		}
 	})
-	kvRow(c, a.L("JVM 参数", "JVM args"), func() {
+	kvRow(c, a.L("overview_runtime.jvm_args"), func() {
 		text := jvmPresetName(a, v.JVMArgs)
 		text = swappedContent(a, c, "runtime-jvm", text, text)
 		a.contentBody(c, "runtime-jvm").Children(func() { valueText(c, text) })
 	})
 	if d := st.Dir; d != "" {
-		kvRow(c, a.L("版本隔离", "Isolation"), func() {
+		kvRow(c, a.L("overview_runtime.isolation"), func() {
 			if !strings.EqualFold(filepath.Clean(d), filepath.Clean(r.Path)) {
-				valueText(c, a.L("开启", "On"))
-				numText(c, a.L("模组与存档独立存放", "own mods and worlds"), typeFootnote*s, muted)
+				valueText(c, a.L("overview_runtime.on"))
+				numText(c, a.L("overview_runtime.own_mods_and_worlds"), typeFootnote*s, muted)
 			} else {
-				valueText(c, a.L("关闭", "Off"))
-				numText(c, a.L("与同目录其他版本共用", "shared with other versions"), typeFootnote*s, muted)
+				valueText(c, a.L("overview_runtime.off"))
+				numText(c, a.L("overview_runtime.shared_with_other_versions"), typeFootnote*s, muted)
 			}
 		})
 	} else {
-		kv(c, a.L("版本隔离", "Isolation"), "—")
+		kv(c, a.L("overview_runtime.isolation"), "—")
 	}
 }

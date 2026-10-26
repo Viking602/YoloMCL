@@ -6,14 +6,11 @@ const (
 )
 
 func For(en bool) *Copy {
-	if en {
-		return &EN
-	}
-	return &ZH
+	return &forLanguage(en).Copy
 }
 
 type Copy struct {
-	Code string
+	Code string `json:"-"`
 
 	// Window & Shell
 	AppTitle          string

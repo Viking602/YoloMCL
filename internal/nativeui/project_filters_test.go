@@ -154,7 +154,7 @@ func TestProjectLongVersionChoicesRemainReachable(t *testing.T) {
 				a.projectVersions = append(a.projectVersions, launcher.ProjectVersion{ID: "long", Number: "Long version", GameVersions: []string{long}, Type: "alpha"})
 				a.packRemote["long"] = &launcher.PackPreview{}
 				tt.Advance(350 * time.Millisecond)
-				clickUI(t, tt, a.L("项目游戏版本筛选", "Project game version filter"))
+				clickUI(t, tt, a.L("project_version_choice.project_game_version_filter"))
 				tt.Type("long-version")
 				tt.Advance(300 * time.Millisecond)
 				opt, ok := tt.Find("游戏版本选项 " + long)
@@ -169,7 +169,7 @@ func TestProjectLongVersionChoicesRemainReachable(t *testing.T) {
 					t.Fatal("long version could not be selected")
 				}
 				panel, _ := tt.Find("活动弹窗")
-				for _, label := range []string{a.L("版本加载器筛选", "Version loader filter"), a.L("只看正式版", "Releases only"), "按钮文字 install-confirm"} {
+				for _, label := range []string{a.L("project_version_filters.version_loader_filter"), a.L("project_version_filters.releases_only"), "按钮文字 install-confirm"} {
 					b, ok := tt.Find(label)
 					if !ok || b.X < panel.X || b.X+b.W > panel.X+panel.W+.5 || b.Y+b.H > panel.Y+panel.H+.5 {
 						t.Fatalf("control clipped: %s %+v in %+v", label, b, panel)

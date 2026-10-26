@@ -19,7 +19,7 @@ func (a *App) aboutSettings(c *ui.Context) {
 			ui.Text(c, "YoloMCL").Font("MCL Pixel").FontSize(typeTitle2 * s).TextColor(ink).NoWrap().Shrink(0)
 			version := info.Version
 			if info.Dirty {
-				version += a.L("（本地修改）", " (modified)")
+				version += a.L("about.modified")
 			}
 			label(c, version).Label("launcher-version").FontSize(typeCaption * s).NoWrap().Shrink(0)
 			ui.Box(c).Grow(1)
@@ -47,36 +47,36 @@ func (a *App) launcherUpdateText() string {
 	state := a.launcherUpdate
 	switch state.phase {
 	case "checking":
-		return a.L("正在检查 GitHub 更新…", "Checking GitHub for updates…")
+		return a.L("about.checking_github_for_updates")
 	case "current":
-		return a.L("已是最新正式版本", "You're on the latest stable release")
+		return a.L("about.you_re_on_the_latest_stable_release")
 	case "available":
 		if state.err != nil {
 			if a.launcherUpdateRequired() {
-				return a.L("更新未完成，请重试。此版本仍处于停用状态", "Update failed. Retry to update; this version remains retired")
+				return a.L("about.update_failed_retry_to_update_this_version_remains")
 			}
-			return a.L("更新未完成，可以重试；当前版本仍可使用", "Update failed. You can retry; the current version is still usable")
+			return a.L("about.update_failed_you_can_retry_the_current_version")
 		}
-		return a.L("新版本 ", "New release ") + "v" + strings.TrimPrefix(state.release.version, "v")
+		return a.L("about.new_release") + "v" + strings.TrimPrefix(state.release.version, "v")
 	case "installing":
 		if state.total > 0 {
-			return fmt.Sprintf(a.L("正在下载并校验更新 %d%%", "Downloading and verifying %d%%"), min(100, 100*state.downloaded/state.total))
+			return fmt.Sprintf(a.L("about.downloading_and_verifying"), min(100, 100*state.downloaded/state.total))
 		}
-		return a.L("正在下载并校验更新…", "Downloading and verifying update…")
+		return a.L("about.downloading_and_verifying_update")
 	case "ready":
 		if a.launcherRestartBlocked() {
-			return a.L("更新已准备好，游戏和任务结束后可重启", "Update ready. Finish active games and tasks before restarting")
+			return a.L("about.update_ready_finish_active_games_and_tasks_before")
 		}
-		return a.L("更新已准备好，重启后生效", "Update ready. Restart to use the new version")
+		return a.L("about.update_ready_restart_to_use_the_new_version")
 	case "disabled":
-		return a.L("此构建或安装位置不支持原位更新，可从 GitHub 下载正式版", "This build or location cannot update in place. Download a release from GitHub")
+		return a.L("about.this_build_or_location_cannot_update_in_place")
 	case "failed":
 		if a.launcherUpdateRequired() {
-			return a.L("无法连接更新服务。请检查网络后重试，或从发布页面下载新版", "Can't reach the update service. Retry when connected or download from the release page")
+			return a.L("about.can_t_reach_the_update_service_retry_when")
 		}
-		return a.L("无法检查更新，请检查网络后重试", "Couldn't check for updates. Check your connection and retry")
+		return a.L("about.couldn_t_check_for_updates_check_your_connection")
 	default:
-		return a.L("通过 GitHub 获取正式版本更新", "Stable release updates from GitHub")
+		return a.L("about.stable_release_updates_from_github")
 	}
 }
 
@@ -84,19 +84,19 @@ func (a *App) launcherUpdateButton(c *ui.Context) {
 	s := uiScale(c)
 	switch a.launcherUpdate.phase {
 	case "disabled":
-		if fixedButton(c, "launcher-download", a.L("下载正式版", "Get release"), "download", 0, btnSm*s, false, false) {
+		if fixedButton(c, "launcher-download", a.L("about.get_release"), "download", 0, btnSm*s, false, false) {
 			c.OpenURL(buildinfo.ReleasesURL + "/latest")
 		}
 	case "available", "installing":
-		if fixedButton(c, "launcher-install", a.L("查看更新", "View update"), "download", 0, btnSm*s, true, false) {
+		if fixedButton(c, "launcher-install", a.L("about.view_update"), "download", 0, btnSm*s, true, false) {
 			a.openDialog("launcherUpdate")
 		}
 	case "ready":
-		if fixedButton(c, "launcher-restart", a.L("重启启动器", "Restart launcher"), "refresh", 0, btnSm*s, true, a.launcherRestartBlocked()) {
+		if fixedButton(c, "launcher-restart", a.L("about.restart_launcher"), "refresh", 0, btnSm*s, true, a.launcherRestartBlocked()) {
 			mygo.App.Relaunch()
 		}
 	default:
-		if fixedButton(c, "launcher-check", a.L("检查更新", "Check for updates"), "refresh", 0, btnSm*s, false, a.launcherUpdate.phase == "checking") {
+		if fixedButton(c, "launcher-check", a.L("about.check_for_updates"), "refresh", 0, btnSm*s, false, a.launcherUpdate.phase == "checking") {
 			a.checkLauncherUpdates()
 		}
 	}

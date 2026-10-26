@@ -193,7 +193,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 					c.After(0)
 				}
 				ui.Box(c).Size(1, 18*s).Background(line).Margin(0, 4*s)
-				if stageIcon(c, "stage-save", "download", a.L("保存皮肤", "Save skin"), false) {
+				if stageIcon(c, "stage-save", "download", a.L("wardrobe.save_skin"), false) {
 					name := "skin"
 					if ac := a.account(); ac != nil {
 						name = ac.Name
@@ -209,7 +209,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 		if a.appearanceLoading {
 			ui.Row(c).Absolute().Top(14 * s).Left(14 * s).Gap(6 * s).AlignItems(ui.Center).Children(func() {
 				statusSpinner(c, 12*s)
-				ui.Text(c, a.L("正在读取外观", "Loading appearance")).FontSize(typeCaption * s).TextColor(muted)
+				ui.Text(c, a.L("wardrobe.loading_appearance")).FontSize(typeCaption * s).TextColor(muted)
 			})
 		} else {
 			ui.Text(c, t.WardrobeOrbitHint).Absolute().Top(14 * s).Right(16 * s).FontSize(typeCaption * s).TextColor(muted)

@@ -16,7 +16,7 @@ func (a *App) accountDialog(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
 	if len(a.snapshot.Accounts) == 0 {
-		emptyState(c, "empty-accounts", "account", a.L("还没有账号", "No saved accounts"), a.L("添加账号后，可以在这里切换和管理。", "Add an account to switch and manage it here."), func() {
+		emptyState(c, "empty-accounts", "account", a.L("account_dialog.no_saved_accounts"), a.L("account_dialog.add_an_account_to_switch_and_manage_it"), func() {
 			if button(c, "account-add-open", t.AccAddAccountBtn, "plus", true, a.dialogPending()) {
 				a.openDialog("accountAdd")
 			}
@@ -40,7 +40,7 @@ func (a *App) accountAddDialog(c *ui.Context) {
 				a.openDialog("account")
 			}
 		}
-		label(c, a.L("选择登录方式，添加你的游戏账号。", "Choose how to sign in to your game account.")).Grow(1).MinWidth(0)
+		label(c, a.L("account_dialog.choose_how_to_sign_in_to_your_game")).Grow(1).MinWidth(0)
 	})
 	a.accountAddForm(c)
 }

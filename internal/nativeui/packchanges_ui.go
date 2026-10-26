@@ -106,7 +106,7 @@ func (a *App) changeGroupView(c *ui.Context, s float32, g changeGroup) {
 			ui.Text(c, fmt.Sprint(len(g.items))).FontSize(typeCaption2 * s).FontWeight(650).TextColor(inkSecondary).NoWrap()
 		})
 		if mods > 0 && mods < len(g.items) {
-			ui.Text(c, fmt.Sprintf(a.L("模组 %d  其他文件 %d", "%d mods  %d other files"), mods, len(g.items)-mods)).FontSize(typeCaption * s).FontFeatures("tnum").TextColor(muted).NoWrap()
+			ui.Text(c, fmt.Sprintf(a.L("packchanges_ui.mods_other_files"), mods, len(g.items)-mods)).FontSize(typeCaption * s).FontFeatures("tnum").TextColor(muted).NoWrap()
 		}
 		ui.Spacer(c).Grow(1)
 		ic := "chevron"

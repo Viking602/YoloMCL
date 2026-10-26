@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -139,14 +140,6 @@ func (a *App) watchWorldJobs() {
 	}
 }
 
-var worldModes = map[string][2]string{
-	"survival":  {"生存", "Survival"},
-	"creative":  {"创造", "Creative"},
-	"adventure": {"冒险", "Adventure"},
-	"spectator": {"旁观", "Spectator"},
-	"hardcore":  {"极限", "Hardcore"},
-}
-
 func (a *App) worldsView(c *ui.Context, r launcher.Instance) {
 	s := uiScale(c)
 	if a.wv.key != r.ID+"|"+r.SelectedVersion {
@@ -160,34 +153,34 @@ func (a *App) worldsView(c *ui.Context, r launcher.Instance) {
 	}
 	// header: count + total size, then 全部备份 / 打开存档文件夹
 	ui.Row(c.Key("worlds-head")).FillWidth().Height(36 * s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, fmt.Sprintf(a.L("%d 个世界", "%d worlds"), len(a.wv.list))).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink).NoWrap()
+		ui.Text(c, fmt.Sprintf(a.L("storage.count.saves"), len(a.wv.list))).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink).NoWrap()
 		if total > 0 {
-			numText(c, a.L("共 ", "")+fmtSize(total), typeFootnote*s, muted)
+			numText(c, a.L("worlds_ui.text")+fmtSize(total), typeFootnote*s, muted)
 		}
 		ui.Spacer(c).Grow(1)
 		allJob := a.worldJob("")
 		if allJob != nil {
 			numText(c, fmt.Sprintf("%d / %d", allJob.Done, allJob.Total), typeFootnote*s, accent)
 		}
-		if fixedButton(c, "worlds-backup-all", a.L("全部备份", "Back up all"), "download", 0, btnSm*s, false, len(a.wv.list) == 0 || a.worldBusy("")) {
+		if fixedButton(c, "worlds-backup-all", a.L("worlds_ui.back_up_all"), "download", 0, btnSm*s, false, len(a.wv.list) == 0 || a.worldBusy("")) {
 			a.execute("backupWorld", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": ""}, nil)
 		}
-		if fixedButton(c, "worlds-open", a.L("打开存档文件夹", "Open saves folder"), "folder", 0, btnSm*s, false, false) {
+		if fixedButton(c, "worlds-open", a.L("worlds_ui.open_saves_folder"), "folder", 0, btnSm*s, false, false) {
 			a.openSub("saves")
 		}
 	})
 	if running {
 		ui.Row(c.Key("worlds-running")).FillWidth().Height(36 * s).PaddingX(12 * s).Gap(8 * s).Radius(10 * s).Background(warning.Alpha(.10)).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(warning).Shrink(0)
-			label(c, a.L("游戏正在运行：备份可能不是最新状态，还原需要先退出游戏", "Game running: backups may lag, restore needs the game closed")).FontSize(typeFootnote * s).SingleLine().Grow(1).Basis(0).MinWidth(0)
+			label(c, a.L("worlds_ui.game_running_backups_may_lag_restore_needs_the")).FontSize(typeFootnote * s).SingleLine().Grow(1).Basis(0).MinWidth(0)
 		})
 	}
 	if len(a.wv.list) == 0 {
 		if a.wv.loading {
-			label(c, a.L("正在读取存档", "Reading worlds"))
+			label(c, a.L("worlds_ui.reading_worlds"))
 			return
 		}
-		emptyState(c, "worlds-empty", "world", a.L("还没有存档", "No worlds yet"), a.L("进入游戏创建世界后会显示在这里", "Worlds you create in game show up here"), nil)
+		emptyState(c, "worlds-empty", "world", a.L("overview.no_worlds_yet"), a.L("worlds_ui.worlds_you_create_in_game_show_up_here"), nil)
 		return
 	}
 	ui.Column(c.Key("worlds-list")).FillWidth().Gap(10 * s).Children(func() {
@@ -219,23 +212,24 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 					tooltip(c, ui.Text(c, w.Name).FontSize(typeSubhead*s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0), w.Name)
-					m := worldModes[w.Mode]
 					tone := muted
 					if w.Mode == "hardcore" {
 						tone = danger
 					}
-					quietTag(c, a.L(m[0], m[1]), tone)
+					if mode, ok := i18n.Lookup(a.isEN(), "world.mode."+w.Mode); ok {
+						quietTag(c, mode, tone)
+					}
 				})
 				ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
 					cell := func(text string, wd float32) {
 						ui.Box(c).Width(wd * s).Shrink(0).Children(func() { numText(c, text, typeFootnote*s, muted) })
 					}
-					cell(a.L("上次游玩 ", "Played ")+agoText(a, w.LastPlayed), 150)
+					cell(a.L("overview.played")+agoText(a, w.LastPlayed), 150)
 					cell(fmtSize(w.Size), 72)
 					if w.Backups > 0 {
-						cell(fmt.Sprintf(a.L("%d 个备份", "%d backups"), w.Backups), 80)
+						cell(fmt.Sprintf(a.L("worlds_ui.backups"), w.Backups), 80)
 					} else {
-						cell(a.L("未备份", "No backup"), 80)
+						cell(a.L("worlds_ui.no_backup"), 80)
 					}
 				})
 			})
@@ -246,13 +240,13 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 				}
 				ui.Box(c).Width(90 * s).Shrink(0).AlignItems(ui.End).Children(func() { numText(c, msg, typeFootnote*s, accent) })
 			}
-			if iconOnlyButton(c, "world-open-"+w.Dir, "folder", a.L("打开存档文件夹", "Open folder"), btnSm*s, false) {
+			if iconOnlyButton(c, "world-open-"+w.Dir, "folder", a.L("worlds_ui.open_folder"), btnSm*s, false) {
 				a.openWorldDir(w.Dir)
 			}
-			if fixedButton(c, "world-backup-"+w.Dir, a.L("备份", "Back up"), "download", 0, btnSm*s, false, busy) {
+			if fixedButton(c, "world-backup-"+w.Dir, a.L("worlds_ui.back_up"), "download", 0, btnSm*s, false, busy) {
 				a.execute("backupWorld", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir}, nil)
 			}
-			rl := a.L("还原", "Restore")
+			rl := a.L("worlds_ui.restore")
 			if fixedButton(c, "world-restore-"+w.Dir, rl, "refresh", 0, btnSm*s, open, busy) {
 				a.wv.confirm = ""
 				if open {
@@ -294,15 +288,15 @@ func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.Wor
 	ui.Column(c.Key("world-backups-"+w.Dir)).FillWidth().Padding(0, 16*s, 14*s, 16*s).Gap(6 * s).Children(func() {
 		ui.Box(c).FillWidth().Height(1).Background(line).Margin(0, 0, 4*s, 0)
 		if running {
-			label(c, a.L("游戏正在运行，退出游戏后才能还原", "Close the game to restore")).FontSize(typeFootnote * s).TextColor(danger)
+			label(c, a.L("worlds_ui.close_the_game_to_restore")).FontSize(typeFootnote * s).TextColor(danger)
 		}
 		if len(a.wv.backups) == 0 {
 			if a.wv.backupsLoading {
 				ui.Row(c).FillWidth().Height(36 * s).AlignItems(ui.Center).Children(func() {
-					label(c, a.L("正在读取备份", "Reading backups")).FontSize(typeFootnote * s)
+					label(c, a.L("worlds_ui.reading_backups")).FontSize(typeFootnote * s)
 				})
 			} else {
-				emptyNote(c, "world-backups-empty", "folder", a.L("还没有备份", "No backups yet"), a.L("点上方的「备份」，保存当前世界的副本", "Choose Back up above to save a copy of this world"))
+				emptyNote(c, "world-backups-empty", "folder", a.L("worlds_ui.no_backups_yet"), a.L("worlds_ui.choose_back_up_above_to_save_a_copy"))
 			}
 			return
 		}
@@ -315,25 +309,25 @@ func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.Wor
 				})
 				ui.Box(c).Width(70 * s).Shrink(0).Children(func() { numText(c, fmtSize(b.Size), typeFootnote*s, muted) })
 				if b.Auto {
-					quietTag(c, a.L("还原前自动备份", "Auto before restore"), muted)
+					quietTag(c, a.L("worlds_ui.auto_before_restore"), muted)
 				}
 				ui.Spacer(c).Grow(1)
 				switch a.wv.confirm {
 				case "restore:" + b.File:
-					label(c, a.L("会先自动备份当前存档再替换", "Current world is backed up first")).FontSize(typeFootnote * s).SingleLine().Shrink(1).MinWidth(0)
-					if fixedButton(c, "wb-cancel-"+b.File, a.L("取消", "Cancel"), "", 0, btnSm*s, false, false) {
+					label(c, a.L("worlds_ui.current_world_is_backed_up_first")).FontSize(typeFootnote * s).SingleLine().Shrink(1).MinWidth(0)
+					if fixedButton(c, "wb-cancel-"+b.File, a.L("install_dialog.cancel"), "", 0, btnSm*s, false, false) {
 						a.wv.confirm = ""
 					}
-					if fixedButton(c, "wb-do-restore-"+b.File, a.L("确认还原", "Restore"), "refresh", 0, btnSm*s, true, running || busy) {
+					if fixedButton(c, "wb-do-restore-"+b.File, a.L("worlds_ui.restore_2"), "refresh", 0, btnSm*s, true, running || busy) {
 						a.wv.confirm = ""
 						a.execute("restoreWorld", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir, "path": b.File}, nil)
 					}
 				case "delete:" + b.File:
-					label(c, a.L("删除后无法恢复", "This can't be undone")).FontSize(typeFootnote * s).SingleLine().Shrink(1).MinWidth(0)
-					if fixedButton(c, "wb-cancel-"+b.File, a.L("取消", "Cancel"), "", 0, btnSm*s, false, false) {
+					label(c, a.L("worlds_ui.this_can_t_be_undone")).FontSize(typeFootnote * s).SingleLine().Shrink(1).MinWidth(0)
+					if fixedButton(c, "wb-cancel-"+b.File, a.L("install_dialog.cancel"), "", 0, btnSm*s, false, false) {
 						a.wv.confirm = ""
 					}
-					if fixedButton(c, "wb-do-delete-"+b.File, a.L("确认删除", "Delete"), "trash", 0, btnSm*s, false, busy) {
+					if fixedButton(c, "wb-do-delete-"+b.File, a.L("worlds_ui.delete"), "trash", 0, btnSm*s, false, busy) {
 						a.wv.confirm = ""
 						world := w.Dir
 						a.execute("deleteWorldBackup", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir, "path": b.File}, func(json.RawMessage) {
@@ -342,10 +336,10 @@ func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.Wor
 						})
 					}
 				default:
-					if fixedButton(c, "wb-restore-"+b.File, a.L("还原到此", "Restore"), "refresh", 0, btnSm*s, false, running || busy) {
+					if fixedButton(c, "wb-restore-"+b.File, a.L("worlds_ui.restore_3"), "refresh", 0, btnSm*s, false, running || busy) {
 						a.wv.confirm = "restore:" + b.File
 					}
-					if iconOnlyButton(c, "wb-delete-"+b.File, "trash", a.L("删除备份", "Delete backup"), btnSm*s, busy) {
+					if iconOnlyButton(c, "wb-delete-"+b.File, "trash", a.L("worlds_ui.delete_backup"), btnSm*s, busy) {
 						a.wv.confirm = "delete:" + b.File
 					}
 				}

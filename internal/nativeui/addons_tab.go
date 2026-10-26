@@ -65,23 +65,23 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 	kind := a.addonTab
 	ui.Column(c.Key("addon-toolbar")).FillWidth().Gap(12 * s).Children(func() {
 		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-			textField(c, &a.modFilter).Placeholder(a.L("搜索名称或文件名", "Search name or file")).Label(t.ModsSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
-			sortOpts := []string{a.L("按名称", "By name"), a.L("按大小", "By size")}
+			textField(c, &a.modFilter).Placeholder(a.L("addons_tab.search_name_or_file")).Label(t.ModsSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
+			sortOpts := []string{a.L("addons_tab.by_name"), a.L("addons_tab.by_size")}
 			cur := sortOpts[0]
 			if a.addonSortKey == "size" {
 				cur = sortOpts[1]
 			}
-			if selectBox(c, "addon-sort", a.L("排序", "Sort"), &cur, sortOpts).Width(116 * s).Shrink(0).Changed() {
+			if selectBox(c, "addon-sort", a.L("addons_tab.sort"), &cur, sortOpts).Width(116 * s).Shrink(0).Changed() {
 				a.addonSortKey = ""
 				if cur == sortOpts[1] {
 					a.addonSortKey = "size"
 				}
 			}
-			ui.Row(c.Key("addon-view")).Label(a.L("视图", "View")).Padding(2 * s).Gap(2 * s).Radius(9 * s).Background(fieldColor).Shrink(0).Children(func() {
+			ui.Row(c.Key("addon-view")).Label(a.L("addons_tab.view")).Padding(2 * s).Gap(2 * s).Radius(9 * s).Background(fieldColor).Shrink(0).Children(func() {
 				for _, v := range []struct {
 					list       bool
 					icon, text string
-				}{{false, "mods", a.L("卡片", "Cards")}, {true, "list", a.L("列表", "List")}} {
+				}{{false, "mods", a.L("addons_tab.cards")}, {true, "list", a.L("addons_tab.list")}} {
 					sel := a.addonListMode == v.list
 					b := tooltip(c, ui.ButtonBase(c.Key("addon-view-"+v.icon)).Label(v.text), v.text).Size(btnSm*s, btnSm*s-4*s).Radius(7 * s).Center()
 					bg, fg := ui.Transparent, muted
@@ -97,14 +97,14 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 					}
 				}
 			})
-			if iconOnlyButton(c, "addon-open-folder", "folder", a.L("打开文件夹", "Open folder"), btnSm*s+4*s, false) {
+			if iconOnlyButton(c, "addon-open-folder", "folder", a.L("addons_tab.open_folder"), btnSm*s+4*s, false) {
 				a.openSub(addonFolder(kind))
 			}
 			if kind == "mods" {
 				if a.modChecking {
 					ui.Row(c).Height(btnSm*s + 4*s).Gap(6 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 						ui.Spinner(c).Size(12*s, 12*s)
-						label(c, a.L("正在检查更新", "Checking updates")).FontSize(typeFootnote * s).NoWrap()
+						label(c, a.L("addons_tab.checking_updates")).FontSize(typeFootnote * s).NoWrap()
 					})
 				}
 				if iconOnlyButton(c, "check-mods", "refresh", t.ModsCheckUpdatesBtn, btnSm*s+4*s, a.modChecking || a.pendingOp("checkMods") || a.root() == nil) {
@@ -115,10 +115,10 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 					})
 				}
 			}
-			if fixedButton(c, "addon-import", a.L("导入文件", "Import"), "plus", 0, btnSm*s+4*s, false, a.instancePending("addLocalMods", "addLocalAssetPacks") || a.root() == nil) {
+			if fixedButton(c, "addon-import", a.L("addons_tab.import"), "plus", 0, btnSm*s+4*s, false, a.instancePending("addLocalMods", "addLocalAssetPacks") || a.root() == nil) {
 				a.importAddons(kind)
 			}
-			if fixedButton(c, "find-mods", a.L("去发现", "Discover"), "search", 0, btnSm*s+4*s, true, false) {
+			if fixedButton(c, "find-mods", a.L("addons_tab.discover"), "search", 0, btnSm*s+4*s, true, false) {
 				a.goDiscover(kind, "")
 			}
 		})
@@ -129,9 +129,9 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 		ui.Row(c).FillWidth().Gap(6 * s).AlignItems(ui.Center).Children(func() {
 			a.addonFilterPills(c, len(all), on, off, upd)
 			ui.Spacer(c).Grow(1)
-			hint := a.L("点按切换启用状态", "Click to enable or disable")
+			hint := a.L("addons_tab.click_to_enable_or_disable")
 			if a.addonTab == "mods" {
-				hint = a.L("点按启用或禁用，禁用前需确认", "Click to toggle; disabling asks for confirmation")
+				hint = a.L("addons_tab.click_to_toggle_disabling_asks_for_confirmation")
 			}
 			label(c, hint).FontSize(typeCaption * s).NoWrap().Shrink(1).MinWidth(0)
 		})
@@ -141,21 +141,21 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 func (a *App) addonEmpty(c *ui.Context) {
 	s := uiScale(c)
 	kind := a.addonTab
-	icon, title, desc, cta := "mods", a.L("这个实例还没有模组", "No mods in this instance yet"), a.L("在发现页搜索安装，或把 .jar 文件直接拖进窗口。", "Install from Discover, or drop .jar files onto the window."), a.L("发现模组", "Find mods")
+	icon, title, desc, cta := "mods", a.L("addons_tab.no_mods_in_this_instance_yet"), a.L("addons_tab.install_from_discover_or_drop_jar_files_onto"), a.L("addons_tab.find_mods")
 	switch kind {
 	case "resourcepack":
-		icon, title, desc, cta = "layers", a.L("还没有资源包", "No resource packs yet"), a.L("在发现页挑选资源包，或把 .zip 拖进窗口。装好后在游戏的资源包菜单里启用。", "Pick one in Discover, or drop a .zip onto the window, then turn it on in the game's resource pack menu."), a.L("发现资源包", "Find resource packs")
+		icon, title, desc, cta = "layers", a.L("addons_tab.no_resource_packs_yet"), a.L("addons_tab.pick_one_in_discover_or_drop_a_zip"), a.L("addons_tab.find_resource_packs")
 	case "shader":
-		icon, title, desc, cta = "sun", a.L("还没有光影", "No shaders yet"), a.L("在发现页挑选光影，或把 .zip 拖进窗口。装好后在游戏的光影菜单里选择。", "Pick one in Discover, or drop a .zip onto the window, then choose it in the game's shader menu."), a.L("发现光影", "Find shaders")
+		icon, title, desc, cta = "sun", a.L("addons_tab.no_shaders_yet"), a.L("addons_tab.pick_one_in_discover_or_drop_a_zip_2"), a.L("addons_tab.find_shaders")
 	}
 	emptyState(c, "empty-"+kind, icon, title, desc, func() {
 		if fixedButton(c, "empty-discover", cta, "search", 0, btnMd*s, true, false) {
 			a.goDiscover(kind, "")
 		}
-		if fixedButton(c, "empty-import", a.L("导入文件", "Import"), "plus", 0, btnMd*s, false, a.instancePending("addLocalMods", "addLocalAssetPacks")) {
+		if fixedButton(c, "empty-import", a.L("addons_tab.import"), "plus", 0, btnMd*s, false, a.instancePending("addLocalMods", "addLocalAssetPacks")) {
 			a.importAddons(kind)
 		}
-		if fixedButton(c, "empty-folder", a.L("打开文件夹", "Open folder"), "folder", 0, btnMd*s, false, false) {
+		if fixedButton(c, "empty-folder", a.L("addons_tab.open_folder"), "folder", 0, btnMd*s, false, false) {
 			a.openSub(addonFolder(kind))
 		}
 	})
@@ -176,16 +176,16 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 		ui.Row(c).Grow(1).Basis(260 * s).MinWidth(0).Gap(14 * s).AlignItems(ui.Center).Children(func() {
 			appleSoftIconBox(c, 40*s, "sun", ui.Hex("#ff9f0a"), ui.Hex("#ff6b3d"), panel)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
-				label(c, a.L("游戏中正在使用", "In use in game")).FontSize(typeCaption * s)
-				cur := a.L("还没有在游戏里选择光影", "No shader chosen in game yet")
+				label(c, a.L("addons_tab.in_use_in_game")).FontSize(typeCaption * s)
+				cur := a.L("addons_tab.no_shader_chosen_in_game_yet")
 				fg := muted
 				switch {
 				case !stOK:
-					cur = a.L("读取中", "Reading")
+					cur = a.L("addons_tab.reading")
 				case st.ShadersOn:
 					cur, fg = strings.TrimSuffix(st.ShaderPack, ".zip"), ink
 				case st.ShaderConfig != "" && st.ShaderPack != "":
-					cur = a.L("光影已关闭", "Shaders are off")
+					cur = a.L("addons_tab.shaders_are_off")
 				}
 				ui.Text(c, cur).FontSize(typeHeadline * s).FontWeight(650).TextColor(fg).SingleLine().FillWidth().MinWidth(0)
 			})
@@ -193,21 +193,21 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 		ui.Box(c).Width(1).Height(34 * s).Background(line).Shrink(0)
 		ui.Row(c).Grow(1).Basis(260 * s).MinWidth(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
-				label(c, a.L("光影加载器", "Shader loader")).FontSize(typeCaption * s)
+				label(c, a.L("addons_tab.shader_loader")).FontSize(typeCaption * s)
 				switch {
 				case !known:
-					ui.Text(c, a.L("检查中", "Checking")).FontSize(typeBody * s).FontWeight(600).TextColor(muted).SingleLine()
+					ui.Text(c, a.L("addons_tab.checking")).FontSize(typeBody * s).FontWeight(600).TextColor(muted).SingleLine()
 				case name != "":
 					ui.Row(c).Gap(6 * s).AlignItems(ui.Center).Children(func() {
 						ui.Icon(c, icons["check"]).Size(13*s, 13*s).TextColor(ui.Hex("#34c759"))
 						ui.Text(c, strings.TrimSpace(name+" "+ver)).FontSize(typeBody * s).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0)
 					})
 				default:
-					ui.Text(c, fmt.Sprintf(a.L("需要 %s 才能加载光影", "%s is needed to load shaders"), need)).FontSize(typeBody * s).FontWeight(600).TextColor(ui.Hex("#c26a00")).SingleLine().MinWidth(0)
+					ui.Text(c, fmt.Sprintf(a.L("addons_tab.is_needed_to_load_shaders"), need)).FontSize(typeBody * s).FontWeight(600).TextColor(ui.Hex("#c26a00")).SingleLine().MinWidth(0)
 				}
 			})
 			if known && name == "" && query != "" {
-				if fixedButton(c, "shader-get-loader", fmt.Sprintf(a.L("安装 %s", "Get %s"), need), "download", 0, btnSm*s+4*s, true, false) {
+				if fixedButton(c, "shader-get-loader", fmt.Sprintf(a.L("addons_tab.get"), need), "download", 0, btnSm*s+4*s, true, false) {
 					a.goDiscover("mods", query)
 				}
 			}
@@ -263,8 +263,8 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 	t := a.tr()
 	if len(shown) == 0 {
 		glass(ui.Column(c.Key("addon-nomatch")).FillWidth().Padding(28*s, 24*s).Gap(10*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
-			label(c, fmt.Sprintf(a.L("没有符合条件的%s", "No matching %s"), a.addonKindWord()))
-			if fixedButton(c, "addon-clear-filter", a.L("清除筛选", "Clear filters"), "cross", 0, btnSm*s, false, false) {
+			label(c, fmt.Sprintf(a.L("addons_tab.no_matching"), a.addonKindWord()))
+			if fixedButton(c, "addon-clear-filter", a.L("addons_tab.clear_filters"), "cross", 0, btnSm*s, false, false) {
 				a.modFilter, a.addonFilterKind = "", ""
 			}
 		})
@@ -339,7 +339,7 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 	if a.addonTab == "shader" {
 		for i := range shown {
 			if st.ShadersOn && shown[i].pack.File == st.ShaderPack {
-				shown[i].it.badge = a.L("使用中", "In use")
+				shown[i].it.badge = a.L("addons_tab.in_use")
 			}
 		}
 	}
@@ -363,14 +363,14 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 		}
 		if len(active) > 0 {
 			ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
-				sectionTitle(c, a.L("游戏中已启用，按优先级", "On in game, by priority"), len(active))
+				sectionTitle(c, a.L("addons_tab.on_in_game_by_priority"), len(active))
 				list("rp-active", active)
 			})
 		}
 		if len(rest) > 0 {
 			ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 				if len(active) > 0 {
-					sectionTitle(c, a.L("未在游戏中启用", "Not on in game"), len(rest))
+					sectionTitle(c, a.L("addons_tab.not_on_in_game"), len(rest))
 				}
 				list("rp-rest", rest)
 			})

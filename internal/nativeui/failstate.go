@@ -15,8 +15,8 @@ const (
 // "加载失败" and a 重试 that spins while busy. Returns true on retry click.
 func (a *App) loadFailed(c *ui.Context, key string, size int, busy bool) bool {
 	s := uiScale(c)
-	label := a.L("加载失败", "Failed to load")
-	retry := a.L("重试", "Retry")
+	label := a.L("error_text.failed_to_load")
+	retry := a.L("discover_feed.retry")
 	clicked := false
 	btn := func() {
 		if busy {

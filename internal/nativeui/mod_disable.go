@@ -70,12 +70,12 @@ func (a *App) disableModDialog(c *ui.Context) {
 				tooltip(c, ui.Text(c, target.file).FillWidth().FontSize(typeCaption*s).TextColor(muted).SingleLine(), target.file)
 			})
 		})
-		ui.Text(c, a.L("下次启动游戏时将不再加载此模组，你可以随时重新启用。", "This mod won't load the next time you start the game. You can enable it again anytime.")).FillWidth().FontSize(typeCallout * s).TextColor(muted)
+		ui.Text(c, a.L("mod_disable.this_mod_won_t_load_the_next_time")).FillWidth().FontSize(typeCallout * s).TextColor(muted)
 		ui.Row(c).FillWidth().Gap(8 * s).Justify(ui.End).Children(func() {
-			if button(c, "cancel-disable-mod", a.L("取消", "Cancel"), "", false, !a.dialogOpen) {
+			if button(c, "cancel-disable-mod", a.L("install_dialog.cancel"), "", false, !a.dialogOpen) {
 				a.closeDialog()
 			}
-			if button(c, "confirm-disable-mod", a.L("确认禁用", "Disable mod"), "", true, !a.modDisableReady()) {
+			if button(c, "confirm-disable-mod", a.L("mod_disable.disable_mod"), "", true, !a.modDisableReady()) {
 				a.closeDialog()
 				a.toggleAsync("mods", target.file, func() error { return a.service.ToggleMod(target.rootID, target.file) })
 			}

@@ -10,13 +10,13 @@ type instTabItem struct{ key, text string }
 
 func (a *App) instTabs(_ launcher.Instance) []instTabItem {
 	return []instTabItem{
-		{"overview", a.L("概览", "Overview")},
-		{"mods", a.L("模组", "Mods")},
-		{"resourcepack", a.L("资源包", "Resource packs")},
-		{"shader", a.L("光影", "Shaders")},
-		{"worlds", a.L("存档", "Worlds")},
-		{"logs", a.L("日志", "Logs")},
-		{"settings", a.L("设置", "Settings")},
+		{"overview", a.L("instance.overview")},
+		{"mods", a.L("storage.label.mods")},
+		{"resourcepack", a.L("storage.label.resourcepacks")},
+		{"shader", a.L("storage.label.shaderpacks")},
+		{"worlds", a.L("storage.label.saves")},
+		{"logs", a.L("instance.logs")},
+		{"settings", a.L("instance.settings")},
 	}
 }
 

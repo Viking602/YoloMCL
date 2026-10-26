@@ -174,9 +174,9 @@ func (a *App) projectFilterControls(c *ui.Context) {
 			if f.loader != "" && !slices.Contains(ls, f.loader) {
 				ls = append(ls, f.loader)
 			}
-			if selectBoxFull(c, "project-loader", a.L("版本加载器筛选", "Version loader filter"), &f.loader, append([]string{""}, ls...), nil, func(l string) string {
+			if selectBoxFull(c, "project-loader", a.L("project_version_filters.version_loader_filter"), &f.loader, append([]string{""}, ls...), nil, func(l string) string {
 				if l == "" {
-					return a.L("全部加载器", "All loaders")
+					return a.L("instance_rail.all_loaders")
 				}
 				return loaderLabel(l)
 			}).Width(190 * s).Shrink(0).Changed() {
@@ -185,11 +185,11 @@ func (a *App) projectFilterControls(c *ui.Context) {
 		}
 	})
 	ui.Row(c.Key("ver-chips")).FillWidth().Height(26 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-		if a.pickerChip(c, "release", a.L("只看正式版", "Releases only"), !f.allTypes) {
+		if a.pickerChip(c, "release", a.L("project_version_filters.releases_only"), !f.allTypes) {
 			f.allTypes = !f.allTypes
 		}
 		if a.gameVersion() != nil && a.project.Type != "modpack" {
-			if a.pickerChip(c, "compat", a.L("只看兼容", "Compatible only"), !a.projShowAll) {
+			if a.pickerChip(c, "compat", a.L("project_version_filters.compatible_only"), !a.projShowAll) {
 				a.projShowAll = !a.projShowAll
 				if !a.projShowAll {
 					a.filterForInstance()
@@ -199,7 +199,7 @@ func (a *App) projectFilterControls(c *ui.Context) {
 			}
 		}
 		ui.Spacer(c).Grow(1)
-		if a.pickerChip(c, "reset", a.L("重置筛选", "Reset filters"), false) {
+		if a.pickerChip(c, "reset", a.L("project_version_filters.reset_filters"), false) {
 			f.mc, f.loader, f.allTypes = "", "", true
 			a.projShowAll, a.projectVersionFilter = true, ""
 		}

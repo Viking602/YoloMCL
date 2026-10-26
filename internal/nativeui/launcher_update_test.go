@@ -130,7 +130,7 @@ func TestLauncherUpdateCancelOnlyDefersThisLaunch(t *testing.T) {
 			t.Fatal("startup installed without confirmation")
 		}
 		snapshotUI(t, tt, "launcher-optional-update")
-		clickUI(t, tt, a.L("取消", "Cancel"))
+		clickUI(t, tt, a.L("install_dialog.cancel"))
 		tt.Advance(500 * time.Millisecond)
 		a.startLauncherUpdates()
 		tt.Frame()
@@ -139,7 +139,7 @@ func TestLauncherUpdateCancelOnlyDefersThisLaunch(t *testing.T) {
 		}
 		a.openDialog("launcherUpdate")
 		tt.Advance(300 * time.Millisecond)
-		clickUI(t, tt, a.L("确认更新", "Update now"))
+		clickUI(t, tt, a.L("launcher_update_dialog.update_now"))
 		waitUI(t, tt, func() bool { return a.launcherUpdate.phase == "ready" })
 		if installs.Load() != 1 {
 			t.Fatal("confirmation did not install exactly once")
@@ -185,10 +185,10 @@ func TestRequiredLauncherUpdateBlocksDismissalAndSurvivesFailures(t *testing.T) 
 			tt.Advance(300 * time.Millisecond)
 			assertLocked := func() {
 				t.Helper()
-				if !a.launcherUpdateRequired() || a.dialog != "launcherUpdate" || !a.dialogOpen || !tt.HasText("启动器更新限制") || tt.HasText("主导航") || tt.HasText(a.L("取消", "Cancel")) {
+				if !a.launcherUpdateRequired() || a.dialog != "launcherUpdate" || !a.dialogOpen || !tt.HasText("启动器更新限制") || tt.HasText("主导航") || tt.HasText(a.L("install_dialog.cancel")) {
 					t.Fatal("retired launcher exposed its normal interface or a dismissal")
 				}
-				for _, name := range []string{a.L("退出启动器", "Exit launcher"), "活动弹窗"} {
+				for _, name := range []string{a.L("launcher_update_dialog.exit_launcher"), "活动弹窗"} {
 					r, ok := tt.Find(name)
 					if !ok || r.W <= 0 || r.H <= 0 || r.X < 0 || r.Y < 0 || r.X+r.W > 900 || r.Y+r.H > 540 {
 						t.Fatalf("mandatory update control is inaccessible: %s %+v", name, r)
@@ -222,11 +222,11 @@ func TestRequiredLauncherUpdateBlocksDismissalAndSurvivesFailures(t *testing.T) 
 			assertLocked()
 			a.launcherUpdate.phase, a.launcherUpdate.err = "available", nil
 			tt.Frame()
-			clickUI(t, tt, a.L("确认更新", "Update now"))
+			clickUI(t, tt, a.L("launcher_update_dialog.update_now"))
 			waitUI(t, tt, func() bool { return a.launcherUpdate.phase == "available" && a.launcherUpdate.err != nil })
 			assertLocked()
 			a.launcherUpdate.release.install = func(context.Context, func(int64, int64)) error { return nil }
-			clickUI(t, tt, a.L("确认更新", "Update now"))
+			clickUI(t, tt, a.L("launcher_update_dialog.update_now"))
 			waitUI(t, tt, func() bool { return a.launcherUpdate.phase == "ready" })
 			assertLocked() // replacing the file does not change the running old code
 			a.bgWG.Wait()

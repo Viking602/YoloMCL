@@ -74,13 +74,14 @@ Follow the package dependency direction defined in [`architecture.md`](architect
 
 - `main` → `internal/app`
 - `internal/app` → `internal/buildinfo`, `internal/launcher`, `internal/nativeui`
-- `internal/nativeui` → `internal/launcher`, `internal/buildinfo`, `internal/nativeui/i18n`
-- `internal/launcher` → `internal/config`, `internal/launcher/{memory,proctree,textenc,vault}`
-- `internal/config`, `internal/buildinfo`, and leaf sub-packages → no other internal package dependencies
+- `internal/nativeui` → `internal/launcher`, `internal/buildinfo`, `internal/i18n`
+- `internal/launcher` → `internal/config`, `internal/i18n`, `internal/launcher/{memory,proctree,textenc,vault}`
+- `internal/config`, `internal/buildinfo`, `internal/i18n`, and platform leaf sub-packages → no other internal package dependencies
 
 Platform and boundary rules:
 
 - **UI and worker isolation**: Only `internal/app` and `internal/nativeui` may import `github.com/egoist/mygo`. UI code must not directly implement game installation, file backup, or disk scanning; background workers must not mutate UI state directly and must post results via `App.post` with generation checks.
+- **Translations**: Keep localized text in `internal/i18n/locales/en-US.json` and `zh-CN.json`. Use `a.L("feature.key")` or existing typed `Copy` fields in views. Add matching keys and formatting placeholders to both catalogs; do not reintroduce inline Chinese/English pairs. See [Translation guide](i18n.md).
 - **Configuration ownership**: Hold `Service.mu`, clone the configuration (including nested maps), mutate the draft, then call `saveConfigLocked`. Publish only after successful persistence. Never return shared mutable maps or change process-wide HTTP clients from package initialization.
 - **External input**: Bound decompressed sizes, image dimensions, collection lengths and nesting depth before allocation. Carry request cancellation into network and filesystem work, and preserve recoverable backups when persistence fails.
 - **Path and OS isolation**: Use `path/filepath` for local filesystem paths and `path` for URLs and protocol paths. Place OS-specific APIs in `*_windows.go`, `*_darwin.go`, `*_linux.go`, or build-constrained files rather than scattering platform branches across shared logic.

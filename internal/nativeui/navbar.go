@@ -5,8 +5,7 @@ import "github.com/egoist/mygo/ui"
 type navItem struct{ page, text, icon string }
 
 func (a *App) navItems() []navItem {
-	t := a.tr()
-	return []navItem{{"home", a.L("实例", "Instances"), "home"}, {"discover", a.L("发现", t.NavDiscover), "search"}, {"wardrobe", a.L("衣橱", t.NavWardrobe), "skin"}, {"tasks", a.L("任务", t.NavTasks), "tasks"}}
+	return []navItem{{"home", a.L("navbar.instances"), "home"}, {"discover", a.L("navbar.discover"), "search"}, {"wardrobe", a.L("navbar.wardrobe"), "skin"}, {"tasks", a.L("navbar.tasks"), "tasks"}}
 }
 
 // navRects keeps each tab's previous-frame bounds so the selection

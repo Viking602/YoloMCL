@@ -32,22 +32,22 @@ func uniqueDirName(dir, name string) string {
 func (a *App) packDestCheck() (string, bool) {
 	parent, name := strings.TrimSpace(a.form.Parent), strings.TrimSpace(a.form.Name)
 	if parent == "" || name == "" {
-		return a.L("请填写安装位置和实例名称", "Enter a location and an instance name"), true
+		return a.L("pack_destination.enter_a_location_and_an_instance_name"), true
 	}
 	if cleanName(name) != name || filepath.Base(name) != name {
-		return a.L(`名称不能包含 \ / : * ? " < > |`, `The name cannot contain \ / : * ? " < > |`), true
+		return a.L("pack_destination.the_name_cannot_contain"), true
 	}
 	if st, e := os.Stat(parent); e != nil || !st.IsDir() {
-		return a.L("安装位置不存在，请重新选择", "This location does not exist. Choose another"), true
+		return a.L("pack_destination.this_location_does_not_exist_choose_another"), true
 	}
 	if !dirWritable(parent) {
-		return a.L("没有权限写入这个位置，请换一个文件夹或以管理员身份运行", "No permission to write here. Choose another folder or run as administrator"), true
+		return a.L("pack_destination.no_permission_to_write_here_choose_another_folder"), true
 	}
 	full := filepath.Join(parent, name)
 	if _, e := os.Stat(full); e == nil {
-		return a.L("已有同名文件夹，请换一个名称", "A folder with this name already exists. Use another name"), true
+		return a.L("pack_destination.a_folder_with_this_name_already_exists_use"), true
 	}
-	return a.L("将创建 ", "Creates ") + full, false
+	return a.L("pack_destination.creates") + full, false
 }
 
 func dirWritable(dir string) bool {
@@ -131,10 +131,10 @@ func (a *App) packSummary() string {
 	}
 	out := ""
 	if pv.ModCount > 0 {
-		out = fmt.Sprintf(a.L("共 %d 个模组", "%d mods"), pv.ModCount)
+		out = fmt.Sprintf(a.L("pack_destination.mods"), pv.ModCount)
 	}
 	if pv.DownloadMB > 0 {
-		out += fmt.Sprintf(a.L("  约 %d MB", "  about %d MB"), pv.DownloadMB)
+		out += fmt.Sprintf(a.L("pack_destination.about_mb"), pv.DownloadMB)
 	}
 	return strings.TrimSpace(out)
 }

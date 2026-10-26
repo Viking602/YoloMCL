@@ -160,9 +160,9 @@ func (a *App) rootDialog(c *ui.Context) {
 		})
 		field(c, t.AddRootNameLabel, &a.form.Name, "")
 		ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
-			label(c, a.L("目录默认 Java", "Default directory Java")).FontWeight(600)
+			label(c, a.L("runtime_dialog.default_directory_java")).FontWeight(600)
 			ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				follow := a.L("跟随全局 Java 设置", "Use global Java setting")
+				follow := a.L("runtime_dialog.use_global_java_setting")
 				names, paths := []string{follow}, map[string]string{follow: ""}
 				selected := follow
 				for _, j := range a.java {
@@ -187,7 +187,7 @@ func (a *App) rootDialog(c *ui.Context) {
 				}
 			})
 		})
-		a.memoryModeRow(c, "root-mem-mode", a.L("目录默认内存", "Default directory memory"), &a.form.MemAuto, a.autoMemoryFor(r.SelectedVersion))
+		a.memoryModeRow(c, "root-mem-mode", a.L("runtime_dialog.default_directory_memory"), &a.form.MemAuto, a.autoMemoryFor(r.SelectedVersion))
 		if !a.form.MemAuto {
 			hi := min(65536., max(1024., a.memoryMaximum()))
 			mb, _ := strconv.Atoi(strings.TrimSpace(a.form.Memory))
@@ -196,11 +196,11 @@ func (a *App) rootDialog(c *ui.Context) {
 			}
 			position := math.Max(512, math.Min(hi, float64(mb)))
 			ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
-				if ui.Slider(c.Key("root-memory-slider"), &position, 512, hi).Label(a.L("目录内存滑块", "Directory memory slider")).Step(256).Grow(1).MinWidth(0).Height(btnMd * s).Changed() {
+				if ui.Slider(c.Key("root-memory-slider"), &position, 512, hi).Label(a.L("runtime_dialog.directory_memory_slider")).Step(256).Grow(1).MinWidth(0).Height(btnMd * s).Changed() {
 					position = math.Max(512, math.Min(hi, math.Round(position/256)*256))
 				}
 				a.form.Memory = strconv.Itoa(int(position))
-				numText(c, gbText(int(position)), typeBody*s, accent).Label(a.L("目录内存值", "Directory memory value")).FontWeight(700).Width(88 * s).TextAlign(ui.End)
+				numText(c, gbText(int(position)), typeBody*s, accent).Label(a.L("runtime_dialog.directory_memory_value")).FontWeight(700).Width(88 * s).TextAlign(ui.End)
 			})
 			ui.Row(c).FillWidth().Justify(ui.SpaceBetween).Children(func() {
 				label(c, "512 MB").FontSize(typeCaption * s)

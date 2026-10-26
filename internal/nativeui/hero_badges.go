@@ -31,7 +31,7 @@ func (a *App) heroLoaderBadge(c *ui.Context, v launcher.VersionSummary) {
 	if !c.Preferences().ReduceMotion {
 		motion = ui.ElementTransition{Animation: &motionFast, Enter: &ui.Motion{Opacity: .3, Y: 3 * s}}
 	}
-	tooltip(c, ui.Row(c.Key("hero-loader-badge")).Label(a.L("实例加载器", "Instance loader")), tip).
+	tooltip(c, ui.Row(c.Key("hero-loader-badge")).Label(a.L("hero_badges.instance_loader")), tip).
 		Height(24*s).MinWidth(28*s).Shrink(0).Padding(0, 7*s, 0, 4*s).Gap(5*s).Radius(8*s).
 		Background(ui.RGBA(255, 255, 255, .82)).Border(1, ui.RGBA(60, 72, 110, .08)).
 		Font(uiSansFamily()).AlignItems(ui.Center).Children(func() {
@@ -51,9 +51,9 @@ type heroHistoryBadge struct {
 }
 
 func (a *App) heroHistory(r launcher.Instance) heroHistoryBadge {
-	record := heroHistoryBadge{value: a.L("读取中…", "Loading…"), tip: a.L("读取游玩记录…", "Loading play history…"), icon: "clock"}
+	record := heroHistoryBadge{value: a.L("hero_badges.loading"), tip: a.L("hero_badges.loading_play_history"), icon: "clock"}
 	if verRunning(&r) {
-		record.value, record.tip, record.icon = a.L("正在游玩", "Playing now"), a.L("游戏正在运行", "The game is running"), "play"
+		record.value, record.tip, record.icon = a.L("hero_badges.playing_now"), a.L("hero_badges.the_game_is_running"), "play"
 	} else if a.instStatusKey == r.ID+"|"+r.SelectedVersion && a.instStatus.Dir != "" {
 		st := a.instStatus
 		record.tip = a.playSummary(r, st)
@@ -62,17 +62,17 @@ func (a *App) heroHistory(r launcher.Instance) heroHistoryBadge {
 			when = st.LastLog
 		}
 		if when.IsZero() {
-			record.value = a.L("暂无游玩记录", "Not played yet")
+			record.value = a.L("hero_badges.not_played_yet")
 		} else {
-			record.label = a.L("上次游玩", "Played")
-			record.value = when.Local().Format(a.L("01月02日", "Jan 02"))
+			record.label = a.L("hero_badges.played")
+			record.value = when.Local().Format(a.L("addons_ui.jan_02"))
 			record.tip = when.Local().Format("2006-01-02 15:04") + "\n" + record.tip
 		}
 	} else if prior := a.contentSwaps["hero-history"]; prior != nil && a.instStatusErr == "" {
 		// Hold the previous text during a cold read instead of flashing a loader.
 		record = prior.value.(heroHistoryBadge)
 	} else if a.instStatusErr != "" {
-		record.value, record.tip, record.icon = a.L("记录不可用", "History unavailable"), a.instStatusErr, "info"
+		record.value, record.tip, record.icon = a.L("hero_badges.history_unavailable"), a.instStatusErr, "info"
 	}
 	return record
 }
@@ -92,7 +92,7 @@ func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 	if shown.icon == "play" {
 		fg, iconColor = successInk, successInk
 	}
-	badge := tooltip(c, ui.Box(c.Key("hero-history-slot")).Label(a.L("游玩记录", "Play history")).
+	badge := tooltip(c, ui.Box(c.Key("hero-history-slot")).Label(a.L("hero_badges.play_history")).
 		Width(132*s).Height(24*s).Shrink(0).Clip().Justify(ui.Center).
 		Font(uiSansFamily()), shown.tip)
 	if stacked {
@@ -114,7 +114,7 @@ func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 						}
 						caption := shown.label
 						if caption == "" {
-							caption = a.L("游玩记录", "Play history")
+							caption = a.L("hero_badges.play_history")
 						}
 						ui.Text(c, caption).FontSize(typeCaption2 * s).TextColor(muted).NoWrap()
 					})

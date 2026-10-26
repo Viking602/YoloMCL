@@ -12,6 +12,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -164,7 +165,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 		height = 54
 	}
 	ui.Row(c.Key("addon-" + it.key)).Label("资源项 " + it.name).FillWidth().Height(height * s).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-		b := tooltip(c, ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("切换启用 ", "Toggle ")+it.name), it.file).Grow(1).Basis(0).MinWidth(0).FillHeight().PaddingX(10 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
+		b := tooltip(c, ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name), it.file).Grow(1).Basis(0).MinWidth(0).FillHeight().PaddingX(10 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
 		bg := ui.Transparent
 		if b.Hovered() {
 			bg = ui.RGBA(120, 130, 160, .08)
@@ -201,10 +202,10 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 						ui.Text(c, secondary).Shrink(2).MinWidth(0).FontSize(typeFootnote * s).FontWeight(400).TextColor(sub).SingleLine()
 					}
 					if !it.enabled {
-						quietTag(c, a.L("已禁用", "Disabled"), muted)
+						quietTag(c, a.L("addon_filter.disabled"), muted)
 					}
 					if it.latest != "" {
-						quietTag(c, a.L("可更新 ", "Update ")+it.latest, accent)
+						quietTag(c, a.L("addons_cards.update")+it.latest, accent)
 					}
 				})
 				if it.meta != "" {
@@ -222,7 +223,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 				quietTag(c, it.badge, ui.Hex("#248a3d"))
 			}
 			if len(it.missing) > 0 {
-				tooltip(c, ui.Box(c).Shrink(0), a.L("缺少前置：", "Missing dependencies: ")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("缺少前置", "Missing deps"), danger) })
+				tooltip(c, ui.Box(c).Shrink(0), a.L("addons_cards.missing_dependencies")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("addons_cards.missing_deps"), danger) })
 			}
 			if logo := sourceLogo(it.source); logo != nil {
 				tooltip(c, ui.Icon(c, logo).Size(14*s, 14*s), sourceName(it.source)).Label(sourceName(it.source)).Shrink(0)
@@ -352,7 +353,7 @@ func (a *App) toggleAsync(tab, file string, run func() error) {
 			a.lastToggle = time.Since(start)
 			if e != nil {
 				a.applyToggle(tab, to, file)
-				a.message, a.errorMessage = a.L("没能切换 ", "Could not toggle ")+stableFile(file)+": "+a.friendlyErr(e), true
+				a.message, a.errorMessage = a.L("addons_ui.could_not_toggle")+stableFile(file)+": "+a.friendlyErr(e), true
 			}
 		})
 	}()
@@ -534,30 +535,25 @@ func agoText(a *App, t time.Time) string {
 // friendlyTime: 刚刚 / N 分钟前 / 今天 15:04 / 昨天 / N 天前 / 08月30日 / 2025年08月30日.
 func friendlyTime(en bool, t, now time.Time) string {
 	t, now = t.Local(), now.Local()
-	L := func(zh, e string) string {
-		if en {
-			return e
-		}
-		return zh
-	}
+	L := func(key string) string { return i18n.Text(en, key) }
 	d := now.Sub(t)
 	day := func(x time.Time) time.Time { return time.Date(x.Year(), x.Month(), x.Day(), 0, 0, 0, 0, x.Location()) }
 	days := int(day(now).Sub(day(t)).Hours() / 24)
 	switch {
 	case d < time.Minute && d > -time.Minute:
-		return L("刚刚", "just now")
+		return L("time.ago.now")
 	case d < time.Hour && d > 0:
-		return fmt.Sprintf(L("%d 分钟前", "%d min ago"), int(d.Minutes()))
+		return fmt.Sprintf(L("addons_ui.min_ago"), int(d.Minutes()))
 	case days == 0:
-		return L("今天 ", "Today ") + t.Format("15:04")
+		return L("addons_ui.today") + t.Format("15:04")
 	case days == 1:
-		return L("昨天 ", "Yesterday ") + t.Format("15:04")
+		return L("addons_ui.yesterday") + t.Format("15:04")
 	case days > 1 && days < 7:
-		return fmt.Sprintf(L("%d 天前", "%d days ago"), days)
+		return fmt.Sprintf(L("time.ago.day.other"), days)
 	case t.Year() == now.Year():
-		return t.Format(L("01月02日", "Jan 02"))
+		return t.Format(L("addons_ui.jan_02"))
 	}
-	return t.Format(L("2006年01月02日", "Jan 02, 2006"))
+	return t.Format(L("addons_ui.jan_02_2006"))
 }
 
 // itemNames is the title pair for a row or card: the Chinese name first

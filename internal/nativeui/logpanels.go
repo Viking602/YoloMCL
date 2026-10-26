@@ -15,19 +15,19 @@ func (a *App) fmtDuration(d time.Duration) string {
 	m := int(d.Minutes())
 	switch {
 	case m < 1:
-		return a.L("不到 1 分钟", "Under 1 min")
+		return a.L("logpanels.under_1_min")
 	case m < 60:
-		return fmt.Sprintf(a.L("%d 分钟", "%d min"), m)
+		return fmt.Sprintf(a.L("logpanels.min"), m)
 	}
-	return fmt.Sprintf(a.L("%d 小时 %d 分钟", "%d h %d min"), m/60, m%60)
+	return fmt.Sprintf(a.L("logpanels.h_min"), m/60, m%60)
 }
 
 func (a *App) fmtWhen(t time.Time) string {
 	now := time.Now()
 	if t.YearDay() == now.YearDay() && t.Year() == now.Year() {
-		return a.L("今天 ", "Today ") + t.Format("15:04")
+		return a.L("addons_ui.today") + t.Format("15:04")
 	}
-	return t.Format(a.L("01月02日 15:04", "Jan 02 15:04"))
+	return t.Format(a.L("logpanels.jan_02_15_04"))
 }
 
 func fmtSize(n int64) string {
@@ -106,55 +106,55 @@ func (a *App) sessionHeader(c *ui.Context, g *launcher.GameSession, scope string
 		}
 		ui.Row(c).Grow(1).MinWidth(0).Gap(18 * s).AlignItems(ui.Center).Clip().Children(func() {
 			if multi {
-				metricTone(c, "m-state", a.L("状态", "State"), a.sessionStateText(g.State), 64, sessionTone(g.State))
+				metricTone(c, "m-state", a.L("logpanels.state"), a.sessionStateText(g.State), 64, sessionTone(g.State))
 			}
 			if g.AccountName != "" && !a.sessionDup(*g, sess) {
 				ui.Column(c.Key("m-acc")).Gap(3 * s).Width(120 * s).Grow(1).Shrink(1).MinWidth(0).Clip().Children(func() {
-					ui.Text(c, a.L("账号", "Account")).FontSize(typeCaption2 * s).TextColor(muted).SingleLine()
+					ui.Text(c, a.L("logpanels.account")).FontSize(typeCaption2 * s).TextColor(muted).SingleLine()
 					a.sessionAccount(c, *g, 15*s, ink)
 				})
 			}
-			metric(c, "m-dur", a.L("运行时长", "Run time"), a.fmtDuration(end.Sub(g.Started)), 100)
+			metric(c, "m-dur", a.L("logpanels.run_time"), a.fmtDuration(end.Sub(g.Started)), 100)
 			mc, ld := "—", "—"
 			if v := a.versionInfo(g.RootID, g.Version); v != nil {
 				if v.Minecraft != "" {
 					mc = v.Minecraft
 				}
-				ld = a.L("原版", "Vanilla")
+				ld = a.L("logpanels.vanilla")
 				if v.Loader != "" && v.Loader != "vanilla" {
 					ld = strings.TrimSpace(loaderName(v.Loader) + " " + v.LoaderVersion)
 				}
 			}
 			if !inTab {
 				metric(c, "m-mc", "Minecraft", mc, 72)
-				metric(c, "m-loader", a.L("加载器", "Loader"), ld, 170)
+				metric(c, "m-loader", a.L("logpanels.loader"), ld, 170)
 			}
 			java := g.Java
 			if java == "" {
-				java = a.L("读取中", "Reading")
+				java = a.L("addons_tab.reading")
 			}
 			metric(c, "m-java", "Java", java, 120)
-			mem := a.L("自动", "Auto")
+			mem := a.L("logpanels.auto")
 			if g.MemoryMB > 0 {
 				mem = fmt.Sprintf("%d MB", g.MemoryMB)
 			}
-			metric(c, "m-mem", a.L("内存", "Memory"), mem, 84)
+			metric(c, "m-mem", a.L("instance_settings.memory"), mem, 84)
 			if !a.logView.compact {
-				metric(c, "m-start", a.L("启动于", "Started"), a.fmtWhen(g.Started), 110)
+				metric(c, "m-start", a.L("logpanels.started"), a.fmtWhen(g.Started), 110)
 			}
 			exit := "—"
 			if g.State != "running" {
 				exit = fmt.Sprint(g.ExitCode)
 			}
-			metric(c, "m-exit", a.L("退出码", "Exit code"), exit, 60)
+			metric(c, "m-exit", a.L("logpanels.exit_code"), exit, 60)
 		})
-		if g.State == "running" && fixedButton(c, "log-stop", a.L("停止", "Stop"), "cross", 0, btnSm*s, false, false) && a.service != nil {
+		if g.State == "running" && fixedButton(c, "log-stop", a.L("logpanels.stop"), "cross", 0, btnSm*s, false, false) && a.service != nil {
 			if e := a.service.StopSession(g.ID); e != nil {
 				a.message, a.errorMessage = a.friendlyErr(e), true
 			}
 			a.logSess.polled = time.Time{}
 		}
-		if scope != "" && len(a.logSess.list) > len(sess) && fixedButton(c, "log-all-games", a.L("全部游戏", "All games"), "terminal", 0, btnSm*s, false, false) {
+		if scope != "" && len(a.logSess.list) > len(sess) && fixedButton(c, "log-all-games", a.L("logpanels.all_games"), "terminal", 0, btnSm*s, false, false) {
 			defer a.openDialog("logs") // after this pane finishes building
 		}
 	})
@@ -172,19 +172,19 @@ func (a *App) fileHeader(c *ui.Context) bool {
 		}
 	}
 	ui.Row(c.Key("log-summary")).Label("日志摘要").FillWidth().Height(64*s).Shrink(0).Padding(0, 16*s).Gap(18*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-		back = fixedButton(c, "log-file-back", a.L("返回", "Back"), "chevron-left", 0, btnSm*s, false, false)
+		back = fixedButton(c, "log-file-back", a.L("logpanels.back"), "chevron-left", 0, btnSm*s, false, false)
 		ui.Column(c).Gap(4 * s).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, filepath.Base(lv.file)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).SingleLine()
-			kind := a.L("日志文件", "Log file")
+			kind := a.L("logpanels.log_file")
 			if f != nil && f.Kind == "crash" {
-				kind = a.L("崩溃报告", "Crash report")
+				kind = a.L("logpanels.crash_report")
 			}
 			ui.Text(c, kind).FontSize(typeCaption * s).TextColor(muted).NoWrap()
 		})
 		if f != nil {
 			metricRule(c)
-			metric(c, "m-size", a.L("大小", "Size"), fmtSize(f.Size), 80)
-			metric(c, "m-mod", a.L("修改于", "Modified"), a.fmtWhen(f.ModTime), 100)
+			metric(c, "m-size", a.L("logpanels.size"), fmtSize(f.Size), 80)
+			metric(c, "m-mod", a.L("logpanels.modified"), a.fmtWhen(f.ModTime), 100)
 		}
 	})
 	return back
@@ -194,37 +194,40 @@ func (a *App) fileHeader(c *ui.Context) bool {
 func (a *App) crashCard(c *ui.Context, g *launcher.GameSession) {
 	s := uiScale(c)
 	in := g.Insight
-	cause, advice := a.L(in.Cause, in.CauseEn), a.L(in.Advice, in.AdviceEn)
+	cause, advice := in.Cause, in.Advice
+	if a.isEN() {
+		cause, advice = in.CauseEn, in.AdviceEn
+	}
 	ui.Row(c.Key("log-crash")).FillWidth().Height(106*s).Shrink(0).Padding(0, 16*s).Gap(14*s).Radius(radiusCard*s).Background(ui.Hex("#ff3b30").Alpha(.06)).Border(1, ui.Hex("#ff3b30").Alpha(.22)).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Size(34*s, 34*s).Radius(10 * s).Background(ui.Hex("#ff3b30").Alpha(.12)).Center().Shrink(0).Children(func() {
 			ui.Icon(c, icons["info"]).Size(16*s, 16*s).TextColor(ui.Hex("#d70015"))
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
-			ui.Text(c, a.L("可能的原因", "Probable cause")).FontSize(typeCaption2 * s).FontWeight(600).TextColor(ui.Hex("#d70015")).NoWrap()
+			ui.Text(c, a.L("logpanels.probable_cause")).FontSize(typeCaption2 * s).FontWeight(600).TextColor(ui.Hex("#d70015")).NoWrap()
 			tooltip(c, ui.Text(c, cause).FontSize(typeCallout*s).FontWeight(700).TextColor(ink).SingleLine(), cause)
 			ui.Row(c).Gap(8 * s).AlignItems(ui.Center).MinWidth(0).Children(func() {
 				if in.Mod != "" {
 					ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(ui.Hex("#ff3b30").Alpha(.12)).Children(func() {
-						ui.Text(c, a.L("相关模组 ", "Mod ")+in.Mod).FontSize(typeCaption2 * s).FontWeight(700).TextColor(ui.Hex("#d70015")).NoWrap()
+						ui.Text(c, a.L("logpanels.mod")+in.Mod).FontSize(typeCaption2 * s).FontWeight(700).TextColor(ui.Hex("#d70015")).NoWrap()
 					})
 				}
 				tooltip(c, ui.Text(c, advice).FontSize(typeFootnote*s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0), advice)
 			})
 		})
 		if g.CrashReport != "" {
-			if fixedButton(c, "crash-open", a.L("打开崩溃报告", "Open report"), "doc", 0, btnSm*s, false, false) {
+			if fixedButton(c, "crash-open", a.L("logpanels.open_report"), "doc", 0, btnSm*s, false, false) {
 				openLogFile(c, g.CrashReport)
 			}
-			if fixedButton(c, "crash-copy", a.L("复制报告", "Copy report"), "", 0, btnSm*s, false, false) && a.service != nil {
+			if fixedButton(c, "crash-copy", a.L("logpanels.copy_report"), "", 0, btnSm*s, false, false) && a.service != nil {
 				if t, e := a.service.CrashReportText(g.RootID, g.Version, g.CrashReport); e != nil {
 					a.message, a.errorMessage = a.friendlyErr(e), true
 				} else {
 					c.WriteClipboard(t)
-					a.notice(a.L("已复制崩溃报告", "Crash report copied"))
+					a.notice(a.L("logpanels.crash_report_copied"))
 				}
 			}
 		} else {
-			ui.Text(c, a.L("没有生成崩溃报告", "No crash report written")).FontSize(typeCaption * s).TextColor(muted).NoWrap().Shrink(0)
+			ui.Text(c, a.L("logpanels.no_crash_report_written")).FontSize(typeCaption * s).TextColor(muted).NoWrap().Shrink(0)
 		}
 	})
 }
@@ -235,14 +238,13 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 	t := a.tr()
 	lv := &a.logView
 	ui.Row(c.Key("log-toolbar")).Label("日志工具栏").FillWidth().Height(btnMd * s).Shrink(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-		for _, it := range []struct{ key, zh, en string }{{"info", "信息", "Info"}, {"warn", "警告", "Warn"}, {"error", "错误", "Error"}, {"debug", "调试", "Debug"}} {
-			k := it.key
+		for _, k := range []string{"info", "warn", "error", "debug"} {
 			n := lv.counts[k]
 			if k == "debug" && n == 0 {
 				continue
 			}
 			sel := lv.levels[k]
-			text := fmt.Sprintf("%s %d", a.L(it.zh, it.en), n)
+			text := fmt.Sprintf("%s %d", a.L("log.level."+k), n)
 			fg, _ := levelTone(map[string]string{"warn": "WARN", "error": "ERROR"}[k])
 			if k == "info" || k == "debug" {
 				fg = inkSecondary
@@ -261,7 +263,7 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 				} else {
 					ui.Box(c).Size(7*s, 7*s).Radius(999).Background(fg)
 				}
-				ui.Text(c, a.L(it.zh, it.en)).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).NoWrap()
+				ui.Text(c, a.L("log.level."+k)).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).NoWrap()
 				ui.Text(c, fmt.Sprint(n)).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap()
 			}).Clicked() {
 				if lv.levels == nil {
@@ -274,7 +276,7 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 				}
 			}
 		}
-		textField(c.Key("log-search"), &lv.query).Placeholder(a.L("搜索日志", "Search log")).Label(a.L("搜索日志", "Search log")).Grow(1).MinWidth(140 * s)
+		textField(c.Key("log-search"), &lv.query).Placeholder(a.L("logpanels.search_log")).Label(a.L("logpanels.search_log")).Grow(1).MinWidth(140 * s)
 		if strings.TrimSpace(lv.query) != "" {
 			pos := "0/0"
 			if len(lv.hits) > 0 {
@@ -282,25 +284,25 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 			}
 			ui.Text(c, pos).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
 			rows := int(320 / logRowHeight)
-			if iconOnlyButton(c, "log-hit-prev", "chevron-left", a.L("上一个", "Previous"), btnSm*s, len(lv.hits) == 0) {
+			if iconOnlyButton(c, "log-hit-prev", "chevron-left", a.L("logpanels.previous"), btnSm*s, len(lv.hits) == 0) {
 				lv.match = (lv.match - 1 + len(lv.hits)) % len(lv.hits)
 				a.logGoHit(rows)
 			}
-			if iconOnlyButton(c, "log-hit-next", "chevron-right", a.L("下一个", "Next"), btnSm*s, len(lv.hits) == 0) {
+			if iconOnlyButton(c, "log-hit-next", "chevron-right", a.L("logpanels.next"), btnSm*s, len(lv.hits) == 0) {
 				lv.match = (lv.match + 1) % len(lv.hits)
 				a.logGoHit(rows)
 			}
 		}
 		compact := lv.compact
 		if !compact {
-			ui.Text(c, fmt.Sprintf(a.L("%d 行", "%d lines"), len(lv.vis))).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
+			ui.Text(c, fmt.Sprintf(a.L("logpanels.lines"), len(lv.vis))).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
 		}
-		if fixedButton(c, "log-latest", a.L("最新", "Latest"), "chevron-down", 0, btnSm*s, false, lv.follow) {
+		if fixedButton(c, "log-latest", a.L("logpanels.latest"), "chevron-down", 0, btnSm*s, false, lv.follow) {
 			a.logJumpLatest()
 		}
 		copyLabel := t.LogsCopyBtn
 		if compact {
-			copyLabel = a.L("复制", "Copy")
+			copyLabel = a.L("logpanels.copy")
 		}
 		if fixedButton(c, "copy-logs", copyLabel, "", 0, btnSm*s, false, len(lv.vis) == 0) {
 			var b strings.Builder
@@ -313,7 +315,7 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 				b.WriteByte('\n')
 			}
 			c.WriteClipboard(b.String())
-			a.notice(fmt.Sprintf(a.L("已复制 %d 行", "Copied %d lines"), len(lv.vis)))
+			a.notice(fmt.Sprintf(a.L("logpanels.copied_lines"), len(lv.vis)))
 		}
 		p := lv.file
 		if p == "" {
@@ -324,16 +326,16 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 		}
 		open, clear := false, false
 		if compact {
-			open = p != "" && iconOnlyButton(c, "log-open-file", "doc", a.L("打开文件", "Open file"), btnSm*s, false)
-			clear = lv.file == "" && iconOnlyButton(c, "log-clear", "trash", a.L("清空", "Clear"), btnSm*s, len(lv.lines) == 0)
+			open = p != "" && iconOnlyButton(c, "log-open-file", "doc", a.L("logpanels.open_file"), btnSm*s, false)
+			clear = lv.file == "" && iconOnlyButton(c, "log-clear", "trash", a.L("logpanels.clear"), btnSm*s, len(lv.lines) == 0)
 		} else {
-			open = p != "" && fixedButton(c, "log-open-file", a.L("打开文件", "Open file"), "doc", 0, btnSm*s, false, false)
-			clear = lv.file == "" && fixedButton(c, "log-clear", a.L("清空", "Clear"), "trash", 0, btnSm*s, false, len(lv.lines) == 0)
+			open = p != "" && fixedButton(c, "log-open-file", a.L("logpanels.open_file"), "doc", 0, btnSm*s, false, false)
+			clear = lv.file == "" && fixedButton(c, "log-clear", a.L("logpanels.clear"), "trash", 0, btnSm*s, false, len(lv.lines) == 0)
 		}
 		if open {
 			openLogFile(c, p)
 		}
-		if p != "" && iconOnlyButton(c, "log-open-folder", "folder", a.L("在文件夹中显示", "Show in folder"), btnSm*s, false) {
+		if p != "" && iconOnlyButton(c, "log-open-folder", "folder", a.L("logpanels.show_in_folder"), btnSm*s, false) {
 			openLogFolder(p)
 		}
 		if clear {
@@ -363,21 +365,21 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 	ui.Row(c.Key("log-empty")).Font(uiSansFamily()).FillWidth().MinHeight(108*s).Shrink(0).Padding(16*s, 20*s).Gap(16*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
 		emptyArtwork(c, "log-idle", "terminal", .8*s)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
-			ui.Text(c, a.L("现在没有运行中的游戏", "No game is running")).FontSize(typeHeadline * s).FontWeight(600).TextColor(inkSecondary).FillWidth()
-			ui.Text(c, a.L("启动游戏后查看实时输出，也可以打开下方的最近日志。", "Launch to follow the live output, or open a recent log below.")).FontSize(typeFootnote * s).TextColor(muted).FillWidth()
+			ui.Text(c, a.L("logpanels.no_game_is_running")).FontSize(typeHeadline * s).FontWeight(600).TextColor(inkSecondary).FillWidth()
+			ui.Text(c, a.L("logpanels.launch_to_follow_the_live_output_or_open")).FontSize(typeFootnote * s).TextColor(muted).FillWidth()
 		})
 		if scope != "" || a.dialog == "logs" {
-			if buttonWhy(c, "log-launch", a.L("启动游戏", "Launch"), "arrow", true, whyOf(a.instancePending("launch", "launchAgain"), a.tr().WhyBusy, verRunning(r), a.L("这个版本正在运行", "Already running")), false) {
+			if buttonWhy(c, "log-launch", a.L("logpanels.launch"), "arrow", true, whyOf(a.instancePending("launch", "launchAgain"), a.tr().WhyBusy, verRunning(r), a.L("logpanels.already_running")), false) {
 				a.launch()
 			}
 		}
 	})
 	ui.Row(c.Key("log-recent-head")).FillWidth().Height(24 * s).Shrink(0).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L("最近日志", "Recent logs")).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).Grow(1)
-		ui.Text(c, fmt.Sprintf(a.L("%d 个文件", "%d files"), len(lv.recent))).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
+		ui.Text(c, a.L("logpanels.recent_logs")).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).Grow(1)
+		ui.Text(c, fmt.Sprintf(a.L("logpanels.files"), len(lv.recent))).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 	})
 	if len(lv.recent) == 0 {
-		emptyNote(c, "log-recent-none", "terminal", a.L("还没有日志文件", "No log files yet"), a.L("运行游戏后，最近的日志会保留在这里", "Recent logs will appear here after you run the game"))
+		emptyNote(c, "log-recent-none", "terminal", a.L("logpanels.no_log_files_yet"), a.L("logpanels.recent_logs_will_appear_here_after_you_run"))
 		return
 	}
 	scrollArea(c, a.logScrollKey()+"-recent").Label("日志文件列表").FillWidth().Grow(1).Basis(0).MinHeight(0).Children(func() {
@@ -390,9 +392,9 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 					b.Background(ui.RGBA(120, 130, 160, .10))
 				}
 				if b.Children(func() {
-					col, kind, ic := accent, a.L("日志", "Log"), "doc"
+					col, kind, ic := accent, a.L("logpanels.log"), "doc"
 					if f.Kind == "crash" {
-						col, kind, ic = ui.Hex("#d70015"), a.L("崩溃报告", "Crash report"), "info"
+						col, kind, ic = ui.Hex("#d70015"), a.L("logpanels.crash_report"), "info"
 					}
 					ui.Box(c).Size(26*s, 26*s).Radius(7 * s).Background(col.Alpha(.10)).Center().Shrink(0).Children(func() {
 						ui.Icon(c, icons[ic]).Size(13*s, 13*s).TextColor(col)
@@ -403,7 +405,7 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 					})
 					ui.Text(c, a.fmtWhen(f.ModTime)).Width(110 * s).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
 					ui.Text(c, fmtSize(f.Size)).Width(70 * s).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
-					folderHit = iconOnlyButton(c, "log-folder-"+f.Path, "folder", a.L("在文件夹中显示：", "Show in folder: ")+f.Name, 28*s, false)
+					folderHit = iconOnlyButton(c, "log-folder-"+f.Path, "folder", a.L("logpanels.show_in_folder_2")+f.Name, 28*s, false)
 					ui.Icon(c, icons["chevron-right"]).Size(10*s, 10*s).TextColor(muted)
 				}).Clicked() && !folderHit {
 					lv.file, lv.key = f.Path, ""

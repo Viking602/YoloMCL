@@ -274,7 +274,7 @@ func (a *App) discoverFeedFooter(c *ui.Context) {
 	// A new cursor needs one layout before checking the end. Otherwise the old
 	// footer position could trigger multiple requests before appended rows lay out.
 	footer := ui.Row(c.Key(fmt.Sprintf("feed-footer-%d-%d", a.searchRevision, f.nextOffset))).
-		Label(a.L("连续加载状态", "Continuous loading status")).FillWidth().Height(44 * s).Gap(8 * s).Center()
+		Label(a.L("discover_feed.continuous_loading_status")).FillWidth().Height(44 * s).Gap(8 * s).Center()
 	_, y := footer.LocalToWindow(0, 0)
 	nearEnd := footer.LayoutBounds().H > 0 && m.viewport.H > 0 && y <= m.viewport.Y+m.viewport.H+220*s
 	if nearEnd && f.err == "" {
@@ -285,19 +285,19 @@ func (a *App) discoverFeedFooter(c *ui.Context) {
 	footer.Children(func() {
 		switch {
 		case a.searchLoading:
-			label(c, a.L("正在更新结果…", "Updating results…"))
+			label(c, a.L("discover_feed.updating_results"))
 		case f.loading:
 			ui.Spinner(c).Size(14*s, 14*s)
-			label(c, a.L("正在加载更多…", "Loading more…"))
+			label(c, a.L("discover_feed.loading_more"))
 		case f.err != "":
-			label(c, a.L("后续结果加载失败", "Couldn't load more results"))
-			if fixedButton(c, "discover-retry-more", a.L("重试", "Retry"), "refresh", 0, btnSm*s, false, false) {
+			label(c, a.L("discover_feed.couldn_t_load_more_results"))
+			if fixedButton(c, "discover-retry-more", a.L("discover_feed.retry"), "refresh", 0, btnSm*s, false, false) {
 				a.loadMoreDiscover()
 			}
 		case f.done:
-			label(c, a.L("没有更多结果", "No more results"))
+			label(c, a.L("discover_feed.no_more_results"))
 		default:
-			label(c, a.L("向下滚动加载更多", "Scroll down for more"))
+			label(c, a.L("discover_feed.scroll_down_for_more"))
 		}
 	})
 }

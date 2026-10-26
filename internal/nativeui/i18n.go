@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
-	"github.com/Viking602/YoloMCL/internal/nativeui/i18n"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 
 type Copy = i18n.Copy
 
-var enCopy = &i18n.EN
+var enCopy = i18n.For(true)
 
 func (a *App) lang() string {
 	if a.languageOverride != "" {
@@ -67,13 +67,13 @@ func (a *App) dialogTitle(dialog string) string {
 	switch dialog {
 	case "launcherUpdate":
 		if a.launcherUpdateRequired() {
-			return a.L("需要更新启动器", "Launcher update required")
+			return a.L("i18n.launcher_update_required")
 		}
-		return a.L("启动器更新", "Launcher update")
+		return a.L("i18n.launcher_update")
 	case "javaGet":
-		return a.L("下载 Java", "Download Java")
+		return a.L("i18n.download_java")
 	case "launchAgain":
-		return a.L("再开一个", "Run another")
+		return a.L("i18n.run_another")
 	case "add":
 		return t.DialogTitleAdd
 	case "root":
@@ -85,7 +85,7 @@ func (a *App) dialogTitle(dialog string) string {
 	case "removeMod":
 		return t.DialogTitleRemMod
 	case "disableMod":
-		return a.L("禁用这个模组？", "Disable this mod?")
+		return a.L("i18n.disable_this_mod")
 	case "account":
 		return t.DialogTitleAccount
 	case "accountAdd":
@@ -93,7 +93,7 @@ func (a *App) dialogTitle(dialog string) string {
 	case "import":
 		return t.DialogTitleImport
 	case "export":
-		return a.L("导出整合包", "Export modpack")
+		return a.L("i18n.export_modpack")
 	case "install":
 		return t.DialogTitleInstall
 	case "project":
@@ -131,140 +131,57 @@ func (a *App) loaderDisplay(loader string) string {
 }
 
 func (a *App) jobStateText(state string) string {
-	if a.isEN() {
-		switch state {
-		case "running":
-			return "In Progress"
-		case "done", "completed":
-			return "Completed"
-		case "failed":
-			return "Failed"
-		case "cancelled":
-			return "Cancelled"
-		case "queued":
-			return "Queued"
-		}
-		return state
+	key := state
+	if key == "done" {
+		key = "completed"
 	}
-	switch state {
-	case "running":
-		return "进行中"
-	case "done", "completed":
-		return "已完成"
-	case "failed":
-		return "失败"
-	case "cancelled":
-		return "已取消"
-	case "queued":
-		return "排队中"
+	if text, ok := i18n.Lookup(a.isEN(), "job.state."+key); ok {
+		return text
 	}
 	return state
 }
 
 func (a *App) packFileStatusText(status string) string {
-	if a.isEN() {
-		switch status {
-		case "original":
-			return "Intact"
-		case "disabled":
-			return "Disabled"
-		case "missing":
-			return "Missing"
-		case "modified":
-			return "Modified"
-		}
-		return status
-	}
-	switch status {
-	case "original":
-		return "一致"
-	case "disabled":
-		return "已停用"
-	case "missing":
-		return "缺失"
-	case "modified":
-		return "已修改"
+	if text, ok := i18n.Lookup(a.isEN(), "pack.file."+status); ok {
+		return text
 	}
 	return status
 }
 
-func (a *App) translatePhase(phase string) string {
-	if !a.isEN() {
-		return phase
-	}
-	switch phase {
-	case "正在检测已安装的 Java":
-		return "Detecting installed Java runtimes"
-	case "快速扫描环境变量与常见目录":
-		return "Checking configured Java runtimes"
-	case "正在扫描整合包与启动器运行时":
-		return "Scanning Minecraft and launcher runtimes"
-	case "扫描已停止":
-		return "Scan stopped"
-	case "快速扫描已结束，可继续深入扫描":
-		return "Quick scan finished; run Deeper Scan for deep search"
-	}
-	return phase
-}
+func (a *App) translatePhase(phase string) string { return i18n.Phase(a.isEN(), phase) }
 
-func (a *App) formatModCount(count int) string {
-	if a.isEN() {
-		return fmt.Sprintf("%d items", count)
-	}
-	return fmt.Sprintf("%d 项", count)
-}
+func (a *App) formatModCount(count int) string { return fmt.Sprintf(a.L("count.mods"), count) }
 
 func (a *App) formatResultCount(total int64) string {
-	if a.isEN() {
-		return fmt.Sprintf("%s results", compact(total))
-	}
-	return fmt.Sprintf("%s 个结果", compact(total))
+	return fmt.Sprintf(a.L("count.results"), compact(total))
 }
 
 func (a *App) formatSystemMemory(totalMB, availMB int) string {
-	if a.isEN() {
-		return fmt.Sprintf("System %.1f GB, available %.1f GB", float64(totalMB)/1024, float64(availMB)/1024)
-	}
-	return fmt.Sprintf("系统 %.1f GB，可用 %.1f GB", float64(totalMB)/1024, float64(availMB)/1024)
+	return fmt.Sprintf(a.L("memory.system"), float64(totalMB)/1024, float64(availMB)/1024)
 }
 
 func (a *App) formatMemoryRangeErr(maxMB int) string {
-	if a.isEN() {
-		return fmt.Sprintf("Memory must be an integer between 512 and %d MB", maxMB)
-	}
-	return fmt.Sprintf("内存请输入 512–%d MB 之间的整数", maxMB)
+	return fmt.Sprintf(a.L("memory.rangeError"), maxMB)
 }
 
 func (a *App) formatJavaScanSummary(count int, elapsedMS int64) string {
-	if a.isEN() {
-		return fmt.Sprintf("Found %d Java runtimes in %.1fs", count, float64(elapsedMS)/1000)
-	}
-	return fmt.Sprintf("找到 %d 个 Java，耗时 %.1f 秒", count, float64(elapsedMS)/1000)
+	return fmt.Sprintf(a.L("java.scanSummary"), count, float64(elapsedMS)/1000)
 }
 
 func (a *App) formatJavaScanProgress(phase string, visited, found int) string {
-	p := a.translatePhase(phase)
-	if a.isEN() {
-		return fmt.Sprintf("%s, checked %d folders, found %d Java", p, visited, found)
-	}
-	return fmt.Sprintf("%s，已检查 %d 个目录，找到 %d 个 Java", p, visited, found)
+	return fmt.Sprintf(a.L("java.scanProgress"), a.translatePhase(phase), visited, found)
 }
 
-func (a *App) formatVersionTotal(total int) string {
-	if a.isEN() {
-		return fmt.Sprintf("%d versions total", total)
-	}
-	return fmt.Sprintf("共 %d 个版本", total)
-}
+func (a *App) formatVersionTotal(total int) string { return fmt.Sprintf(a.L("version.total"), total) }
 
 func (a *App) formatFilteredVersionSummary(detail string, count int) string {
-	if a.isEN() {
-		return fmt.Sprintf("%s, %d matching versions", detail, count)
-	}
-	return fmt.Sprintf("%s，当前筛选 %d 个版本", detail, count)
+	return fmt.Sprintf(a.L("version.filtered"), detail, count)
 }
 
 func normalizeResourceType(s string) string {
+	if key := i18n.Canonical("resourceType", s); key != "" {
+		return key
+	}
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "mod", "mods", "模组":
 		return "mod"
@@ -278,6 +195,9 @@ func normalizeResourceType(s string) string {
 }
 
 func normalizeSortKey(s string) string {
+	if key := i18n.Canonical("sort", s); key != "" {
+		return key
+	}
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "downloads", "most downloads", "下载最多":
 		return "downloads"
@@ -289,6 +209,9 @@ func normalizeSortKey(s string) string {
 }
 
 func normalizeAccountTab(s string) string {
+	if key := i18n.Canonical("accountTab", s); key != "" {
+		return key
+	}
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "microsoft", "官方登录", "正版登录":
 		return "microsoft"
@@ -300,6 +223,9 @@ func normalizeAccountTab(s string) string {
 }
 
 func normalizeSkinModel(s string) string {
+	if key := i18n.Canonical("skinModel", s); key != "" {
+		return key
+	}
 	v := strings.ToLower(strings.TrimSpace(s))
 	if strings.Contains(v, "slim") || strings.Contains(v, "alex") || strings.Contains(v, "纤细") {
 		return "slim"
@@ -308,6 +234,9 @@ func normalizeSkinModel(s string) string {
 }
 
 func normalizeInstallTarget(s string) string {
+	if key := i18n.Canonical("installTarget", s); key != "" {
+		return key
+	}
 	v := strings.ToLower(strings.TrimSpace(s))
 	if v == "current" || v == "当前目录" || v == "current instance" {
 		return "current"
@@ -316,6 +245,9 @@ func normalizeInstallTarget(s string) string {
 }
 
 func normalizeVersionKindKey(s string) string {
+	if key := i18n.Canonical("versionKind", s); key != "" {
+		return key
+	}
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "release", "releases", "正式版":
 		return "release"
@@ -395,7 +327,7 @@ func (a *App) normalizeStateValues() {
 		a.form.Loader = t.LoaderVanilla
 	}
 	a.versionKind = a.versionKindLabel(normalizeVersionKindKey(a.versionKind))
-	if a.selectedCape == "不使用披风" || a.selectedCape == "No Cape" || a.selectedCape == "" {
+	if a.selectedCape == "" || i18n.Canonical("cape", a.selectedCape) == "none" {
 		a.selectedCape = t.WardrobeCapeNone
 	}
 }
@@ -423,10 +355,7 @@ func (a *App) versionKindOptions() []string {
 	return []string{t.InstallKindAll, t.InstallKindRelease, t.InstallKindSnapshot, t.InstallKindBeta, t.InstallKindAlpha, t.InstallKindOther}
 }
 
-// L picks the Chinese or English string for short UI-only labels.
-func (a *App) L(zh, en string) string {
-	if a.isEN() {
-		return en
-	}
-	return zh
+// L resolves a message key from the current language's JSON catalog.
+func (a *App) L(key string) string {
+	return i18n.Text(a.isEN(), key)
 }

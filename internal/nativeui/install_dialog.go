@@ -123,7 +123,7 @@ func (a *App) installHeader(c *ui.Context) {
 					shown++
 				}
 				if p.Downloads > 0 {
-					hint := fmt.Sprintf(a.L("项目总下载量：%s 次", "Total project downloads: %s"), exactDownloadCount(p.Downloads))
+					hint := fmt.Sprintf(a.L("install_dialog.total_project_downloads"), exactDownloadCount(p.Downloads))
 					tooltip(c, ui.Row(c).Gap(4*s).AlignItems(ui.Center).Shrink(0), hint).Children(func() {
 						ui.Icon(c, icons["download"]).Size(10*s, 10*s).TextColor(muted)
 						numText(c, downloadCountText(p.Downloads, a.isEN()), typeCaption*s, muted)
@@ -141,7 +141,7 @@ func (a *App) installHeader(c *ui.Context) {
 				if b.Hovered() {
 					fg = accent
 				}
-				tooltip(c, b, a.L("项目主页", "Project page")).Size(btnSm*s+2*s, btnSm*s+2*s).PaddingX(0).Justify(ui.Center)
+				tooltip(c, b, a.L("install_dialog.project_page")).Size(btnSm*s+2*s, btnSm*s+2*s).PaddingX(0).Justify(ui.Center)
 				if b.Hovered() {
 					b.Background(ui.RGBA(120, 130, 160, .10))
 				}
@@ -183,7 +183,7 @@ func (a *App) installFooter(c *ui.Context) {
 			} else if job != nil && job.State == "completed" {
 				ui.Row(c).FillWidth().Gap(6 * s).AlignItems(ui.Center).Children(func() {
 					ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(successInk)
-					ui.Text(c, a.L("已安装完成", "Installed")).FontSize(typeFootnote * s).TextColor(successInk)
+					ui.Text(c, a.L("install_dialog.installed")).FontSize(typeFootnote * s).TextColor(successInk)
 				})
 			} else if sum := a.packSummary(); sum != "" {
 				ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
@@ -193,12 +193,12 @@ func (a *App) installFooter(c *ui.Context) {
 			}
 		})
 		if job != nil && job.State != "running" {
-			if fixedButton(c, "install-done", a.L("完成", "Done"), "", 0, btnMd*s, true, false) {
+			if fixedButton(c, "install-done", a.L("install_dialog.done"), "", 0, btnMd*s, true, false) {
 				a.closeDialog()
 			}
 			return
 		}
-		if fixedButton(c, "install-cancel", a.L("取消", "Cancel"), "", 0, btnMd*s, false, job != nil) {
+		if fixedButton(c, "install-cancel", a.L("install_dialog.cancel"), "", 0, btnMd*s, false, job != nil) {
 			a.closeDialog()
 		}
 		label, disabled, run := a.installAction()
@@ -222,7 +222,7 @@ func (a *App) installTarget(c *ui.Context, r launcher.Instance) {
 	// the parent limits it only when the name really exceeds the free space.
 	w = float32(math.Ceil(float64(w + (18+7+6*2)*s)))
 	ui.Row(c).FillWidth().MinWidth(0).Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L("安装到", "Install to")).FontSize(typeFootnote * s).TextColor(muted).Shrink(0)
+		ui.Text(c, a.L("install_dialog.install_to")).FontSize(typeFootnote * s).TextColor(muted).Shrink(0)
 		tooltip(c, ui.Row(c.Key("install-target")).Label("安装目标").Width(w).Height(28*s).PaddingX(6*s).Gap(7*s).Radius(8*s).Background(ui.RGBA(120, 130, 160, .10)).Font(uiSansFamily()).AlignItems(ui.Center).Shrink(1).MinWidth(0), name).Children(func() {
 			a.instIcon(c, r, v, 18*s)
 			ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0)
@@ -245,15 +245,15 @@ func (a *App) installAction() (string, bool, func()) {
 				target = it
 			}
 		}
-		lbl := a.L("安装", "Install")
+		lbl := a.L("install_dialog.install")
 		if target.File != "" {
-			lbl = a.L("重新安装", "Reinstall")
+			lbl = a.L("install_dialog.reinstall")
 			if target.Note != "" && target.Version != "" && !strings.Contains(target.Version, target.Note) {
-				lbl = a.L("切换到此版本", "Switch to this version")
+				lbl = a.L("install_dialog.switch_to_this_version")
 			}
 		}
 		if n > 1 {
-			lbl = fmt.Sprintf(a.L("安装 %d 项", "Install %d items"), n)
+			lbl = fmt.Sprintf(a.L("install_dialog.install_items"), n)
 		}
 		disabled := noVer || r == nil || a.projLoading || a.planLoading || a.planErr != "" || a.planKey != a.currentPlanKey() || !a.selectedProjectVersionFits() || target.Status == "resolving" || target.Status == "none" || n == 0
 		for _, it := range a.plan {
@@ -269,13 +269,13 @@ func (a *App) installAction() (string, bool, func()) {
 			})
 		}
 	case "resourcepack", "shader":
-		lbl := a.L("安装", "Install")
+		lbl := a.L("install_dialog.install")
 		return lbl, noVer || r == nil, func() {
 			a.execute("installAssetPack", map[string]string{"rootId": r.ID, "kind": p.Type, "source": p.Source, "projectId": p.ID, "versionId": a.form.VersionID}, a.taskAdded)
 		}
 	}
 	_, bad := a.packDestCheck()
-	return a.L("下载", "Download"), noVer || bad || a.form.Parent == "" || a.form.Name == "", func() {
+	return a.L("discover.download"), noVer || bad || a.form.Parent == "" || a.form.Name == "", func() {
 		a.execute("importPack", launcher.ImportRequest{Parent: a.form.Parent, Name: a.form.Name, Source: p.Source, ProjectID: p.ID, VersionID: a.form.VersionID}, a.taskAdded)
 	}
 }

@@ -39,7 +39,7 @@ func (a *App) instGroups(r launcher.Instance, names map[string]versionName) []st
 	return []struct {
 		key, title string
 		items      []launcher.VersionSummary
-	}{{"packs", a.L("整合包", "Modpacks"), packs}, {"vanilla", t.LoaderVanilla, vanilla}}
+	}{{"packs", a.L("instance_rail.modpacks"), packs}, {"vanilla", t.LoaderVanilla, vanilla}}
 }
 
 func (a *App) instanceList(c *ui.Context) {
@@ -48,7 +48,7 @@ func (a *App) instanceList(c *ui.Context) {
 	r := a.root()
 	ui.Column(c.Key("instance-list")).Label("版本列表").Width(instListWidth * s).Shrink(0).FillHeight().Children(func() {
 		ui.Row(c.Key("inst-filter-row")).Label("筛选栏").FillWidth().Height(btnMd*s+20*s).Padding(20*s, 14*s, 0, 16*s).Gap(8 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
-			textField(c.Key("inst-filter"), &a.instFilter).Placeholder(a.L("筛选实例", "Filter instances")).Label(a.L("筛选实例", "Filter instances")).Grow(1).MinWidth(0)
+			textField(c.Key("inst-filter"), &a.instFilter).Placeholder(a.L("instance_rail.filter_instances")).Label(a.L("instance_rail.filter_instances")).Grow(1).MinWidth(0)
 			if iconOnlyButton(c, "inst-import", "layers", t.HomeImportPackBtn, btnMd*s, false) {
 				a.openDialog("import")
 			}
@@ -150,7 +150,7 @@ func (a *App) rootPicker(c *ui.Context) {
 				names[r.ID] = dirLabel(r)
 			}
 			cur := a.snapshot.ActiveRoot
-			if selectBoxFull(c, "root-picker", a.L("游戏目录", "Game directory"), &cur, ids, func(string) (string, ui.Color) { return "folder", accent }, func(id string) string { return names[id] }).Grow(1).MinWidth(0).Changed() && cur != a.snapshot.ActiveRoot {
+			if selectBoxFull(c, "root-picker", a.L("instance_rail.game_directory"), &cur, ids, func(string) (string, ui.Color) { return "folder", accent }, func(id string) string { return names[id] }).Grow(1).MinWidth(0).Changed() && cur != a.snapshot.ActiveRoot {
 				a.selectRoot(cur)
 			}
 			if iconOnlyButton(c, "root-settings", "settings", t.HomeDirSettingsBtn, btnMd*s, a.root() == nil) {
@@ -225,13 +225,13 @@ func (a *App) loaderChips(c *ui.Context, r launcher.Instance) {
 		show := func(k string) string {
 			switch k {
 			case "":
-				return a.L("全部加载器", "All loaders")
+				return a.L("instance_rail.all_loaders")
 			case "vanilla":
 				return a.tr().LoaderVanilla
 			}
 			return a.loaderDisplay(k)
 		}
-		if selectBoxFull(c, "loader-select", a.L("按加载器筛选", "Filter by loader"), &cur, opts, icon, show).Grow(1).MinWidth(0).Changed() && cur != a.instLoader {
+		if selectBoxFull(c, "loader-select", a.L("instance_rail.filter_by_loader"), &cur, opts, icon, show).Grow(1).MinWidth(0).Changed() && cur != a.instLoader {
 			a.instLoader = cur
 			a.settings.InstanceLoaderFilter = cur
 			a.instScrollPending = true

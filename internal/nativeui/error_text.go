@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/Viking602/YoloMCL/internal/i18n"
 )
 
 // uiError is what the UI shows for a failure: a plain sentence, what to do
@@ -49,12 +51,7 @@ func looksNetworkError(low string) bool {
 
 // classifyError maps any error text to a friendly message in zh or en.
 func classifyError(en bool, raw string, e error) uiError {
-	L := func(zh, eng string) string {
-		if en {
-			return eng
-		}
-		return zh
-	}
+	L := func(key string) string { return i18n.Text(en, key) }
 	low := strings.ToLower(raw)
 	path := ""
 	if m := errPathRe.FindStringSubmatch(raw); m != nil {
@@ -71,21 +68,21 @@ func classifyError(en bool, raw string, e error) uiError {
 	var ne net.Error
 	switch {
 	case e != nil && errors.Is(e, fs.ErrPermission), has("access is denied", "permission denied", "operation not permitted"):
-		return uiError{"denied", L("没有权限访问这个文件夹", "No permission to access this folder"), L("关闭可能占用它的程序后重试；如果仍然不行，请以管理员身份运行启动器，或检查文件夹的安全设置。", "Close any program that may be using it and retry. If that does not help, run the launcher as administrator or check the folder's security settings."), path}
+		return uiError{"denied", L("error_text.no_permission_to_access_this_folder"), L("error_text.close_any_program_that_may_be_using_it"), path}
 	case has("being used by another process", "sharing violation", "used by another process"):
-		return uiError{"busy", L("文件正被其他程序占用", "The file is in use by another program"), L("关闭游戏或其他占用它的程序后重试。", "Close the game or other program using it, then retry."), path}
+		return uiError{"busy", L("error_text.the_file_is_in_use_by_another_program"), L("error_text.close_the_game_or_other_program_using_it"), path}
 	case has("not enough space", "no space left", "disk full", "there is not enough space"):
-		return uiError{"disk", L("磁盘空间不足", "The disk is full"), L("清理磁盘空间后重试。", "Free up some disk space and retry."), path}
+		return uiError{"disk", L("error_text.the_disk_is_full"), L("error_text.free_up_some_disk_space_and_retry"), path}
 	case e != nil && (errors.Is(e, context.DeadlineExceeded) || errors.As(e, &ne)), looksNetworkError(low):
 		// Remote failures say only this; URLs, hosts and codes stay in the log.
-		return uiError{"network", L("加载失败", "Failed to load"), "", ""}
+		return uiError{"network", L("error_text.failed_to_load"), "", ""}
 	case e != nil && errors.Is(e, fs.ErrNotExist), has("cannot find the path", "cannot find the file", "no such file", "not exist", "system cannot find"):
-		return uiError{"missing", L("找不到需要的文件或文件夹", "A needed file or folder is missing"), L("它可能被移动或删除了。重新扫描实例后重试。", "It may have been moved or deleted. Rescan the instance and retry."), path}
+		return uiError{"missing", L("error_text.a_needed_file_or_folder_is_missing"), L("error_text.it_may_have_been_moved_or_deleted_rescan"), path}
 	}
 	if friendlyAlready(raw, en) {
 		return uiError{"plain", raw, "", ""}
 	}
-	return uiError{"other", L("操作没有完成", "Something went wrong"), L("请重试。详细信息已写入日志。", "Please retry. Details were written to the log."), path}
+	return uiError{"other", L("error_text.something_went_wrong"), L("error_text.please_retry_details_were_written_to_the_log"), path}
 }
 
 // friendlyAlready reports whether a message was written for people

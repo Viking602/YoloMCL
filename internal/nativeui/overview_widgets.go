@@ -29,11 +29,11 @@ func durText(a *App, sec int64) string {
 	h, m := sec/3600, sec%3600/60
 	switch {
 	case h > 0:
-		return fmt.Sprintf(a.L("%d 小时 %d 分", "%dh %dm"), h, m)
+		return fmt.Sprintf(a.L("overview_widgets.h_m"), h, m)
 	case m > 0:
-		return fmt.Sprintf(a.L("%d 分钟", "%d min"), m)
+		return fmt.Sprintf(a.L("logpanels.min"), m)
 	}
-	return fmt.Sprintf(a.L("%d 秒", "%ds"), sec)
+	return fmt.Sprintf(a.L("overview_widgets.s"), sec)
 }
 
 // kvRow is a kv row whose value is custom content.
@@ -55,15 +55,15 @@ func (a *App) instanceScopeNote(c *ui.Context) {
 	s := uiScale(c)
 	ui.Row(c.Key("inst-scope-note")).Label("实例设置范围").FillWidth().Height(40 * s).PaddingX(14 * s).Gap(10 * s).Radius(10 * s).Background(ui.RGBA(120, 130, 160, .07)).AlignItems(ui.Center).Children(func() {
 		ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(muted).Shrink(0)
-		label(c, a.L("只对当前实例生效，账号与默认 Java、内存等在全局设置", "Only this instance. Account and defaults are global")).FontSize(typeFootnote * s).SingleLine().Grow(1).Basis(0).MinWidth(0)
-		b := ui.ButtonBase(c.Key("inst-open-global")).Label(a.L("全局设置", "Global settings")).Height(26 * s).PaddingX(8 * s).Radius(7 * s).Gap(4 * s).AlignItems(ui.Center).Shrink(0)
+		label(c, a.L("overview_widgets.only_this_instance_account_and_defaults_are_global")).FontSize(typeFootnote * s).SingleLine().Grow(1).Basis(0).MinWidth(0)
+		b := ui.ButtonBase(c.Key("inst-open-global")).Label(a.L("overview_widgets.global_settings")).Height(26 * s).PaddingX(8 * s).Radius(7 * s).Gap(4 * s).AlignItems(ui.Center).Shrink(0)
 		bg := ui.Transparent
 		if b.Hovered() {
 			bg = accentSoft
 		}
 		b.Background(b.AnimateColor("bg", bg, fastAnim))
 		if b.Children(func() {
-			ui.Text(c, a.L("全局设置", "Global settings")).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
+			ui.Text(c, a.L("overview_widgets.global_settings")).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
 			ui.Icon(c, icons["chevron"]).Size(10*s, 10*s).TextColor(accent).Shrink(0)
 		}).Clicked() {
 			a.goPage("settings")

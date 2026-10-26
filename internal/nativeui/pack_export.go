@@ -33,10 +33,10 @@ func (a *App) packExportSection(c *ui.Context, r launcher.Instance) {
 	s := uiScale(c)
 	ui.Row(c.Key("pack-export-section")).Label("导出整合包设置").FillWidth().Wrap().Gap(12*s).Padding(16*s).Radius(12*s).Background(raised).Border(1, line).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Basis(240 * s).MinWidth(0).Gap(4 * s).Children(func() {
-			ui.Text(c, a.L("导出整合包", "Export modpack")).FontSize(typeSubhead * s).Bold().TextColor(ink)
-			label(c, a.L("保存为 Modrinth 或 CurseForge 格式，分享当前实例。", "Share this instance as a Modrinth or CurseForge pack.")).FontSize(typeFootnote * s).FillWidth().MinWidth(0)
+			ui.Text(c, a.L("i18n.export_modpack")).FontSize(typeSubhead * s).Bold().TextColor(ink)
+			label(c, a.L("pack_export.share_this_instance_as_a_modrinth_or_curseforge")).FontSize(typeFootnote * s).FillWidth().MinWidth(0)
 		})
-		if button(c, "pack-export", a.L("导出…", "Export…"), "download", false, r.Running || a.instancePending("exportPack")) {
+		if button(c, "pack-export", a.L("pack_export.export"), "download", false, r.Running || a.instancePending("exportPack")) {
 			a.openPackExport(r.ID, version)
 		}
 	})
@@ -66,8 +66,8 @@ func (a *App) packExportDialog(c *ui.Context) {
 		ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			if a.dialogPending() {
 				statusSpinner(c, 14*s)
-				label(c, a.L("正在读取实例内容…", "Reading instance contents…"))
-			} else if button(c, "export-retry-preview", a.L("重新读取", "Retry"), "refresh", false, false) {
+				label(c, a.L("pack_export.reading_instance_contents"))
+			} else if button(c, "export-retry-preview", a.L("pack_export.retry"), "refresh", false, false) {
 				a.openPackExport(g.rootID, g.version)
 			}
 		})
@@ -106,24 +106,24 @@ func (a *App) packExportDialog(c *ui.Context) {
 		}
 	})
 	ui.Row(c).FillWidth().Gap(12 * s).Children(func() {
-		ui.Column(c).Grow(2).Basis(0).MinWidth(0).Children(func() { field(c, a.L("名称", "Name"), &g.name, "My Modpack") })
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() { field(c, a.L("整合包版本", "Pack version"), &g.packVersion, "1.0.0") })
+		ui.Column(c).Grow(2).Basis(0).MinWidth(0).Children(func() { field(c, a.L("pack_export.name"), &g.name, "My Modpack") })
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() { field(c, a.L("pack_export.pack_version"), &g.packVersion, "1.0.0") })
 	})
 	if g.format == "curseforge" {
-		field(c, a.L("作者（可选）", "Author (optional)"), &g.author, "")
+		field(c, a.L("pack_export.author_optional"), &g.author, "")
 	}
 	ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 		ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-			label(c, a.L("包含的内容", "Contents to include")).FontWeight(600)
+			label(c, a.L("pack_export.contents_to_include")).FontWeight(600)
 			ui.Spacer(c).Grow(1)
-			if fixedButton(c, "export-defaults", a.L("恢复默认", "Reset selection"), "refresh", 0, btnSm*s, false, g.saving) {
+			if fixedButton(c, "export-defaults", a.L("pack_export.reset_selection"), "refresh", 0, btnSm*s, false, g.saving) {
 				for i := range g.entries {
 					g.entries[i].Selected = preview.Entries[i].Selected
 				}
 			}
 		})
 		if len(g.entries) == 0 {
-			label(c, a.L("此实例没有附加文件，将导出游戏与加载器信息。", "No extra files; the export will contain the game and loader manifest.")).FontSize(typeFootnote * s)
+			label(c, a.L("pack_export.no_extra_files_the_export_will_contain_the")).FontSize(typeFootnote * s)
 		} else {
 			ui.List(c.Key("pack-export-contents"), &g.rows, len(g.entries)).ItemKey(func(i int) any { return g.entries[i].Name }).FillWidth().Height(min(160, float32(len(g.entries))*34) * s).Background(raised).Radius(10 * s).Rows(func(row ui.ListRow) {
 				c, entry := row.Context, &g.entries[row.Index]
@@ -151,7 +151,7 @@ func (a *App) packExportDialog(c *ui.Context) {
 			})
 		}
 	})
-	label(c, a.L("使用平台文件引用；未识别的文件随包打包。默认不选存档和个人选项，不包含启动器账号、运行环境与缓存。", "Uses provider file references; unidentified files are bundled. Worlds and personal options start unselected. Launcher accounts, runtimes and caches are excluded.")).FontSize(typeCaption * s).FillWidth().MinWidth(0)
+	label(c, a.L("pack_export.uses_provider_file_references_unidentified_files_are_bundled")).FontSize(typeCaption * s).FillWidth().MinWidth(0)
 }
 
 func (a *App) packExportFooter(c *ui.Context) {
@@ -168,8 +168,8 @@ func (a *App) packExportFooter(c *ui.Context) {
 				n++
 			}
 		}
-		label(c, fmt.Sprintf(a.L("已选 %d 项", "%d selected"), n)).FontSize(typeFootnote * s).Grow(1)
-		if button(c, "export-save", a.L("选择位置并导出", "Save and export"), "download", true, g.saving || a.dialogPending() || strings.TrimSpace(g.name) == "" || strings.TrimSpace(g.packVersion) == "") {
+		label(c, fmt.Sprintf(a.L("pack_export.selected"), n)).FontSize(typeFootnote * s).Grow(1)
+		if button(c, "export-save", a.L("pack_export.save_and_export"), "download", true, g.saving || a.dialogPending() || strings.TrimSpace(g.name) == "" || strings.TrimSpace(g.packVersion) == "") {
 			a.savePackExport(g)
 		}
 	})
@@ -195,7 +195,7 @@ func (a *App) savePackExport(g *packExportState) {
 	if base == "" {
 		base = "modpack"
 	}
-	opts := mygo.SaveDialogOptions{Parent: a.win, Title: a.L("导出整合包", "Export modpack"), DefaultPath: base + ext, Filters: []mygo.FileFilter{{Name: name, Extensions: []string{strings.TrimPrefix(ext, ".")}}}}
+	opts := mygo.SaveDialogOptions{Parent: a.win, Title: a.L("i18n.export_modpack"), DefaultPath: base + ext, Filters: []mygo.FileFilter{{Name: name, Extensions: []string{strings.TrimPrefix(ext, ".")}}}}
 	gen := a.dialogGen
 	g.saving = true
 	a.bgWG.Add(1)

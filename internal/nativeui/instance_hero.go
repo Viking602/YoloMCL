@@ -100,7 +100,7 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 			if historyBesideTitle {
 				a.heroPlayRecord(c, r, true)
 			}
-			if iconOnlyButton(c, "hero-folder", "folder", a.L("打开文件夹", "Open folder"), btnLg*s, false) {
+			if iconOnlyButton(c, "hero-folder", "folder", a.L("addons_tab.open_folder"), btnLg*s, false) {
 				a.openSub("")
 			}
 			if verRunning(&r) && fixedButton(c, "dock-stop", t.HomeStopBtn, "cross", 0, btnLg*s, false, a.instancePending("stop")) {
@@ -108,7 +108,7 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 			}
 			launchText, icon := t.HomeLaunchBtn, "play"
 			if verRunning(&r) {
-				launchText, icon = a.L("再开一个", "Run another"), "plus"
+				launchText, icon = a.L("i18n.run_another"), "plus"
 			}
 			why := whyOf(a.instancePending("launch", "launchAgain"), t.WhyBusy, v == nil, t.WhyNoVersion)
 			pendingWhy = why

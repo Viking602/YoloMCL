@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+
+	"github.com/Viking602/YoloMCL/internal/i18n"
 )
 
 func loaderName(s string) string {
@@ -24,6 +26,9 @@ func loaderName(s string) string {
 }
 
 func loaderKey(s string) string {
+	if key := i18n.Canonical("loader", s); key != "" {
+		return key
+	}
 	v := strings.ToLower(strings.TrimSpace(s))
 	switch v {
 	case "", "vanilla", "原版", "all", "all loaders", "全部加载器":
@@ -86,36 +91,25 @@ func updatedAgo(en bool, t, now time.Time) string {
 		return "—"
 	}
 	d := now.Sub(t)
-	L := func(zh, e string, n int) string {
-		if en {
-			if n == 1 {
-				e = strings.Replace(e, "s ago", " ago", 1)
-			}
-			zh = e
-		}
-		if n == 0 {
-			return zh
-		}
-		return fmt.Sprintf(zh, n)
-	}
+	format := func(unit string, n int) string { return fmt.Sprintf(i18n.Plural(en, "time.ago."+unit, n), n) }
 	days := int(d.Hours() / 24)
 	switch {
 	case d < time.Minute:
-		return L("刚刚", "just now", 0)
+		return i18n.Text(en, "time.ago.now")
 	case d < time.Hour:
-		return L("%d 分钟前", "%d minutes ago", int(d/time.Minute))
+		return format("minute", int(d/time.Minute))
 	case d < 24*time.Hour:
-		return L("%d 小时前", "%d hours ago", int(d/time.Hour))
+		return format("hour", int(d/time.Hour))
 	case days < 2:
-		return L("昨天", "yesterday", 0)
+		return i18n.Text(en, "time.ago.yesterday")
 	case days < 7:
-		return L("%d 天前", "%d days ago", days)
+		return format("day", days)
 	case days < 30:
-		return L("%d 周前", "%d weeks ago", days/7)
+		return format("week", days/7)
 	case days < 365:
-		return L("%d 个月前", "%d months ago", days/30)
+		return format("month", days/30)
 	}
-	return L("%d 年前", "%d years ago", days/365)
+	return format("year", days/365)
 }
 
 // Refresh only when the displayed time can change, including while idle.

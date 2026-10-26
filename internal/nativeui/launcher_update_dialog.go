@@ -68,15 +68,15 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 			if version != "" {
 				ui.Text(c, "YoloMCL "+version).FontSize(typeTitle2 * s).Bold().TextColor(ink)
 			}
-			label(c, a.L("当前版本：", "Current version: ")+state.currentVersion).FontSize(typeCaption * s)
+			label(c, a.L("launcher_update_dialog.current_version")+state.currentVersion).FontSize(typeCaption * s)
 		})
 	})
 	if required {
-		label(c, fmt.Sprintf(a.L("当前版本已停用，需要更新到 v%s 或更新版本后才能继续使用。", "This version has been retired. Update to v%s or later to continue."), state.policy.MinimumVersion)).TextColor(danger)
+		label(c, fmt.Sprintf(a.L("launcher_update_dialog.this_version_has_been_retired_update_to_v"), state.policy.MinimumVersion)).TextColor(danger)
 	} else if state.phase == "available" {
-		label(c, a.L("发现新版本，是否下载并安装？", "A new version is available. Download and install it?"))
+		label(c, a.L("launcher_update_dialog.a_new_version_is_available_download_and_install"))
 	}
-	label(c, a.L("更新会保留账号、设置与游戏文件。", "Your accounts, settings and game files will be kept.")).FontSize(typeCaption * s)
+	label(c, a.L("launcher_update_dialog.your_accounts_settings_and_game_files_will_be")).FontSize(typeCaption * s)
 	if state.phase != "available" || state.err != nil {
 		label(c, a.launcherUpdateText()).Label("launcher-update-dialog-status")
 	}
@@ -84,21 +84,21 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 		ui.Progress(c, float64(state.downloaded)/float64(state.total))
 	}
 	if state.phase == "available" && state.release != nil && state.release.install == nil {
-		label(c, a.L("此安装位置不支持原位更新，请下载正式版后替换启动器。", "This installation cannot update in place. Download the official release and replace the launcher.")).FontSize(typeCaption * s)
+		label(c, a.L("launcher_update_dialog.this_installation_cannot_update_in_place_download_the")).FontSize(typeCaption * s)
 	}
 	ui.Row(c).FillWidth().Wrap().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-		if button(c, "launcher-release-notes", a.L("发布说明", "Release notes"), "external", false, false) {
+		if button(c, "launcher-release-notes", a.L("launcher_update_dialog.release_notes"), "external", false, false) {
 			c.OpenURL(buildinfo.ReleasesURL + "/latest")
 		}
 		ui.Spacer(c).Grow(1)
 		if required {
-			if button(c, "launcher-update-exit", a.L("退出启动器", "Exit launcher"), "cross", false, false) && a.win != nil {
+			if button(c, "launcher-update-exit", a.L("launcher_update_dialog.exit_launcher"), "cross", false, false) && a.win != nil {
 				a.win.Close()
 			}
 		} else {
-			text := a.L("取消", "Cancel")
+			text := a.L("install_dialog.cancel")
 			if state.phase == "installing" {
-				text = a.L("后台下载", "Download in background")
+				text = a.L("launcher_update_dialog.download_in_background")
 			}
 			if button(c, "launcher-update-cancel", text, "", false, false) {
 				a.closeDialog()
@@ -107,25 +107,25 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 		switch state.phase {
 		case "available":
 			if state.release != nil && state.release.install != nil {
-				if button(c, "launcher-update-confirm", a.L("确认更新", "Update now"), "download", true, false) {
+				if button(c, "launcher-update-confirm", a.L("launcher_update_dialog.update_now"), "download", true, false) {
 					a.installLauncherUpdate()
 				}
 			} else {
-				if button(c, "launcher-update-retry", a.L("重新检查", "Check again"), "refresh", false, false) {
+				if button(c, "launcher-update-retry", a.L("launcher_update_dialog.check_again"), "refresh", false, false) {
 					a.checkLauncherUpdates()
 				}
-				if button(c, "launcher-update-download", a.L("下载新版", "Download release"), "download", true, false) {
+				if button(c, "launcher-update-download", a.L("launcher_update_dialog.download_release"), "download", true, false) {
 					c.OpenURL(buildinfo.ReleasesURL + "/latest")
 				}
 			}
 		case "ready":
-			if button(c, "launcher-update-restart", a.L("重启启动器", "Restart launcher"), "refresh", true, a.launcherRestartBlocked()) {
+			if button(c, "launcher-update-restart", a.L("about.restart_launcher"), "refresh", true, a.launcherRestartBlocked()) {
 				mygo.App.Relaunch()
 			}
 		case "checking", "installing":
-			button(c, "launcher-update-busy", a.L("请稍候", "Please wait"), "", true, true)
+			button(c, "launcher-update-busy", a.L("launcher_update_dialog.please_wait"), "", true, true)
 		default:
-			if button(c, "launcher-update-retry", a.L("重新检查", "Check again"), "refresh", true, false) {
+			if button(c, "launcher-update-retry", a.L("launcher_update_dialog.check_again"), "refresh", true, false) {
 				a.checkLauncherUpdates()
 			}
 		}

@@ -39,14 +39,14 @@ func TestOverviewFitsViewportWithoutScrolling(t *testing.T) {
 				a.statusCache = map[string]launcher.InstanceStatus{a.instStatusKey: a.instStatus}
 				tt.SetSize(size[0], size[1])
 				tt.Advance(400 * time.Millisecond)
-				for _, name := range []string{a.L("已安装模组", "Installed mods"), a.L("本地世界", "Local worlds"), a.L("画面扩展", "Visual extras"), a.L("累计游玩", "Play time")} {
+				for _, name := range []string{a.L("overview.installed_mods"), a.L("overview.local_worlds"), a.L("overview.visual_extras"), a.L("overview.play_time")} {
 					b, ok := tt.Find(name)
 					if !ok || b.W <= 0 || b.X < 0 || b.X+b.W > float32(size[0]) || b.Y+b.H > float32(size[1]) {
 						t.Fatalf("stat escaped viewport: %s %+v", name, b)
 					}
 				}
 				{
-					for _, name := range []string{a.L("最近世界", "Recent world"), a.L("最近服务器", "Recent server"), a.L("游戏截图", "Screenshots"), a.L("运行环境", "Runtime"), a.L("存储空间", "Storage")} {
+					for _, name := range []string{a.L("overview.recent_world"), a.L("server_ui.recent_server"), a.L("overview.screenshots"), a.L("overview.runtime"), a.L("overview.storage")} {
 						b, ok := tt.Find(name)
 						if !ok || b.X+b.W > float32(size[0]) || b.Y+b.H > float32(size[1]) {
 							t.Fatalf("dashboard panel escaped viewport: %s %+v", name, b)
@@ -54,7 +54,7 @@ func TestOverviewFitsViewportWithoutScrolling(t *testing.T) {
 					}
 				}
 				snapshotUI(t, tt, fmt.Sprintf("overview-%s-%d", lang, size[0]))
-				before, _ := tt.Find(a.L("存储空间", "Storage"))
+				before, _ := tt.Find(a.L("overview.storage"))
 				viewport, _ := tt.Find("概览固定视区")
 				if before.Y+before.H > viewport.Y+viewport.H+1 {
 					t.Fatal("overview was clipped instead of fitted")
@@ -62,20 +62,20 @@ func TestOverviewFitsViewportWithoutScrolling(t *testing.T) {
 				if size[0] < 1000 {
 					tt.Scroll(780, 430, 0, 3000)
 					tt.Advance(400 * time.Millisecond)
-					if after, _ := tt.Find(a.L("存储空间", "Storage")); after != before {
+					if after, _ := tt.Find(a.L("overview.storage")); after != before {
 						t.Fatal("wheel input scrolled the fixed overview")
 					}
-					b, ok := tt.Find(a.L("复制路径", "Copy path"))
+					b, ok := tt.Find(a.L("java_installed.copy_path"))
 					if !ok || b.Y < 42 || b.Y+b.H > float32(size[1]) {
 						t.Fatalf("storage actions are unreachable: %+v", b)
 					}
-					clickUI(t, tt, a.L("复制路径", "Copy path"))
+					clickUI(t, tt, a.L("java_installed.copy_path"))
 					if tt.Clipboard() != r.Path {
 						t.Fatal("overview copied the wrong instance path")
 					}
 					snapshotUI(t, tt, "overview-small-bottom-"+lang)
 				} else {
-					clickUI(t, tt, a.L("管理备份", "Manage backups"))
+					clickUI(t, tt, a.L("overview.manage_backups"))
 					if a.instTab != "worlds" || a.wv.open != "world" {
 						t.Fatal("world shortcut lost the selected save")
 					}
@@ -101,14 +101,14 @@ func TestOverviewUnrecordedTimeAndLoadingAreHonest(t *testing.T) {
 				tt.SetSize(size[0], size[1])
 				tt.Frame()
 				tt.Advance(400 * time.Millisecond)
-				if !tt.HasText(a.L("尚无游玩记录", "No recorded sessions")) || !tt.HasText(a.L("从这里启动后记录时长", "Tracked when launched here")) {
+				if !tt.HasText(a.L("overview.no_recorded_sessions")) || !tt.HasText(a.L("overview.tracked_when_launched_here")) {
 					t.Fatalf("missing unrecorded play state: %v", tt.Texts())
 				}
 				var artwork ui.Rect
 				for i, item := range [][3]string{
-					{"world-empty", a.L("还没有存档", "No worlds yet"), a.L("最近世界", "Recent world")},
-					{"server-empty", a.L("还没有连接记录", "No connections yet"), a.L("最近服务器", "Recent server")},
-					{"screenshot-empty", a.L("还没有游戏截图", "No screenshots yet"), a.L("游戏截图", "Screenshots")},
+					{"world-empty", a.L("overview.no_worlds_yet"), a.L("overview.recent_world")},
+					{"server-empty", a.L("server_ui.no_connections_yet"), a.L("server_ui.recent_server")},
+					{"screenshot-empty", a.L("overview.no_screenshots_yet"), a.L("overview.screenshots")},
 				} {
 					art, ok := tt.Find("空状态插画 " + item[0])
 					title, titleOK := tt.Find(item[1])
@@ -127,7 +127,7 @@ func TestOverviewUnrecordedTimeAndLoadingAreHonest(t *testing.T) {
 			a.overviewDisplay = overviewPresentation{}
 			a.contentSwaps = nil
 			tt.Frame()
-			if !tt.HasText("概览加载占位") || tt.HasText(a.L("还没有存档", "No worlds yet")) {
+			if !tt.HasText("概览加载占位") || tt.HasText(a.L("overview.no_worlds_yet")) {
 				t.Fatal("unloaded save counts were presented as an empty world list")
 			}
 		})

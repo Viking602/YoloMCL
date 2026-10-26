@@ -8,17 +8,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func TestEveryJobTitleKeyTranslated(t *testing.T) {
 	for _, k := range launcher.JobTitleKeys() {
-		f, ok := jobTitles[k]
-		if !ok || f[0] == "" || f[1] == "" {
+		zh, hasZH := i18n.Lookup(false, "job.title."+k)
+		en, hasEN := i18n.Lookup(true, "job.title."+k)
+		if !hasZH || !hasEN || zh == "" || en == "" {
 			t.Errorf("job title key %q has no zh/en translation", k)
 		}
-		if regexp.MustCompile(`[\p{Han}]`).MatchString(f[1]) {
-			t.Errorf("en text for %q contains CJK: %q", k, f[1])
+		if han.MatchString(en) {
+			t.Errorf("en text for %q contains CJK: %q", k, en)
 		}
 	}
 }
@@ -51,8 +53,8 @@ func TestJobTitleFollowsLiveLanguageSwitch(t *testing.T) {
 var han = regexp.MustCompile(`[\p{Han}]`)
 
 // No hardcoded CJK in UI code outside the reviewed baseline: new Chinese text
-// must go through a.L(zh, en), the i18n tables, or be added to the baseline
-// after review (search keywords, a11y labels, zh branches of en/zh pairs).
+// belongs in the JSON catalogs. The remaining baseline covers legacy input
+// matching, diagnostics and stable accessibility/test identifiers.
 func TestNoNewHardcodedCJK(t *testing.T) {
 	got := cjkSites(t)
 	b, _ := os.ReadFile(filepath.Join("testdata", "cjk_baseline.txt"))
@@ -69,18 +71,18 @@ func TestNoNewHardcodedCJK(t *testing.T) {
 	}
 	for _, g := range got {
 		if !base[g] {
-			t.Errorf("hardcoded CJK outside a.L/i18n: %s", g)
+			t.Errorf("hardcoded CJK outside JSON catalogs: %s", g)
 		}
 	}
 }
 
 func cjkSites(t *testing.T) []string {
 	lit := regexp.MustCompile("\"(?:[^\"\\\\]|\\\\.)*\"|`[^`]*`")
-	allowedBefore := regexp.MustCompile(`(\bL\(\s*|\.Label\(\s*|\.Key\(\s*|c\.Key\([^)]*)$`)
+	allowedBefore := regexp.MustCompile(`(\.Label\(\s*|\.Key\(\s*|c\.Key\([^)]*)$`)
 	files, _ := filepath.Glob("*.go")
 	set := map[string]bool{}
 	for _, f := range files {
-		if strings.HasSuffix(f, "_test.go") || strings.HasPrefix(f, "i18n") || f == "jobmsg.go" {
+		if strings.HasSuffix(f, "_test.go") {
 			continue
 		}
 		b, _ := os.ReadFile(f)

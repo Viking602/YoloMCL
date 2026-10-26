@@ -88,11 +88,11 @@ func sessionTone(state string) ui.Color {
 func (a *App) sessionStateText(state string) string {
 	switch state {
 	case "running":
-		return a.L("运行中", "Running")
+		return a.L("logsessions.running")
 	case "crashed":
-		return a.L("崩溃", "Crashed")
+		return a.L("logsessions.crashed")
 	}
-	return a.L("已退出", "Exited")
+	return a.L("logsessions.exited")
 }
 
 func (a *App) sessionLabel(g launcher.GameSession, list []launcher.GameSession) string {
@@ -140,7 +140,7 @@ func (a *App) sessionSwitcher(c *ui.Context, scope string, list []launcher.GameS
 					a.sessionAccount(c, g, 16*s, muted)
 				}
 				if g.State != "running" {
-					x := tooltip(c, ui.ButtonBase(c.Key("log-sess-close-"+g.ID)).Label(a.L("关闭", "Close")), a.L("关闭", "Close")).Size(18*s, 18*s).Radius(5 * s).Center()
+					x := tooltip(c, ui.ButtonBase(c.Key("log-sess-close-"+g.ID)).Label(a.L("logsessions.close")), a.L("logsessions.close")).Size(18*s, 18*s).Radius(5 * s).Center()
 					if x.Hovered() {
 						x.Background(ui.RGBA(120, 130, 160, .18))
 					}

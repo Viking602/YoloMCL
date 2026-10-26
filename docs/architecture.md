@@ -15,8 +15,8 @@ internal/
     textenc/             Game log character decoding
     vault/               Account credential protection
   nativeui/              Native views, interaction state and presentation
-    i18n/                English and Chinese text and category dictionaries
     assets/              Embedded fonts, icons and images
+  i18n/                  Shared JSON translation catalogs and lookup helpers
   config/                Publisher identity and content-provider configuration
   buildinfo/             Build identity and update verification metadata
 tools/                   Pinned formatting and static-analysis dependencies
@@ -31,11 +31,11 @@ build/                   Release packages
 ```text
 main -> app
 app -> launcher, nativeui, buildinfo
-nativeui -> launcher, buildinfo, nativeui/i18n
-launcher -> config, launcher/{memory,proctree,textenc,vault}
+nativeui -> launcher, buildinfo, i18n
+launcher -> config, i18n, launcher/{memory,proctree,textenc,vault}
 ```
 
-`app` and `nativeui` use MyGo. The launcher service is independent of the UI toolkit. The platform packages do not import their parent service or each other. `config`, `buildinfo` and `nativeui/i18n` use the standard library.
+`app` and `nativeui` use MyGo. The launcher service is independent of the UI toolkit. The platform packages do not import their parent service or each other. `config`, `buildinfo` and `i18n` use the standard library.
 
 `scripts/check-imports.awk`, invoked by `make check` and `make fmt`, checks these import boundaries.
 
@@ -104,7 +104,7 @@ Concurrent cold scans share a temporary workspace: six workers hash files, at mo
 | Tasks and logs | `tasks.go`, `task_*.go`, `log_state.go`, `log_loading.go`, `logview.go`, `logpanels.go`, `log_layout.go`, `logsessions.go` | Task progress, log state, asynchronous reads and log navigation |
 | Feedback and motion | `error_text.go`, `notices.go`, `empty_state.go`, `motion.go`, `content_motion.go`, `number_motion.go`, `scrollbar.go` | User-facing errors, notifications, empty states and shared transitions |
 
-`nativeui/i18n` contains English and Chinese dictionaries and provider category translations. `log_parse.go` converts plain-text and Log4j XML output into displayable log entries. `skin_defaults.go` caches the embedded Steve and Alex textures.
+`i18n` loads English and Chinese text, provider categories, task progress and crash explanations from `internal/i18n/locales/*.json`. The JSON files are embedded and decoded once; views use message keys or the typed `Copy` fields. Missing entries inherit English, and explicit empty strings stay empty. Both the launcher and UI share this standard-library-only package. See [Translation guide](i18n.md) for editing and validation. `log_parse.go` converts plain-text and Log4j XML output into displayable log entries. `skin_defaults.go` caches the embedded Steve and Alex textures.
 
 Artwork uses a shared LRU cache capped at 256 aliases and a 16 MiB estimated memory budget, including bitmap mip levels. Identical encoded images at the same decode size share one resource across jar versions, paths and URLs. The content index holds only resources still referenced by the LRU; removing the last alias releases its pixels and index entry. Cache hits skip decoding and resizing. Raster icons retain up to 128 pixels, add-on thumbnails up to 96 pixels, and screenshot previews up to 960 pixels. Two icon workers and one screenshot worker limit simultaneous decoding, and overview preloads share in-flight requests with visible widgets. Remote originals remain in the disk cache so evicted artwork can be loaded again without a network request.
 

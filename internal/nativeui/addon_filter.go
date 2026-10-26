@@ -20,14 +20,14 @@ func (a *App) addonFilterPills(c *ui.Context, total, on, off, updates int) {
 		x, width         float32
 	}
 	options := []option{
-		{key: "", text: a.L("全部", "All"), count: fmt.Sprint(total)},
-		{key: "on", text: a.L("已启用", "Enabled"), count: fmt.Sprint(on)},
+		{key: "", text: a.L("addon_filter.all"), count: fmt.Sprint(total)},
+		{key: "on", text: a.L("addon_filter.enabled"), count: fmt.Sprint(on)},
 	}
 	if off > 0 || a.addonFilterKind == "off" {
-		options = append(options, option{key: "off", text: a.L("已禁用", "Disabled"), count: fmt.Sprint(off)})
+		options = append(options, option{key: "off", text: a.L("addon_filter.disabled"), count: fmt.Sprint(off)})
 	}
 	if updates > 0 || a.addonFilterKind == "update" {
-		options = append(options, option{key: "update", text: a.L("可更新", "Updates"), count: fmt.Sprint(updates)})
+		options = append(options, option{key: "update", text: a.L("addon_filter.updates"), count: fmt.Sprint(updates)})
 	}
 	selected := a.addonFilterKind
 	var width, x, w float32

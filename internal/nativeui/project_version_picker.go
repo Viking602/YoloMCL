@@ -45,16 +45,16 @@ func (a *App) installVersions(c *ui.Context) {
 	state := &a.versionList
 	ui.Column(c.Key("ver-picker")).FillWidth().Gap(10 * s).Children(func() {
 		ui.Row(c).FillWidth().Height(30 * s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L("版本", "Version")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
+			ui.Text(c, a.L("javaget_ui.version")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
 			if n := len(a.projectVersions); n > 0 {
-				cnt := fmt.Sprintf(a.L("%d 个版本", "%d versions"), n)
+				cnt := fmt.Sprintf(a.L("project_version_picker.versions"), n)
 				if len(vis) != n {
-					cnt = fmt.Sprintf(a.L("%d / %d 个版本", "%d of %d versions"), len(vis), n)
+					cnt = fmt.Sprintf(a.L("project_version_picker.of_versions"), len(vis), n)
 				}
 				numText(c, cnt, typeFootnote*s, muted)
 			}
 			ui.Spacer(c).Grow(1)
-			textField(c.Key("project-ver-filter"), &a.projectVersionFilter).Label(a.tr().ProjectFilterAria).Placeholder(a.L("搜索版本号", "Search versions")).Width(200 * s).Shrink(1)
+			textField(c.Key("project-ver-filter"), &a.projectVersionFilter).Label(a.tr().ProjectFilterAria).Placeholder(a.L("project_version_picker.search_versions")).Width(200 * s).Shrink(1)
 		})
 		a.projectFilterControls(c)
 		// Controls commit before selecting a file or resolving its dependencies.
@@ -81,16 +81,16 @@ func (a *App) installVersions(c *ui.Context) {
 			case a.projLoading:
 				ui.Row(c).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Center).Gap(10 * s).Children(func() {
 					statusSpinner(c, 16*s)
-					label(c, a.L("正在读取版本", "Loading versions"))
+					label(c, a.L("project_version_picker.loading_versions"))
 				})
 			case len(vis) == 0:
 				ui.Column(c).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Center).Gap(10 * s).Children(func() {
-					msg := a.L("没有符合筛选的版本", "No version matches")
+					msg := a.L("project_version_picker.no_version_matches")
 					if len(a.projectVersions) == 0 {
-						msg = a.L("没有适配当前实例的版本", "No version fits this instance")
+						msg = a.L("project_version_picker.no_version_fits_this_instance")
 					}
 					ui.Text(c, msg).FontSize(typeCallout * s).FontWeight(600).TextColor(inkSecondary)
-					if fixedButton(c, "ver-reset", a.L("显示全部版本", "Show all versions"), "", 0, btnSm*s, false, false) {
+					if fixedButton(c, "ver-reset", a.L("project_version_picker.show_all_versions"), "", 0, btnSm*s, false, false) {
 						f.mc, f.loader, f.allTypes, a.projectVersionFilter = "", "", true, ""
 						a.projShowAll = true
 					}
@@ -155,7 +155,7 @@ func (a *App) versionRow(c *ui.Context, v launcher.ProjectVersion, recommended b
 				rl, tone := a.releaseLabel(v.Type)
 				quietTag(c, rl, tone)
 				if recommended {
-					quietTag(c, a.L("推荐", "Recommended"), successInk)
+					quietTag(c, a.L("overview_runtime.recommended"), successInk)
 				}
 			})
 		})

@@ -246,15 +246,15 @@ func TestLogNavigationAnimatesOpenAndBack(t *testing.T) {
 						t.Fatal("disk completion replayed navigation")
 					}
 					tt.Advance(200 * time.Millisecond)
-					clickUI(t, tt, a.L("返回", "Back"))
+					clickUI(t, tt, a.L("logpanels.back"))
 					tt.Move(0, 0)
 					tt.Advance(70 * time.Millisecond)
 					mid, _ = tt.Find("日志页面 recent")
-					midMarker, _ = tt.Find(a.L("现在没有运行中的游戏", "No game is running"))
+					midMarker, _ = tt.Find(a.L("logpanels.no_game_is_running"))
 					snapshotUI(t, tt, fmt.Sprintf("log-back-%d-%v-%s", width, reduce, name))
 					tt.Advance(300 * time.Millisecond)
 					end, _ = tt.Find("日志页面 recent")
-					endMarker, _ = tt.Find(a.L("现在没有运行中的游戏", "No game is running"))
+					endMarker, _ = tt.Find(a.L("logpanels.no_game_is_running"))
 					if mid.H != end.H || math.Abs(float64(midMarker.W-endMarker.W)) > .1 || midMarker.H != endMarker.H || (!reduce && midMarker.X >= endMarker.X) || (reduce && mid != end) || a.logView.file != "" || !tt.HasText("日志文件列表") {
 						t.Fatalf("returning must animate the list from the opposite direction: %+v -> %+v", mid, end)
 					}
@@ -275,7 +275,7 @@ func TestLogNavigationCanReverseWhileReading(t *testing.T) {
 		generation := a.logView.gen
 		tt.Frame()
 		tt.Advance(35 * time.Millisecond)
-		clickUI(t, tt, a.L("返回", "Back"))
+		clickUI(t, tt, a.L("logpanels.back"))
 		tt.Advance(35 * time.Millisecond)
 		if a.logView.file != "" || a.logView.key != "" || a.logView.loading || a.logView.loadingOlder || a.logView.gen <= generation {
 			t.Fatal("returning left a pending read attached to the closed file")
@@ -309,7 +309,7 @@ func TestReturningFromLogReleasesTextCaches(t *testing.T) {
 	text := strings.Repeat("retained old log ", 1<<16)
 	a.logView.measured = map[logMeasureKey]float32{{text: maphash.String(logHashSeed, text)}: 48}
 	a.logView.open = map[string]bool{text: true}
-	clickUI(t, tt, a.L("返回", "Back"))
+	clickUI(t, tt, a.L("logpanels.back"))
 	tt.Advance(400 * time.Millisecond)
 	lv := &a.logView
 	if len(lv.lines)+len(lv.measured)+len(lv.open)+len(lv.vis)+len(lv.hits)+len(lv.offsets) != 0 {

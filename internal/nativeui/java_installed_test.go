@@ -74,12 +74,12 @@ func TestJavaInstalledResponsiveControls(t *testing.T) {
 						}
 					}
 					snapshotUI(t, tt, fmt.Sprintf("java-runtimes-%s-%d-managed-%t", lang, size[0], managed))
-					if tt.HasText(a.L("卸载", "Uninstall")) != managed {
+					if tt.HasText(a.L("java_installed.uninstall")) != managed {
 						t.Fatal("uninstall must only be offered for launcher-managed Java")
 					}
 					if managed {
-						clickUI(t, tt, a.L("卸载", "Uninstall"))
-						if !tt.HasText(a.L("确认卸载", "Confirm")) || len(a.javaGet.list) != 4 {
+						clickUI(t, tt, a.L("java_installed.uninstall"))
+						if !tt.HasText(a.L("java_installed.confirm")) || len(a.javaGet.list) != 4 {
 							t.Fatal("uninstall no longer requires confirmation")
 						}
 					}

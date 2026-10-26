@@ -50,7 +50,7 @@ func TestLoaderVersionFitsHeroWithSidebar(t *testing.T) {
 				label, parent string
 				width         float32
 			}{
-				{"加载器版本 " + v.LoaderVersion, a.L("实例加载器", "Instance loader"), heroWidth},
+				{"加载器版本 " + v.LoaderVersion, a.L("hero_badges.instance_loader"), heroWidth},
 				{"列表加载器版本 " + v.ID, "版本卡片 " + v.ID, railWidth},
 			} {
 				text, found := tt.Find(item.label)
@@ -60,7 +60,7 @@ func TestLoaderVersionFitsHeroWithSidebar(t *testing.T) {
 				}
 			}
 			version, _ := tt.Find("加载器版本 " + v.LoaderVersion)
-			history, _ := tt.Find(a.L("游玩记录", "Play history"))
+			history, _ := tt.Find(a.L("hero_badges.play_history"))
 			if version.X+version.W > history.X+.5 {
 				t.Fatalf("loader version overlaps play history: %+v %+v", version, history)
 			}

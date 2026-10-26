@@ -67,7 +67,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 		}
 		v := *vv
 		ui.Row(c).FillWidth().Wrap().Gap(16 * s).AlignItems(ui.Stretch).Children(func() {
-			setCard(c, "set-basic", "gamepad", a.L("名称与 Java", "Name and Java"), "", 380, func() {
+			setCard(c, "set-basic", "gamepad", a.L("instance_settings.name_and_java"), "", 380, func() {
 				ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
 					label(c, t.VersionNameLabel).FontSize(typeFootnote * s).FontWeight(600)
 					def := v
@@ -87,7 +87,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 						for _, j := range a.java {
 							name := fmt.Sprintf("Java %s %s (%s)", j.Version, javaDisplay(j.Vendor), javaDisplay(filepath.Base(filepath.Dir(filepath.Dir(j.Path)))))
 							if need := javaFor(r, v); need > 0 && j.Major == need {
-								name = a.L("推荐  ", "Recommended  ") + name
+								name = a.L("instance_settings.recommended") + name
 							}
 							if _, dup := paths[name]; dup {
 								name += "   " + j.Path
@@ -110,7 +110,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 						for _, j := range a.java {
 							has = has || j.Major == javaFor(r, v)
 						}
-						if need := javaFor(r, v); need > 0 && !has && fixedButton(c, "ver-java-get", fmt.Sprintf(a.L("下载 Java %d", "Download Java %d"), need), "download", 0, btnMd*s, true, false) {
+						if need := javaFor(r, v); need > 0 && !has && fixedButton(c, "ver-java-get", fmt.Sprintf(a.L("instance_settings.download_java"), need), "download", 0, btnMd*s, true, false) {
 							a.openJavaGet(need, "", false)
 						}
 						if iconOnlyButton(c, "ver-java-browse", "folder", t.DialogBrowseBtn, btnMd*s, false) {
@@ -124,7 +124,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 			})
 			a.memoryCard(c, v)
 		})
-		setCard(c, "set-jvm", "terminal", a.L("JVM 参数", "JVM arguments"), a.L("附加在启动命令里，留空就用全局设置", "Added to the launch command; leave empty to use the global setting"), 0, func() {
+		setCard(c, "set-jvm", "terminal", a.L("instance_settings.jvm_arguments"), a.L("instance_settings.added_to_the_launch_command_leave_empty_to"), 0, func() {
 			textField(c.Key("ver-jvm-input"), &a.form.VerJVM).Label(t.RootCfgVerJVMLabel).Placeholder(t.RootCfgVerJVMHint).FillWidth()
 			renderJVMPresetBar(c, "ver-jvm-preset", &a.form.VerJVM, t, nil)
 		})
@@ -143,9 +143,9 @@ func (a *App) memoryCard(c *ui.Context, v launcher.VersionSummary) {
 	mi := a.memoryInfo
 	sub := ""
 	if mi.TotalMB > 0 {
-		sub = fmt.Sprintf(a.L("本机内存 %s，当前可用 %s", "This PC has %s, %s free now"), gbText(mi.TotalMB), gbText(mi.AvailableMB/256*256))
+		sub = fmt.Sprintf(a.L("instance_settings.this_pc_has_free_now"), gbText(mi.TotalMB), gbText(mi.AvailableMB/256*256))
 	}
-	setCard(c, "set-mem", "layers", a.L("内存", "Memory"), sub, 380, func() {
+	setCard(c, "set-mem", "layers", a.L("instance_settings.memory"), sub, 380, func() {
 		cur := t.MemModeManual
 		if a.form.VerMemAuto {
 			cur = t.MemModeAuto
@@ -190,7 +190,7 @@ func (a *App) memoryCard(c *ui.Context, v launcher.VersionSummary) {
 		}
 		n, _ := strconv.Atoi(strings.TrimSpace(a.form.VerMemory))
 		a.verMemSlider = math.Max(1024, math.Min(hi, float64(n)))
-		if ui.Slider(c, &a.verMemSlider, 1024, hi).Label(a.L("内存大小", "Memory size")).FillWidth().Changed() {
+		if ui.Slider(c, &a.verMemSlider, 1024, hi).Label(a.L("instance_settings.memory_size")).FillWidth().Changed() {
 			a.form.VerMemory = fmt.Sprint(int(math.Round(a.verMemSlider/256)) * 256)
 		}
 		ui.Row(c).FillWidth().Wrap().Gap(6 * s).AlignItems(ui.Center).Children(func() {

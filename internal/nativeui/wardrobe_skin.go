@@ -46,16 +46,16 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 		if w.pendingSkin != nil {
 			ui.Row(c).FillWidth().Padding(10*s, 12*s).Radius(10 * s).Background(accentSoft).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(accent).Shrink(0)
-				ui.Text(c, a.L("预览中：", "Previewing: ")+w.pendingName).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Grow(1).MinWidth(0)
+				ui.Text(c, a.L("wardrobe_skin.previewing")+w.pendingName).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Grow(1).MinWidth(0)
 			})
 		}
 		ui.Row(c).FillWidth().Gap(8 * s).Children(func() {
 			why := whyOf(a.texturePending("skin"), t.WhyBusy, !a.appearance.CanSkin, a.skinWhy())
 			if w.pendingSkin != nil {
-				if buttonWhy(c, "upload-skin", a.L("上传此皮肤", "Upload this skin"), "check", true, why, false) {
+				if buttonWhy(c, "upload-skin", a.L("wardrobe_skin.upload_this_skin"), "check", true, why, false) {
 					a.uploadPendingSkin()
 				}
-				if button(c, "cancel-skin", a.L("取消", "Cancel"), "", false, a.texturePending("skin")) {
+				if button(c, "cancel-skin", a.L("install_dialog.cancel"), "", false, a.texturePending("skin")) {
 					w.pendingSkin, w.pendingName = nil, ""
 					a.preview.skin = imageFromData(a.appearance.Skin)
 					if a.preview.skin == nil {
@@ -65,7 +65,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 				}
 				return
 			}
-			if buttonWhy(c, "choose-skin", a.L("选择皮肤文件", "Choose skin file"), "folder", true, why, false) {
+			if buttonWhy(c, "choose-skin", a.L("wardrobe_skin.choose_skin_file"), "folder", true, why, false) {
 				a.chooseFiles("png", func(paths []string) { a.previewSkinFile(paths[0]) })
 			}
 			if button(c, "reset-skin", t.WardrobeResetSkinBtn, "", false, a.texturePending("skin")) {
@@ -74,7 +74,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 		})
 		if len(w.recent) > 0 {
 			ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
-				ui.Text(c, a.L("最近使用", "Recent")).FontSize(typeFootnote * s).TextColor(muted)
+				ui.Text(c, a.L("wardrobe_skin.recent")).FontSize(typeFootnote * s).TextColor(muted)
 				ui.Row(c).FillWidth().Gap(8 * s).Children(func() {
 					for i, r := range w.recent {
 						rs := r
@@ -90,7 +90,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 							}).Clicked() {
 								a.setPendingSkin(rs.name, rs.data)
 							}
-							sb := tooltip(c, ui.ButtonBase(c.Key("recent-save-"+itoa(i))).Label(a.L("保存皮肤", "Save skin")), a.L("保存皮肤", "Save skin")).Absolute().Right(-4*s).Bottom(-4*s).Size(18*s, 18*s).Radius(999).Background(panel).Border(1, line).Center()
+							sb := tooltip(c, ui.ButtonBase(c.Key("recent-save-"+itoa(i))).Label(a.L("wardrobe.save_skin")), a.L("wardrobe.save_skin")).Absolute().Right(-4*s).Bottom(-4*s).Size(18*s, 18*s).Radius(999).Background(panel).Border(1, line).Center()
 							op := float32(0)
 							if hot || sb.Hovered() {
 								op = 1
@@ -107,7 +107,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 			})
 		}
 		a.saveNotice(c)
-		ui.Text(c, a.L("支持 64×64 与旧版 64×32 PNG。切换模型需重新上传后生效。", "64×64 and legacy 64×32 PNG. A model change takes effect on upload.")).FontSize(typeCaption * s).TextColor(muted).FillWidth()
+		ui.Text(c, a.L("wardrobe_skin.64_64_and_legacy_64_32_png_a")).FontSize(typeCaption * s).TextColor(muted).FillWidth()
 		if ac.Kind == "yggdrasil" && !a.appearance.CanSkin {
 			ui.Text(c, t.WardrobeYggNoUpload).FontSize(typeFootnote * s).TextColor(inkSecondary).FillWidth()
 		}
@@ -126,7 +126,7 @@ func (a *App) previewSkinFile(path string) {
 func (a *App) setPendingSkin(name string, b []byte) {
 	img, e := png.Decode(bytes.NewReader(b))
 	if e != nil || img.Bounds().Dx() != 64 || (img.Bounds().Dy() != 64 && img.Bounds().Dy() != 32) {
-		a.message, a.errorMessage = a.L("不是有效的皮肤 PNG（需要 64×64 或 64×32）", "Not a valid skin PNG (64×64 or 64×32)"), true
+		a.message, a.errorMessage = a.L("wardrobe_skin.not_a_valid_skin_png_64_64_or"), true
 		return
 	}
 	w := a.wd()
