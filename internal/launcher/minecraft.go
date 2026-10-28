@@ -304,6 +304,19 @@ func (s *Service) prepareVersion(ctx context.Context, root string, v gameVersion
 		path string
 	}{}
 	cp := []string{}
+	seenClasspath := map[string]bool{}
+	// Merged profiles can list the same JAR more than once. SecureJarHandler
+	// rejects duplicate paths, so retain only the first entry and its order.
+	addClasspath := func(path string) {
+		key := path // safeJoin already returns an absolute, cleaned path.
+		if runtime.GOOS == "windows" {
+			key = strings.ToLower(key)
+		}
+		if !seenClasspath[key] {
+			seenClasspath[key] = true
+			cp = append(cp, path)
+		}
+	}
 	natives := []artifact{}
 	for _, l := range v.Libraries {
 		if !rulesAllow(l.Rules) || l.ClientReq != nil && !*l.ClientReq {
@@ -338,7 +351,7 @@ func (s *Service) prepareVersion(ctx context.Context, root string, v gameVersion
 			} else if _, e = os.Stat(path); e != nil {
 				return nil, "", fmt.Errorf("加载器未生成所需运行库: %s", l.Name)
 			}
-			cp = append(cp, path)
+			addClasspath(path)
 		}
 		if classifier := l.Natives[osName()]; classifier != "" {
 			arch := "64"
@@ -377,7 +390,7 @@ func (s *Service) prepareVersion(ctx context.Context, root string, v gameVersion
 	} else if _, e = os.Stat(client); e != nil {
 		return nil, "", errors.New("版本缺少 Minecraft 客户端 JAR")
 	}
-	cp = append(cp, client)
+	addClasspath(client)
 	for i, f := range files {
 		p("校验 / 下载 "+f.file.Name, i, len(files))
 		if e = s.download(ctx, f.file, f.path); e != nil {
