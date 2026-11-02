@@ -35,9 +35,10 @@ type Settings struct {
 	JVMArgs         string `json:"jvmArgs,omitempty"`
 	ShowSnapshots   bool   `json:"showSnapshots"`
 	UseRootSettings bool   `json:"useRootSettings"`
-	// HardwareAcceleration opts into the Windows launcher GPU renderer.
-	// Software rendering is the Windows default; game rendering is unaffected.
-	HardwareAcceleration bool `json:"hardwareAcceleration,omitempty"`
+	// HardwareAcceleration enables the Windows launcher GPU renderer, with
+	// MyGo's software fallback. New configurations enable it by default.
+	// Keep false explicit when saving; game rendering is unaffected.
+	HardwareAcceleration bool `json:"hardwareAcceleration"`
 	// Modpack update checks: on by default, releases only by default.
 	PackAutoCheckOff bool `json:"packAutoCheckOff,omitempty"`
 	PackIncludeBeta  bool `json:"packIncludeBeta,omitempty"`

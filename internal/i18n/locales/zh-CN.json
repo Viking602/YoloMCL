@@ -1216,7 +1216,7 @@
     "settings.launch_games_with_the_selected_java_runtime": "使用所选的 Java 运行时启动游戏。",
     "settings.manage": "管理账号",
     "settings.no_account_yet_one_account_is_shared_by": "还没有账号，添加后所有实例共用",
-    "settings.off_uses_less_memory_and_keeps_animations_enable": "默认使用低内存渲染并保留动画；高分辨率下可开启加速。重启启动器后生效。",
+    "settings.hardware_acceleration_description": "默认开启，无法使用硬件加速时自动回退到软件渲染。更改后需重启启动器。",
     "settings.rendering_preference_saved_restart_the_launcher_to_apply": "已保存渲染设置，重启启动器后生效",
     "settings.system": "跟随系统",
     "settings_cache.cache": "缓存",

@@ -8,6 +8,64 @@ import (
 	"testing"
 )
 
+func TestHardwareAccelerationDefaultsAndPersistence(t *testing.T) {
+	for _, tc := range []struct {
+		name, saved string
+		want        bool
+	}{
+		{name: "first launch", want: true},
+		{name: "legacy software preference", saved: `{"schema":1,"settings":{}}`},
+		{name: "explicit software preference", saved: `{"schema":1,"settings":{"hardwareAcceleration":false}}`},
+		{name: "explicit hardware preference", saved: `{"schema":1,"settings":{"hardwareAcceleration":true}}`, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "config.json")
+			if tc.saved != "" {
+				if err := os.WriteFile(path, []byte(tc.saved), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			s, err := New(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := s.settings().HardwareAcceleration; got != tc.want {
+				t.Fatalf("hardware acceleration = %v, want %v", got, tc.want)
+			}
+			for _, enabled := range []bool{tc.want, !tc.want} {
+				settings := s.settings()
+				settings.HardwareAcceleration = enabled
+				if err := s.SaveSettings(settings); err != nil {
+					t.Fatal(err)
+				}
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var saved struct {
+					Settings struct {
+						HardwareAcceleration *bool `json:"hardwareAcceleration"`
+					} `json:"settings"`
+				}
+				if err := json.Unmarshal(data, &saved); err != nil {
+					t.Fatal(err)
+				}
+				if saved.Settings.HardwareAcceleration == nil || *saved.Settings.HardwareAcceleration != enabled {
+					t.Fatal("saved configuration must record the explicit renderer preference")
+				}
+				restarted, err := New(dir)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if restarted.settings().HardwareAcceleration != enabled {
+					t.Fatal("restart changed the renderer preference")
+				}
+			}
+		})
+	}
+}
+
 func configFixture(t *testing.T) *Service {
 	t.Helper()
 	s := testService(t)

@@ -52,7 +52,7 @@ Desktop startup is coordinated by `internal/app/desktop.go`:
 
 MyGo manages window creation and rendering directly. Background scans use the UI's first-frame signal before starting deferred work. Screenshot and diagnostic modes have separate entry paths in `internal/app`.
 
-Windows defaults to software rendering, keeping the native widget tree and animations without resident D3D11 driver resources. The hardware-acceleration preference enables the GPU path on the next launch. An explicit `MYGO_GPU` environment variable overrides this preference. macOS and Linux retain their normal renderer selection.
+New Windows configurations and Settings' restore-defaults action enable hardware acceleration. MyGo selects Direct3D 11, falls back to WARP when a hardware device cannot be created, and draws in memory if its GPU renderer cannot initialize or render. Disabling hardware acceleration selects the in-memory renderer on the next launch. Existing preferences are preserved, including older configurations that omitted the disabled flag; new saves record both enabled and disabled choices explicitly. An explicit `MYGO_GPU` environment variable overrides this preference. macOS and Linux retain their normal renderer selection.
 
 ## Launcher service
 

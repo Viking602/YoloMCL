@@ -45,6 +45,7 @@ func runDesktop(o options) error {
 }
 
 // configureRendering applies the Windows preference before creating a window.
+// Hardware acceleration leaves MyGo's GPU selection and software fallback intact.
 // Other platforms retain their default renderer; an explicit MYGO_GPU wins.
 func configureRendering(hardwareAcceleration bool) error {
 	if runtime.GOOS != "windows" || hardwareAcceleration {

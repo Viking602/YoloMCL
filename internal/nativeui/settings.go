@@ -124,7 +124,7 @@ func (a *App) settingsHeader(c *ui.Context) {
 				if a.memoryInfo.RecommendedMB > 0 {
 					recommended = a.memoryInfo.RecommendedMB
 				}
-				a.settings = launcher.Settings{MemoryMB: recommended}
+				a.settings = launcher.Settings{MemoryMB: recommended, HardwareAcceleration: true}
 				a.languageOverride = ""
 				a.normalizeStateValues()
 				a.memory = float64(recommended)
@@ -374,7 +374,7 @@ func (a *App) versionAndLangSettings(c *ui.Context) {
 	if runtime.GOOS == "windows" {
 		rows = append(rows, func() {
 			settingRow(c, nil, a.L("settings.interface_hardware_acceleration"),
-				a.L("settings.off_uses_less_memory_and_keeps_animations_enable"), func() {
+				a.L("settings.hardware_acceleration_description"), func() {
 					if nativeToggle(c, "hardware-acceleration", a.L("settings.enable_interface_hardware_acceleration"), &a.settings.HardwareAcceleration).Changed() {
 						a.persistSettings(a.L("settings.rendering_preference_saved_restart_the_launcher_to_apply"))
 					}

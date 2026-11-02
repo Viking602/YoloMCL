@@ -82,7 +82,11 @@ func New(dataDir string) (*Service, error) {
 				}
 			}
 		}
-	} else if !os.IsNotExist(err) {
+	} else if os.IsNotExist(err) {
+		// First launches use MyGo's GPU renderer and its software fallback.
+		// Older configurations omitted a false preference; preserve it above.
+		s.cfg.Settings.HardwareAcceleration = true
+	} else {
 		return nil, err
 	}
 	s.cfg.Settings.Language = NormalizeLanguage(s.cfg.Settings.Language)

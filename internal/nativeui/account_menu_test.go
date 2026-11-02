@@ -324,6 +324,14 @@ func TestAccountMenuKeepsDiscoverPageStable(t *testing.T) {
 			tt.Advance(time.Second)
 			tt.Scroll(float32(width)-100, 700, 0, 480)
 			tt.Advance(time.Second)
+			// Settle the result card's hover exit before comparing page pixels;
+			// opening the account menu must not replay the page transition.
+			entry, ok := tt.Find(a.tr().SideAccountManage)
+			if !ok {
+				t.Fatal("account entry missing")
+			}
+			tt.Move(entry.X+entry.W/2, entry.Y+entry.H/2)
+			tt.Advance(time.Second)
 			page, ok := tt.Find("发现视图")
 			if !ok || a.discoverMotion.scroll.st.Y <= 0 {
 				t.Fatal("discovery page did not load and scroll")
