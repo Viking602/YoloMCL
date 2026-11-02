@@ -49,7 +49,7 @@ Official builds read their target's manifest through `https://github.com/Viking6
 
 An available update opens a confirmation dialog. Cancel keeps the current version running and defers the prompt for that launch only; the next launch checks again. An optional prompt waits until an existing form closes. Downloading starts only after confirmation. Settings can reopen the update dialog.
 
-Installation uses MyGo's public updater API. It downloads the archive, verifies its signature, and swaps application files with rollback on replacement failure. Launcher settings and Minecraft files are not packaged or replaced. On success, the user can restart; running games, active jobs, and foreground operations defer the restart button. A renamed executable or unsupported/read-only installation gets the manual download link and remains subject to the version policy.
+Installation uses MyGo's public updater API. It downloads the archive, verifies its signature, and swaps application files with rollback on replacement failure. On macOS, a helper replaces the application bundle after the launcher exits. Launcher settings and Minecraft files are not packaged or replaced. On success, the user can restart; running games, active jobs, and foreground operations defer the restart button. A renamed executable or unsupported/read-only installation gets the manual download link and remains subject to the version policy.
 
 ## Require a security update
 

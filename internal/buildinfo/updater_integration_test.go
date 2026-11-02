@@ -150,7 +150,17 @@ func main() {
 	if output, err := exec.CommandContext(ctx, exe).CombinedOutput(); err != nil {
 		t.Fatalf("install signed update: %v\n%s", err, output)
 	}
-	if data, err := os.ReadFile(exe); err != nil || string(data) != "verified replacement" {
-		t.Fatal("signed archive did not replace the isolated executable")
+	// On macOS MyGo's helper waits for the probe to exit before swapping the
+	// bundle. Observe the completed replacement rather than racing the helper.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		data, err := os.ReadFile(exe)
+		if err == nil && string(data) == "verified replacement" {
+			break
+		}
+		if runtime.GOOS != "darwin" || time.Now().After(deadline) {
+			t.Fatalf("signed archive did not replace the isolated executable: read %d bytes, error %v", len(data), err)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
