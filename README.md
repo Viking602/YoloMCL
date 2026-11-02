@@ -28,7 +28,7 @@ A native Minecraft: Java Edition launcher written in Go with [MyGo](https://gith
 - **Java and memory**: Detect installed Java runtimes and allocate memory from pack size and available RAM.
 - **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services, subject to the platform limits below. Preview skins and switch capes.
 - **Desktop UI**: High-DPI scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
-- **Rendering**: Windows defaults to software rendering; interface hardware acceleration can be enabled in Settings (restart required).
+- **Rendering**: New Windows configurations enable interface hardware acceleration, with automatic software fallback if GPU rendering is unavailable. Settings can disable it (restart required); existing preferences are preserved.
 - **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
 ### Export a modpack

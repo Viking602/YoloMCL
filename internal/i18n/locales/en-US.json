@@ -1055,7 +1055,7 @@
     "settings.launch_games_with_the_selected_java_runtime": "Launch games with the selected Java runtime.",
     "settings.manage": "Manage",
     "settings.no_account_yet_one_account_is_shared_by": "No account yet; one account is shared by every instance",
-    "settings.off_uses_less_memory_and_keeps_animations_enable": "Off uses less memory and keeps animations. Enable for high-resolution displays. Restart to apply.",
+    "settings.hardware_acceleration_description": "Enabled by default, with automatic software fallback if hardware acceleration is unavailable. Restart the launcher to apply changes.",
     "settings.rendering_preference_saved_restart_the_launcher_to_apply": "Rendering preference saved. Restart the launcher to apply.",
     "settings.system": "System",
     "settings_cache.cache": "Cache",

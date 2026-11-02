@@ -39,10 +39,10 @@ func TestHardwareAccelerationPreferenceSurvivesRestart(t *testing.T) {
 		t.Skip("Windows renderer preference")
 	}
 	a, tt := settingsTester(t)
-	if a.HardwareAcceleration() {
-		t.Fatal("new configuration should use low-memory rendering")
+	if !a.HardwareAcceleration() {
+		t.Fatal("new configuration should enable hardware acceleration")
 	}
-	for _, enabled := range []bool{true, false} {
+	for _, enabled := range []bool{false, true, false} {
 		clickUI(t, tt, "界面硬件加速开关")
 		waitUI(t, tt, func() bool {
 			s, err := launcher.New(a.snapshot.DataDir)
@@ -51,6 +51,14 @@ func TestHardwareAccelerationPreferenceSurvivesRestart(t *testing.T) {
 		if a.HardwareAcceleration() != enabled {
 			t.Fatal("renderer preference not reflected in the next startup")
 		}
+	}
+	clickUI(t, tt, a.tr().SettingsResetBtn)
+	waitUI(t, tt, func() bool {
+		s, err := launcher.New(a.snapshot.DataDir)
+		return err == nil && s.Snapshot().Settings.HardwareAcceleration
+	})
+	if !a.HardwareAcceleration() {
+		t.Fatal("restoring defaults should enable hardware acceleration")
 	}
 }
 
