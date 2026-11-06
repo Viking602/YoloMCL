@@ -311,6 +311,7 @@ func (a *App) seedMapCanvas(c *ui.Context, v *seedMapView) {
 	v.pointPopup = w >= 260*s && h >= 240*s
 	target := ""
 	if v.selected != nil {
+		v.inspected = nil
 		target = fmt.Sprintf("%s:%d:%d", v.selected.ID, v.selected.X, v.selected.Z)
 	} else if v.inspected != nil {
 		target = fmt.Sprintf("point:%d:%d", v.inspected.X, v.inspected.Z)
@@ -387,7 +388,7 @@ func (a *App) seedMapCanvas(c *ui.Context, v *seedMapView) {
 				}
 			})
 		}
-		if v.inspected != nil && v.pointPopup && v.pointOpen {
+		if v.inspected != nil && v.selected == nil && v.pointPopup && v.pointOpen {
 			px, pz := point(v.inspected.X, v.inspected.Z)
 			cardWidth := buttonWidth(c, a.L("seedmap.copy_tp"), "", buttonSizeFor(btnSm), s) + buttonWidth(c, a.L("seedmap.point_close"), "", buttonSizeFor(btnSm), s) + 32*s
 			if strings.HasPrefix(v.inspected.Biome.ID, "minecraft:") {
@@ -514,7 +515,7 @@ func (a *App) seedMapSidebar(c *ui.Context, v *seedMapView) {
 		if v.selectedSpawn != nil && !v.legend && !v.details {
 			a.seedMapSpawnSelection(c, v)
 		}
-		if v.inspected != nil && !v.pointPopup {
+		if v.inspected != nil && v.selected == nil && !v.pointPopup {
 			a.seedMapPointCard(c, v)
 		}
 		if variantButton(c, "seedmap-details", a.L("seedmap.details_toggle"), "", buttonGhost, v.loading) {

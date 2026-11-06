@@ -102,7 +102,7 @@ func readWorldSummary(saves string, en os.DirEntry) World {
 	w := World{Dir: en.Name(), Name: en.Name(), Mode: "survival"}
 	dir, levelErr := safeJoin(saves, en.Name())
 	if levelErr == nil {
-		if li, e := readWorldLevel(context.Background(), dir); e == nil {
+		if li, e := readWorldLevel(context.Background(), dir); worldLevelMetadataAvailable(e) {
 			w.RandomSeed, w.HasRandomSeed = li.RandomSeed, li.HasRandomSeed
 			if li.Name != "" {
 				w.Name = li.Name

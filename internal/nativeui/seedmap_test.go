@@ -86,6 +86,15 @@ func TestSeedMapNativeFlowAndLifecycle(t *testing.T) {
 	if got, want := tt.Clipboard(), fmt.Sprintf("/tp %d 80 %d", hit.X, hit.Z); got != want {
 		t.Fatalf("structure teleport has no explicit height: %q", got)
 	}
+	// A delayed selection can leave both slots populated. Keep one card and
+	// preserve an edited height rather than alternating asynchronous queries.
+	v.inspected = &launcher.SeedMapPoint{X: hit.X + 10, Z: hit.Z + 10, Biome: launcher.SeedMapBiome{ID: "test:stale_point"}, Surface: true}
+	for range 3 {
+		tt.Frame()
+		if v.inspected != nil || v.teleport.y != "80" || tt.HasText("test:stale_point") {
+			t.Fatal("simultaneous point and structure selections reset the teleport field")
+		}
+	}
 	stage, ok := tt.Find(a.L("seedmap.canvas"))
 	if !ok {
 		t.Fatal("missing map canvas")

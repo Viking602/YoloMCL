@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func splitWorldgenNBT(t *testing.T, seed int64) []byte {
@@ -65,9 +66,37 @@ func TestSplitWorldMetadataRejectsBadCompanion(t *testing.T) {
 	writeTestFile(t, filepath.Join(world, "level.dat"), seedMapLevelNBT(t, nil, &seed, nil, "minecraft:noise"))
 	for _, data := range [][]byte{[]byte("not gzip"), seedMapLevelNBT(t, nil, nil, nil, ""), splitWorldgenNBT(t, 0)[:12]} {
 		writeTestFile(t, filepath.Join(world, worldgenDataPath), data)
-		if _, err := readWorldLevel(context.Background(), world); err == nil {
+		if level, err := readWorldLevel(context.Background(), world); err == nil || level.HasRandomSeed || len(level.Dimensions) != 0 || len(level.Generators) != 0 {
 			t.Fatal("corrupt companion fell back to stale embedded metadata")
 		}
+	}
+}
+
+func TestSplitWorldMetadataKeepsSaveDetailsOnCompanionError(t *testing.T) {
+	s, root, world := worldFixture(t)
+	var raw bytes.Buffer
+	writeSeedMapTestNBT(t, &raw, "", map[string]any{"Data": map[string]any{
+		"LevelName": "Intact display metadata", "GameType": int32(1), "LastPlayed": int64(123456789),
+		"WorldGenSettings": map[string]any{"seed": int64(17), "dimensions": map[string]any{
+			"minecraft:overworld": map[string]any{"generator": map[string]any{"type": "pack:stale"}},
+		}},
+	}})
+	writeTestFile(t, filepath.Join(world, "level.dat"), compressedNBT(t, raw.Bytes()))
+	writeTestFile(t, filepath.Join(world, worldgenDataPath), []byte("corrupt companion"))
+	level, err := readWorldLevel(context.Background(), world)
+	if err == nil || !worldLevelMetadataAvailable(err) || level.Name != "Intact display metadata" || level.HasRandomSeed || len(level.Dimensions) != 0 {
+		t.Fatalf("companion error lost display metadata or retained worldgen inputs: %+v %v", level, err)
+	}
+	worlds, err := s.ListWorlds(root.ID, "")
+	if err != nil || len(worlds) != 1 || worlds[0].Name != level.Name || worlds[0].Mode != "creative" || !worlds[0].LastPlayed.Equal(time.UnixMilli(123456789)) || worlds[0].HasRandomSeed {
+		t.Fatalf("world list lost intact metadata: %+v %v", worlds, err)
+	}
+	saves, err := s.SeedMapSaves(context.Background(), root.ID, "")
+	if err != nil || len(saves) != 1 || saves[0].Name != level.Name || saves[0].HasRandomSeed {
+		t.Fatalf("save picker lost its name or exposed a stale seed: %+v %v", saves, err)
+	}
+	if _, _, err := s.SeedMapWorldgen(context.Background(), root.ID, "", "w1"); err == nil {
+		t.Fatal("map ignored the damaged companion")
 	}
 }
 

@@ -56,7 +56,7 @@ func (s *Service) SeedMapSaves(ctx context.Context, rootID, versionID string) ([
 		if err == nil {
 			level, e := readWorldLevelRoot(ctx, worldRoot)
 			worldRoot.Close()
-			if e == nil {
+			if worldLevelMetadataAvailable(e) {
 				world.RandomSeed, world.HasRandomSeed = level.RandomSeed, level.HasRandomSeed
 				if level.Name != "" {
 					world.Name = level.Name

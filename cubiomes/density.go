@@ -182,15 +182,18 @@ func (s *densitySpline) eval(p *densitySample) float32 {
 		if point.derivative == 0 {
 			return v
 		}
-		return v + point.derivative*(x-point.location)
+		return v + float32(point.derivative*(x-point.location))
 	}
 	a, b := s.points[i], s.points[i+1]
 	span := b.location - a.location
 	t := (x - a.location) / span
 	v0, v1 := a.value.eval(p), b.value.eval(p)
-	p0, p1 := a.derivative*span-(v1-v0), -b.derivative*span+(v1-v0)
-	// All spline operations use Java float precision, including nested results.
-	return float32(v0+t*(v1-v0)) + float32(t*(1-t))*float32(p0+t*(p1-p0))
+	p0, p1 := float32(a.derivative*span)-(v1-v0), float32(-b.derivative*span)+(v1-v0)
+	// Java rounds every float operation. Explicit conversions on products
+	// prevent ARM64 from fusing their subsequent additions/subtractions.
+	base := v0 + float32(t*(v1-v0))
+	curve := p0 + float32(t*(p1-p0))
+	return base + float32(float32(t*(1-t))*curve)
 }
 
 type densityCompiler struct {
