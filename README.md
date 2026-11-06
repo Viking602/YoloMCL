@@ -35,6 +35,8 @@ A native Minecraft: Java Edition launcher written in Go with [MyGo](https://gith
 - **Rendering**: New Windows configurations enable interface hardware acceleration, with automatic software fallback if GPU rendering is unavailable. Settings can disable it (restart required); existing preferences are preserved.
 - **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
+See the [1.2.0 release notes](docs/release-notes/v1.2.0.md) for the changes in this update.
+
 ### Export a modpack
 
 Select an instance, then open **Settings → Export modpack → Export…**. Choose **Modrinth (.mrpack)** or **CurseForge (.zip)**, enter a pack name and version, and select the folders/files to include. **Save and export** opens the native save dialog. Progress and cancellation are available in **Tasks & Logs**; a completed task has **Show exported file**.

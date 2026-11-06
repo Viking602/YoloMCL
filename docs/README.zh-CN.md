@@ -34,6 +34,8 @@ YoloMCL 是一个用 Go 编写的 Minecraft: Java 版启动器，使用 [MyGo](h
 - **账号与外观**：支持离线账号、Microsoft 正版登录与 Yggdrasil / authlib-injector 外置登录；支持皮肤预览、上传与披风切换。
 - **签名更新**：通过 GitHub Releases 检查稳定版更新，支持签名最低版本策略；安装包经 Ed25519 验签，下载与重启均需确认。配置方式见[发布说明](releases.md#require-a-security-update)。
 
+本次更新内容见 [1.2.0 发布说明](release-notes/v1.2.0.md)。
+
 在实例的「设置 → 导出整合包」中可导出 Modrinth `.mrpack` 或 CurseForge `.zip`。默认勾选模组、配置与脚本，存档、截图、服务器列表和个人选项按需勾选；不包含账号、运行环境、游戏依赖、日志与缓存。平台已识别文件写入下载引用，本地或修改过的文件放入 `overrides/`，禁用模组保留禁用后缀；保存位置需在游戏目录之外。
 
 ## 构建
@@ -52,7 +54,7 @@ make build BUILD_ARGS="--release --output build/YoloMCL.exe"
 make build BUILD_ARGS="--goos linux --goarch arm64 --output build/YoloMCL-linux-arm64"
 ```
 
-开发构建输出至 `.cache/MCL-dev.exe`（Windows）或 `.cache/MCL-dev`（macOS/Linux）。`--release` 会关闭 UI 检查器并要求注入发布配置；正式签名发布使用 `make release TAG=v1.1.0`，要求工作区干净且位于对应标签。交叉编译可通过 `BUILD_ARGS="--goos ... --goarch ..."` 或 `GOOS` / `GOARCH` 指定。
+开发构建输出至 `.cache/MCL-dev.exe`（Windows）或 `.cache/MCL-dev`（macOS/Linux）。`--release` 会关闭 UI 检查器并要求注入发布配置；正式签名发布使用 `make release TAG=v1.2.0`，要求工作区干净且位于对应标签。交叉编译可通过 `BUILD_ARGS="--goos ... --goarch ..."` 或 `GOOS` / `GOARCH` 指定。
 
 ## 项目结构与代码规范
 
