@@ -217,11 +217,13 @@ func (a *App) authIcon(server string) *ui.Bitmap {
 			return bm // bundled, works offline
 		}
 	}
-	if a.avatars.iconTried[key] || a.service == nil {
+	if a.avatars.iconTried[key] || a.service == nil || a.ctx.Err() != nil {
 		return nil
 	}
 	a.avatars.iconTried[key] = true
+	a.bgWG.Add(1)
 	go func() {
+		defer a.bgWG.Done()
 		b, e := a.service.AuthServerIcon(a.ctx, server)
 		if e != nil {
 			return

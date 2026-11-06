@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -32,12 +31,12 @@ func homeTester(t *testing.T, lang string) (*App, *ui.Tester) {
 	a.SetLanguage(lang)
 	if a.settings.Language != before {
 		// setLanguage saves in the background and then posts a fresh
-		// snapshot; take it now so it cannot land on top of the fixture.
-		select {
-		case fn := <-a.events:
-			fn()
-		case <-time.After(5 * time.Second):
-			t.Fatal("language save never posted")
+		// snapshot. Join that save before installing the fixture, including
+		// on CI machines whose configuration writes take longer than usual.
+		a.bgWG.Wait()
+		a.drainEvents()
+		if got := s.Snapshot().Settings.Language; got != launcher.NormalizeLanguage(lang) {
+			t.Fatalf("language was not saved: %q", got)
 		}
 	}
 	long := "My-Super-Long-Custom-Modpack-Instance-Name-That-Never-Ends-1.21.8-fabric-loader-0.20.1"
