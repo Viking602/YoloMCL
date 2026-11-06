@@ -168,7 +168,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 	stage.Children(func() {
 		ui.Image(c, p.bitmap).Size(imgH*440/520, imgH).Fit(ui.Contain)
 		ui.Row(c).Absolute().Left(0).Right(0).Bottom(16 * s).Justify(ui.Center).Children(func() {
-			ui.Row(c).Height(40*s).PaddingX(6*s).Gap(2*s).Radius(999).Background(ui.RGBA(255, 255, 255, .86)).Border(1, glassEdge).Shadow(0, 4*s, 16*s, -4*s, ui.RGBA(30, 40, 90, .18)).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Height(40*s).PaddingX(8*s).Gap(4*s).Radius(radiusPill).Background(ui.RGBA(255, 255, 255, .86)).Border(1, glassEdge).Shadow(0, 4*s, 16*s, -4*s, ui.RGBA(30, 40, 90, .18)).AlignItems(ui.Center).Children(func() {
 				if stageIcon(c, "stage-front", "account", t.WardrobeFrontBtn, false) {
 					p.turnTo(-.35)
 				}
@@ -207,7 +207,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 			})
 		})
 		if a.appearanceLoading {
-			ui.Row(c).Absolute().Top(14 * s).Left(14 * s).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Absolute().Top(14 * s).Left(14 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				statusSpinner(c, 12*s)
 				ui.Text(c, a.L("wardrobe.loading_appearance")).FontSize(typeCaption * s).TextColor(muted)
 			})
@@ -226,7 +226,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 
 func stageIcon(c *ui.Context, key, icon, label string, on bool) bool {
 	s := uiScale(c)
-	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(32*s, 32*s).Radius(999).AlignItems(ui.Center).Justify(ui.Center)
+	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(32*s, 32*s).Radius(radiusPill).AlignItems(ui.Center).Justify(ui.Center)
 	bg, fg := ui.Transparent, inkSecondary
 	if on {
 		bg, fg = accentSoft, accent
@@ -239,5 +239,5 @@ func stageIcon(c *ui.Context, key, icon, label string, on bool) bool {
 
 func wardrobeCard(c *ui.Context, key string, body func()) {
 	s := uiScale(c)
-	glass(ui.Column(c.Key(key)).FillWidth().Gap(12*s).Padding(18*s, 20*s), radiusCard*s, s).Font(uiSansFamily()).Children(body)
+	glass(ui.Column(c.Key(key)).FillWidth().Gap(12*s).Padding(20*s, 20*s), radiusCard*s, s).Font(uiSansFamily()).Children(body)
 }

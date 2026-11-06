@@ -20,7 +20,7 @@ func (a *App) javaSelectBox(c *ui.Context, key, labelText string, selected *stri
 	return selectBoxImpl(c, key, labelText, selected, options, nil, nil, func(option string) {
 		path := paths[option]
 		if path == "" {
-			ui.Box(c).Label("Java 自动选择图标").Size(20*s, 20*s).Shrink(0).Radius(5*s).Background(panel).Border(1, line.Alpha(.65)).Center().Children(func() {
+			ui.Box(c).Label("Java 自动选择图标").Size(20*s, 20*s).Shrink(0).Radius(radiusChip*s).Background(panel).Border(1, line.Alpha(.65)).Center().Children(func() {
 				ui.Icon(c, icons["settings"]).Size(13*s, 13*s).TextColor(accent)
 			})
 			return
@@ -157,7 +157,7 @@ func (a *App) startJavaScan(deep bool) {
 func (a *App) javaDialog(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Row(c).Gap(10 * s).Children(func() {
+	ui.Row(c).Gap(12 * s).Children(func() {
 		if button(c, "java-quick", t.JavaQuickScanBtn, "search", !a.javaDeep, a.javaScanning && !a.javaDeep) {
 			a.startJavaScan(false)
 		}
@@ -185,8 +185,8 @@ func (a *App) javaDialog(c *ui.Context) {
 		if a.javaFilter != "" && !strings.Contains(strings.ToLower(j.Path+" "+j.Version+" "+j.Vendor), strings.ToLower(a.javaFilter)) {
 			continue
 		}
-		ui.Row(c.Key(j.Path)).FillWidth().Gap(14*s).Padding(14*s).Radius(16*s).Background(raised).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Clip().Gap(5 * s).Children(func() {
+		ui.Row(c.Key(j.Path)).FillWidth().Gap(16*s).Padding(16*s).Radius(radiusCard*s).Background(raised).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Clip().Gap(4 * s).Children(func() {
 				ui.Text(c, "Java "+j.Version).Bold().TextColor(ink)
 				meta := javaDisplay(j.Vendor)
 				if j.Architecture != "" {

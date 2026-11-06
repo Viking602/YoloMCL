@@ -2,6 +2,8 @@
 
 # YoloMCL
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/yolomcl)
+
 A native Minecraft: Java Edition launcher written in Go with [MyGo](https://github.com/egoist/mygo) for Windows, macOS, and Linux.
 
 [Download](https://github.com/Viking602/YoloMCL/releases/latest) · [中文介绍](docs/README.zh-CN.md) · [Development guidelines](docs/CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Release guide](docs/releases.md)
@@ -25,11 +27,15 @@ A native Minecraft: Java Edition launcher written in Go with [MyGo](https://gith
 - **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, and NeoForge instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), export installed instances in either format, review pack updates, and keep backups of overwritten files.
 - **Content discovery**: Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks with automatic dependency resolution.
 - **Game management**: Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
+- **Seed map and structure previews**: Explore supported biomes, terrain, caves and ores; find nearby structures and inspect interactive 3D previews. Predictions and preview support depend on the selected version and installed content; see the [seed map guide](docs/seed-map.md).
+- **Game preferences**: Edit instance or global key bindings, video, audio and controls, with searchable mod settings and options-file backups.
 - **Java and memory**: Detect installed Java runtimes and allocate memory from pack size and available RAM.
 - **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services, subject to the platform limits below. Preview skins and switch capes.
 - **Desktop UI**: High-DPI scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
 - **Rendering**: New Windows configurations enable interface hardware acceleration, with automatic software fallback if GPU rendering is unavailable. Settings can disable it (restart required); existing preferences are preserved.
 - **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
+
+See the [1.2.0 release notes](docs/release-notes/v1.2.0.md) for the changes in this update.
 
 ### Export a modpack
 
@@ -92,6 +98,7 @@ See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup,
 ## Project layout
 
 - `main.go`: the launcher's single executable entry point.
+- `cubiomes`: [pure-Go biome library](cubiomes/README.md), with reusable samplers, batch generation and C reference fixtures.
 - `internal/app`: command-line options, application assembly, startup coordination, and explicitly requested diagnostic reports.
 - `internal/nativeui`: native UI views, interaction state, and view helpers.
 - `internal/i18n`: shared translations loaded from bundled JSON catalogs; see [Translation guide](docs/i18n.md).
@@ -101,6 +108,12 @@ See [`docs/releases.md`](docs/releases.md) for secret setup, signing-key backup,
 - `Makefile` → `scripts/*.sh`: build, checks, signed releases, and publisher setup.
 
 See [Architecture](docs/architecture.md) for package boundaries and [Development guidelines](docs/CONTRIBUTING.md) for coding standards. Formatting and import ordering are enforced by `gofmt`/`goimports` and `.editorconfig`.
+
+## Credits
+
+- **Seed map engine (`cubiomes/` package):** biome parameter trees, historical layer rules, the Beta climate table and the integer Voronoi lookup are used from [Cubitect/cubiomes](https://github.com/Cubitect/cubiomes) under its MIT license; the full notice is kept in [`cubiomes/data/LICENSE-cubiomes.txt`](cubiomes/data/LICENSE-cubiomes.txt) and provenance in [`cubiomes/data/README.md`](cubiomes/data/README.md). Datapack-driven terrain, jigsaw structures, carvers, ores and modded settings are YoloMCL's own Go code, cross-checked against independently generated results and real saves.
+- **TerraBlender:** the native region and End selection rules follow public sources carrying LGPL-3.0-or-later notices; those notices are kept as listed in [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md).
+- **UI inspiration:** the seed map's 3D structure preview and dive interactions were inspired by the Axolotl Launcher (美西螈启动器) seed map. No code or assets from it are included.
 
 ## License
 

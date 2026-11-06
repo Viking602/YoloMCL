@@ -1,0 +1,19 @@
+{
+  "JarSHA256": "4771b487ac3138fccf6f897dbcb39041d0c4817500a0229fc0efcdf3ccd45560",
+  "Class": "org/huahua/pr/Content/NewEndBiomeSource",
+  "Minecraft": "1.21.1",
+  "Queries": 37178,
+  "InputSHA256": "0efa05f94a101232ac3ee4c0f43dfed4c63a18a158fbf7c9a766e8f91e148e80",
+  "BiomesSHA256": "fd7b8a83ab9b2180b16e9d8738218ba64be1e476db09f4528f3bcaca500237fa",
+  "CodecBiomes": ["minecraft:the_end", "minecraft:end_highlands", "minecraft:end_midlands", "minecraft:small_end_islands", "minecraft:end_barrens", "c6c:end_badlands", "c6c:end_mangrove_swamp", "c6c:end_cherry_grove", "c6c:end_deep_dark", "c6c:end_flower_forest", "c6c:end_ice_spikes", "c6c:end_warped_forest"],
+  "Oracle": {
+    "Date": "2026-10-28",
+    "Java": "Eclipse Adoptium 21.0.10.7",
+    "API": "Minecraft 1.21.1, NeoForge 21.1.219, FML 4.0.42, DFU 8.0.16",
+    "Method": "Unmodified installed JAR; public MapCodec parsed through RegistryOps/HolderLookup; getNoiseBiome queried with constant raw density fields; ordered biome identifiers hashed with one LF per name.",
+    "Runtime": "External Java helper and installed game/mod dependencies; empty FML loading catalogue initialized through LoadingModList.of; Minecraft Bootstrap.bootStrap; no Mixin transformation or full mod lifecycle. Registry lookup creates symbolic biome holders on request.",
+    "Scope": "Codec holder ordering and biome-selection bytecode only. Does not validate actual noise fields, dimension routing, pack order, mixins, terrain height, structures or full in-game parity.",
+    "Directory": "C:/Users/19000/AppData/Local/mcl-worldgen-reference/2026-10-28/biome-source",
+    "LauncherDependency": false
+  }
+}

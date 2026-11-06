@@ -13,9 +13,9 @@ func (a *App) importDialog(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
 	label(c, t.ImportDesc)
-	ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+	ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 		label(c, t.ImportFileLabel).FontWeight(600)
-		ui.Row(c).FillWidth().Gap(10 * s).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).Children(func() {
 			input := tooltip(c, textField(c, &a.form.Path).Label(t.ImportFileLabel).Placeholder(t.ImportFilePlaceholder), t.ImportFileHint).Grow(1).MinWidth(0)
 			if input.Changed() && strings.TrimSpace(a.form.Path) != "" {
 				a.inspectPackFile(a.form.Path)
@@ -29,12 +29,12 @@ func (a *App) importDialog(c *ui.Context) {
 		label(c, t.ImportFileHint).FontSize(typeCaption * s).FillWidth().MinWidth(0)
 	})
 	if p := a.packPreview; p != nil {
-		ui.Row(c).FillWidth().Padding(14*s, 16*s).Radius(12*s).Background(accentSoft).Border(1, blue).Gap(14 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Padding(16*s, 16*s).Radius(radiusControl*s).Background(accentSoft).Border(1, blue).Gap(16 * s).AlignItems(ui.Center).Children(func() {
 			logo := modrinthLogo
 			if p.Source == "curseforge" {
 				logo = curseforgeLogo
 			}
-			ui.Box(c).Size(40*s, 40*s).Radius(10*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
+			ui.Box(c).Size(40*s, 40*s).Radius(radiusControl*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
 				if p.Source == "multimc" {
 					if !loaderLogo(c, p.Loader, 26*s) {
 						ui.Icon(c, icons["layers"]).Size(20*s, 20*s).TextColor(accent)
@@ -63,13 +63,13 @@ func (a *App) importDialog(c *ui.Context) {
 			})
 		})
 		if p.Unavailable != "" {
-			ui.Row(c).Label("整合包不可用").FillWidth().Padding(10*s, 14*s).Radius(10 * s).Background(dangerSoft).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Label("整合包不可用").FillWidth().Padding(12*s, 16*s).Radius(radiusControl * s).Background(dangerSoft).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["cross"]).Size(14*s, 14*s).TextColor(danger).Shrink(0)
 				ui.Text(c, p.Unavailable).FontSize(typeCallout * s).TextColor(danger).Grow(1).MinWidth(0)
 			})
 		}
 	} else if a.packErr != "" && strings.TrimSpace(a.form.Path) != "" {
-		ui.Row(c).Label("整合包错误").FillWidth().Padding(10*s, 14*s).Radius(10 * s).Background(dangerSoft).Children(func() {
+		ui.Row(c).Label("整合包错误").FillWidth().Padding(12*s, 16*s).Radius(radiusControl * s).Background(dangerSoft).Children(func() {
 			ui.Text(c, a.packErr).FontSize(typeCallout * s).TextColor(danger).Grow(1).MinWidth(0)
 		})
 	}

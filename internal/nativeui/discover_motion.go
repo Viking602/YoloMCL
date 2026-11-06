@@ -13,7 +13,7 @@ import (
 type discoverReveal uint8
 
 const (
-	discoverLift discoverReveal = iota
+	discoverFade discoverReveal = iota
 	discoverExpand
 )
 
@@ -51,7 +51,7 @@ func sameDiscoverQuery(a, b launcher.SearchQuery) bool {
 // keeps existing cards; changing provider or type clears them when it starts.
 func (a *App) acceptDiscoverResults(q launcher.SearchQuery, result launcher.SearchResult) {
 	m := &a.discoverMotion
-	m.mode = discoverLift
+	m.mode = discoverFade
 	if m.hasQuery && (m.query.Source != q.Source || m.query.Type != q.Type ||
 		m.query.Minecraft != q.Minecraft || m.query.Loader != q.Loader ||
 		m.query.Sort != q.Sort || !slices.Equal(m.query.Categories, q.Categories)) {
@@ -119,8 +119,8 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 	s := uiScale(c)
 	// Stable grid identities let surviving cards move to their new cells without
 	// being faded out or replaying their entrance when filters or sorting change.
-	// The reveal already controls its lift. Only settled cards participate in
-	// layout reordering, so that lift is not eased a second time as it changes.
+	// Only settled cards participate in layout reordering; their entrance
+	// keeps each card in its cell instead of sliding over neighbouring text.
 	if state.progress == 1 {
 		card.Transition(ui.ElementTransition{Animation: &motionMove, Position: true})
 	}
@@ -144,30 +144,23 @@ func (a *App) animateDiscoverCard(c *ui.Context, card ui.Element, state *discove
 		}
 		if a.discoverMotion.scroll.st.Y > 0 {
 			// Filtering may expand the first screen, but rows first seen by
-			// scrolling should use the inexpensive lift, including that batch.
-			state.mode = discoverLift
+			// scrolling should use a stationary fade, including that batch.
+			state.mode = discoverFade
 		}
 		state.started = true
 		row := max(0, int((y-view.Y)/(bounds.H+14*s)))
 		state.delay = max(0, state.afterMove.Sub(c.Now())) + time.Duration(min(150, row*38+(index%columns)*26))*time.Millisecond
 		card.Jump("reveal", 0)
 	}
-	p := card.AnimateTo("reveal", 1, ui.Animation{Duration: 420 * time.Millisecond, Delay: state.delay, Ease: ui.CubicBezier(.22, 1, .36, 1)})
+	p := card.AnimateTo("reveal", 1, ui.Animation{Duration: 240 * time.Millisecond, Delay: state.delay, Ease: ui.CubicBezier(.22, 1, .36, 1)})
 	state.progress = p
 	if p < 1 {
 		a.discoverMotion.revealing = true
 	}
 	card.Opacity(min(1, p*1.3))
-	switch state.mode {
-	case discoverExpand:
+	if state.mode == discoverExpand {
 		scale := .92 + .08*p
 		card.Scale(scale, scale)
-	default:
-		// Keep the lift in layout coordinates. Transforming the whole card
-		// sends its shadows, rounded clips and text through the software
-		// painter's per-pixel transform path throughout continuous scrolling.
-		y := 26 * s * (1 - p)
-		card.Margin(y, 0, -y, 0)
 	}
 }
 
@@ -178,7 +171,7 @@ func (a *App) discoverIcon(c *ui.Context, p launcher.Project, state *discoverCar
 	// 96 px covers the 44-DIP tile at 2x density. A project dialog requests
 	// the larger shared thumbnail without retaining a second cached copy.
 	img := a.remoteImageSize(p.Icon, 96)
-	box := ui.Box(c.Key("discover-icon")).Label("项目封面 "+p.Title).Size(size, size).Radius(size * .22).Clip().Shrink(0)
+	box := ui.Box(c.Key("discover-icon")).Label("项目封面 "+p.Title).Size(size, size).Radius(iconRadius(size, uiScale(c))).Clip().Shrink(0)
 	if state.iconURL != p.Icon {
 		state.iconURL, state.iconReady = p.Icon, false
 		box.Jump("image-reveal", 0)
@@ -208,7 +201,7 @@ func (a *App) discoverIcon(c *ui.Context, p launcher.Project, state *discoverCar
 				// The reveal adds a rectangular clip inside the tile. Round the
 				// image itself too: stationary GPU clips only shape the innermost
 				// clip, so the outer tile alone loses its corners after motion.
-				ui.Image(c, img).Absolute().Left(0).Top(0).Size(size, size).Fit(ui.Contain).Radius(size * .22)
+				ui.Image(c, img).Absolute().Left(0).Top(0).Size(size, size).Fit(ui.Contain).Radius(iconRadius(size, uiScale(c)))
 			})
 		}
 	})
@@ -220,24 +213,24 @@ func (a *App) discoverSkeleton(c *ui.Context) {
 		ui.Spinner(c).Size(14*s, 14*s).TextColor(accent).Shrink(0)
 		ui.Text(c, a.tr().DiscoverLoading).Font(uiSansFamily()).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().MinWidth(0)
 	})
-	grid := ui.Grid(c.Key("discover-skeleton")).Label("资源加载占位").FillWidth().Gap(14 * s)
+	grid := ui.Grid(c.Key("discover-skeleton")).Label("资源加载占位").FillWidth().Gap(16 * s)
 	cols := discoverColumns(c)
 	grid.Columns(cols).Children(func() {
 		for i := range cols * 3 {
 			ui.Column(c.Key(fmt.Sprintf("search-placeholder-%d", i))).Height(194*s).MinWidth(0).Padding(16*s).Gap(16*s).Radius(radiusCard*s).Background(panel).Border(1, line.Alpha(.5)).Children(func() {
 				ui.Row(c).FillWidth().Gap(12 * s).Children(func() {
-					ui.Box(c).Size(44*s, 44*s).Radius(10 * s).Background(fieldColor.Alpha(.6))
-					ui.Column(c).Grow(1).MinWidth(0).Gap(9 * s).PaddingY(5 * s).Children(func() {
-						ui.Box(c).FillWidth().Height(12 * s).Radius(4 * s).Background(fieldColor.Alpha(.55))
-						ui.Box(c).Width(82 * s).Height(9 * s).Radius(4 * s).Background(fieldColor.Alpha(.35))
+					ui.Box(c).Size(44*s, 44*s).Radius(radiusControl * s).Background(fieldColor.Alpha(.6))
+					ui.Column(c).Grow(1).MinWidth(0).Gap(8 * s).PaddingY(4 * s).Children(func() {
+						ui.Box(c).FillWidth().Height(12 * s).Radius(radiusMin * s).Background(fieldColor.Alpha(.55))
+						ui.Box(c).Width(82 * s).Height(9 * s).Radius(radiusMin * s).Background(fieldColor.Alpha(.35))
 					})
 				})
-				ui.Box(c).FillWidth().Height(9 * s).Radius(4 * s).Background(fieldColor.Alpha(.4))
-				ui.Box(c).Width(140 * s).Height(9 * s).Radius(4 * s).Background(fieldColor.Alpha(.35))
+				ui.Box(c).FillWidth().Height(9 * s).Radius(radiusMin * s).Background(fieldColor.Alpha(.4))
+				ui.Box(c).Width(140 * s).Height(9 * s).Radius(radiusMin * s).Background(fieldColor.Alpha(.35))
 				ui.Spacer(c).Grow(1)
 				ui.Row(c).FillWidth().Justify(ui.SpaceBetween).Children(func() {
-					ui.Box(c).Width(68 * s).Height(12 * s).Radius(4 * s).Background(fieldColor.Alpha(.4))
-					ui.Box(c).Width(72 * s).Height(28 * s).Radius(8 * s).Background(accentSoft.Alpha(.7))
+					ui.Box(c).Width(68 * s).Height(12 * s).Radius(radiusMin * s).Background(fieldColor.Alpha(.4))
+					ui.Box(c).Width(72 * s).Height(28 * s).Radius(radiusChip * s).Background(accentSoft.Alpha(.7))
 				})
 			})
 		}

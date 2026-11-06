@@ -27,26 +27,20 @@ func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 		st.text = selected
 	}
 	wasOpen := st.open
-	row := ui.Row(c.Key("project-mc-box")).FillWidth().Height(btnMd*s).Padding(6*s, 12*s).Radius(radiusControl * s).AlignItems(ui.Center).Gap(8 * s)
+	row := ui.Row(c.Key("project-mc-box")).FillWidth().Height(btnMd*s).Padding(0, space4*s).Font(uiSansFamily()).Radius(radiusControl * s).AlignItems(ui.Center).Gap(space2 * s)
 	var cb ui.ComboboxParts
 	arrowClicked := false
 	row.Children(func() {
 		cb = ui.ComboboxBase(c.Key("project-mc"), &st.text)
-		tooltip(c, cb.Input.Label(a.L("project_version_choice.project_game_version_filter")).FontSize(typeBody*s).TextColor(ink).Grow(1).Basis(0).MinWidth(0), selected)
+		input := cb.Input.Label(a.L("project_version_choice.project_game_version_filter")).FontSize(typeBody * s).TextColor(ink).Grow(1).Basis(0).MinWidth(0)
+		textTooltip(c, input, st.text, "", ui.Font{Family: uiSansFamily(), Size: typeBody * s, Weight: 400}, 1)
 		if ui.ButtonBase(c.Key("project-mc-arrow")).Label(a.L("project_version_choice.choose_game_version")).Size(18*s, 18*s).Center().Shrink(0).Children(func() {
-			ui.Icon(c, icons["chevron-down"]).Size(15*s, 15*s).TextColor(muted)
+			selectArrow(c, cb.Open(), s)
 		}).Clicked() {
 			arrowClicked = true
 		}
 	})
-	color := fieldColor
-	if row.Hovered() || cb.Open() {
-		color = fieldHover
-	}
-	row.Background(row.AnimateColor("bg", color, fastAnim)).Border(1, line)
-	if cb.Open() || cb.Input.Focused() {
-		row.Border(1, accent.Alpha(.35))
-	}
+	styleSelectField(row, s, cb.Open() || cb.Input.Focused())
 	if arrowClicked {
 		cb.SetOpen(!wasOpen)
 		if !wasOpen {
@@ -61,25 +55,18 @@ func (a *App) projectMinecraftChoice(c *ui.Context, versions []string) bool {
 		shown = matchingVersionOptions(options, st.text)
 	}
 	cb.Popup(func(p ui.Element) {
-		p.AttachTo(row, ui.AnchorBottomStart, ui.AnchorTopStart).Width(row.LayoutBounds().W)
-		popover(p.Margin(4*s, 0, 0, 0).Padding(6*s), 14*s, s).Transition(heroSwap(c))
-		scrollArea(c, "project-mc-options").Label("游戏版本选项").MaxHeight(250*s).FillWidth().Padding(0, scrollGutter*s, 0, 0).Children(func() {
-			ui.Column(c).FillWidth().Gap(2 * s).Children(func() {
+		selectPopupPanel(c, p, row)
+		p.Transition(heroSwap(c))
+		selectOptionsScroll(c, "project-mc-options", row, len(shown)).Label("游戏版本选项").Children(func() {
+			ui.Column(c).FillWidth().Gap(4 * s).Children(func() {
 				if len(shown) == 0 {
-					ui.Text(c, a.L("project_version_choice.no_matching_game_version")).FontSize(typeFootnote * s).TextColor(muted).Padding(10 * s)
+					ui.Text(c, a.L("project_version_choice.no_matching_game_version")).FontSize(typeFootnote * s).TextColor(muted).Padding(12 * s)
 				}
 				for _, opt := range shown {
-					item := cb.Item(opt).Label("游戏版本选项 "+opt).FillWidth().Padding(8*s, 12*s).Radius(8 * s).AlignItems(ui.Center).Gap(8 * s)
-					fg := ink
-					if item.Highlighted() || opt == selected {
-						item.Background(accentSoft)
-						fg = accent
-					}
+					item, fg := selectOptionStyle(cb.Item(opt).Label("游戏版本选项 "+opt), opt == selected, s)
 					item.Children(func() {
-						tooltip(c, ui.Text(c, opt).FontSize(typeCallout*s).TextColor(fg).Grow(1).Basis(0).MinWidth(0), opt)
-						if opt == selected {
-							ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(fg).Shrink(0)
-						}
+						selectLabel(c, opt, fg, s)
+						selectCheck(c, opt == selected, fg, s)
 					})
 				}
 			})

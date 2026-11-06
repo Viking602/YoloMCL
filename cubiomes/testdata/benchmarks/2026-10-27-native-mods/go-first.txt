@@ -1,0 +1,21 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/cubiomes
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkTerraBlenderTile26_3/overworld-16         	      22	  26309441 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/overworld-16         	      24	  26070742 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/overworld-16         	      22	  25181500 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/overworld-16         	      24	  25368883 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/overworld-16         	      22	  25264605 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/nether-16            	     158	   3673292 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/nether-16            	     162	   3701024 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/nether-16            	     164	   3687803 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/nether-16            	     154	   3714144 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/nether-16            	     159	   3729468 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/end-16               	     304	   1924010 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/end-16               	     315	   1822481 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/end-16               	     333	   1853932 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/end-16               	     327	   1854791 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTerraBlenderTile26_3/end-16               	     313	   1837768 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/cubiomes	13.261s

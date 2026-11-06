@@ -104,20 +104,32 @@ func scanVersionsWithFiles(root string) ([]VersionSummary, []string) {
 	return out, files
 }
 
-// detectLoader classifies a version JSON. Libraries are checked by
+// installedLoader classifies a resolved instance without using its display name.
+// Libraries are checked by
 // priority rather than order: NeoForge versions also ship helper libraries
 // under net.minecraftforge (e.g. srgutils), so NeoForge must win over Forge.
-func detectLoader(v gameVersion) string {
+func installedLoader(v gameVersion) string {
+	switch {
+	case strings.HasPrefix(v.MainClass, "org.quiltmc."):
+		return "quilt"
+	case strings.HasPrefix(v.MainClass, "net.fabricmc."):
+		return "fabric"
+	case strings.HasPrefix(v.MainClass, "net.neoforged."), versionArgument(v, "--fml.neoForgeVersion", "-Dfml.neoForgeVersion") != "":
+		return "neoforge"
+	}
 	found := map[string]bool{}
 	for _, lib := range v.Libraries {
+		if !rulesAllow(lib.Rules) || lib.ClientReq != nil && !*lib.ClientReq {
+			continue
+		}
 		switch {
 		case strings.HasPrefix(lib.Name, "net.fabricmc:fabric-loader:"):
 			found["fabric"] = true
 		case strings.HasPrefix(lib.Name, "org.quiltmc:quilt-loader:"):
 			found["quilt"] = true
-		case strings.HasPrefix(lib.Name, "net.neoforged"):
+		case strings.HasPrefix(lib.Name, "net.neoforged:neoforge:"), strings.HasPrefix(lib.Name, "net.neoforged:forge:"), strings.HasPrefix(lib.Name, "net.neoforged.fancymodloader:loader:"):
 			found["neoforge"] = true
-		case strings.HasPrefix(lib.Name, "net.minecraftforge:"):
+		case strings.HasPrefix(lib.Name, "net.minecraftforge:forge:"), strings.HasPrefix(lib.Name, "net.minecraftforge:fmlloader:"):
 			found["forge"] = true
 		}
 	}
@@ -126,8 +138,15 @@ func detectLoader(v gameVersion) string {
 			return l
 		}
 	}
-	if strings.HasPrefix(v.MainClass, "net.neoforged.") || versionArgument(v, "--fml.neoForgeVersion", "-Dfml.neoForgeVersion") != "" {
-		return "neoforge"
+	return "vanilla"
+}
+
+// Incomplete catalogue entries can still use their name for display. Execution
+// uses installedLoader after resolving the selected instance's inheritance.
+func detectLoader(v gameVersion) string {
+	loader := installedLoader(v)
+	if loader != "vanilla" || v.MainClass != "" || len(v.Libraries) != 0 {
+		return loader
 	}
 	low := strings.ToLower(v.ID + " " + v.InheritsFrom)
 	for _, l := range []string{"neoforge", "forge", "fabric", "quilt"} {

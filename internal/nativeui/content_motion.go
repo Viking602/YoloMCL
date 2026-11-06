@@ -9,8 +9,8 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
-// A small content slot fades out before replacing its value, then enters under
-// the same fixed parent. Only a changed visible value triggers motion. Unlike
+// A small content slot fades out before replacing its value, then fades in at
+// the same position. Only a changed visible value triggers motion. Unlike
 // overlapping Exit ghosts this never paints two versions of text together.
 type contentSwapState struct {
 	signature      any // copied comparable fields, independent of publication pointers
@@ -77,13 +77,13 @@ func (a *App) contentBody(c *ui.Context, key string) ui.Element {
 	if c.Preferences().ReduceMotion {
 		return body
 	}
-	pose, motion := ui.Pose{}, motionEnter
+	pose, motion := ui.Pose{}, motionFast
 	if state != nil && state.leaving {
-		pose, motion = ui.Pose{Fade: 1, Y: -4 * uiScale(c)}, ui.Animation{Duration: 65 * time.Millisecond, Ease: easeInCubic}
+		pose, motion = ui.Pose{Fade: 1}, ui.Animation{Duration: 65 * time.Millisecond, Ease: easeInCubic}
 	}
 	body.AnimatePose(pose, motion)
 	if serial > 0 {
-		body.Transition(ui.ElementTransition{Animation: &motionEnter, Colors: true, Enter: &ui.Motion{Opacity: 0, Y: 8 * uiScale(c)}})
+		body.Transition(ui.ElementTransition{Animation: &motionFast, Colors: true, Enter: &ui.Motion{Opacity: 0}})
 	}
 	return body
 }

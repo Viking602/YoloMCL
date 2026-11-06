@@ -2,6 +2,8 @@
 
 # YoloMCL
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/yolomcl)
+
 [English (primary)](../README.md) / [下载正式版](https://github.com/Viking602/YoloMCL/releases/latest) / [开发规范](CONTRIBUTING.md) / [项目架构](architecture.md) / [发布与在线更新说明](releases.md)
 
 YoloMCL 是一个用 Go 编写的 Minecraft: Java 版启动器，使用 [MyGo](https://github.com/egoist/mygo) 原生界面（`mygo/ui`），支持 Windows、macOS 和 Linux。
@@ -27,8 +29,12 @@ YoloMCL 是一个用 Go 编写的 Minecraft: Java 版启动器，使用 [MyGo](h
 - **Java 与内存**：自动检测本机与内置 Java 运行时，支持手动选择或下载 Temurin；按物理内存与整合包规模自动分配内存，也可手动调整。
 - **资源与整合包**：搜索并安装 Modrinth / CurseForge 的模组、资源包、光影与整合包，自动解析依赖；支持导入、拖放导入、导出 `.mrpack` 与 CurseForge `.zip` 整合包，以及备份式整合包更新与模组管理。
 - **存档、日志与服务器**：管理存档与备份、截图、最近多人游戏服务器，以及游戏日志与崩溃分析。
+- **种子地图与结构预览**：查看受支持的群系、地形、洞穴与矿物，查找附近结构并打开可交互的 3D 预览。预测范围与还原程度取决于游戏版本和已安装内容，详见[种子地图说明](seed-map.md)。
+- **游戏偏好设置**：编辑全局或实例的按键、视频、音频和控制选项，搜索模组选项并备份游戏设置文件。
 - **账号与外观**：支持离线账号、Microsoft 正版登录与 Yggdrasil / authlib-injector 外置登录；支持皮肤预览、上传与披风切换。
 - **签名更新**：通过 GitHub Releases 检查稳定版更新，支持签名最低版本策略；安装包经 Ed25519 验签，下载与重启均需确认。配置方式见[发布说明](releases.md#require-a-security-update)。
+
+本次更新内容见 [1.2.0 发布说明](release-notes/v1.2.0.md)。
 
 在实例的「设置 → 导出整合包」中可导出 Modrinth `.mrpack` 或 CurseForge `.zip`。默认勾选模组、配置与脚本，存档、截图、服务器列表和个人选项按需勾选；不包含账号、运行环境、游戏依赖、日志与缓存。平台已识别文件写入下载引用，本地或修改过的文件放入 `overrides/`，禁用模组保留禁用后缀；保存位置需在游戏目录之外。
 
@@ -48,7 +54,7 @@ make build BUILD_ARGS="--release --output build/YoloMCL.exe"
 make build BUILD_ARGS="--goos linux --goarch arm64 --output build/YoloMCL-linux-arm64"
 ```
 
-开发构建输出至 `.cache/MCL-dev.exe`（Windows）或 `.cache/MCL-dev`（macOS/Linux）。`--release` 会关闭 UI 检查器并要求注入发布配置；正式签名发布使用 `make release TAG=v1.1.0`，要求工作区干净且位于对应标签。交叉编译可通过 `BUILD_ARGS="--goos ... --goarch ..."` 或 `GOOS` / `GOARCH` 指定。
+开发构建输出至 `.cache/MCL-dev.exe`（Windows）或 `.cache/MCL-dev`（macOS/Linux）。`--release` 会关闭 UI 检查器并要求注入发布配置；正式签名发布使用 `make release TAG=v1.2.0`，要求工作区干净且位于对应标签。交叉编译可通过 `BUILD_ARGS="--goos ... --goarch ..."` 或 `GOOS` / `GOARCH` 指定。
 
 ## 项目结构与代码规范
 

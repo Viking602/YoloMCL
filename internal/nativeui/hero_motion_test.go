@@ -58,8 +58,10 @@ func TestHeroRapidSwitchKeepsStableSlots(t *testing.T) {
 	for _, label := range []string{"主版本卡", "版本图标", "版本标题", "游玩记录", "按钮文字 launch"} {
 		stable[label], _ = tt.Find(label)
 	}
+	var lastTitle string
 	for i, v := range a.root().Versions {
 		a.applySelection("r1", v.ID)
+		lastTitle, _ = a.cardText(*a.root(), v)
 		tt.Frame()
 		tt.Advance(25 * time.Millisecond) // interrupt well before each enter ends
 		for label, want := range stable {
@@ -69,6 +71,11 @@ func TestHeroRapidSwitchKeepsStableSlots(t *testing.T) {
 		}
 	}
 	snapshotUI(t, tt, "hero-rapid-switch")
+	mid, found := tt.Find(lastTitle)
+	tt.Advance(400 * time.Millisecond)
+	if end, ok := tt.Find(lastTitle); !found || !ok || mid != end {
+		t.Fatalf("title text moved inside its fixed slot: %+v -> %+v", mid, end)
+	}
 }
 
 func TestHeroHistoryIsCompactAndAnchoredAcrossPacks(t *testing.T) {

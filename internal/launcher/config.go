@@ -22,6 +22,8 @@ func cloneRoots(roots []Root) []Root {
 
 // clone creates an isolated draft, including nested version override maps.
 func (c config) clone() config {
+	c.GamePreferences = maps.Clone(c.GamePreferences)
+	c.KeyBindings = maps.Clone(c.KeyBindings)
 	c.Roots = cloneRoots(c.Roots)
 	c.Accounts = slices.Clone(c.Accounts)
 	c.AuthServers = slices.Clone(c.AuthServers)

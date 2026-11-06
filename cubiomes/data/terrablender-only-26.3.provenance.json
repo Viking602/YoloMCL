@@ -1,0 +1,26 @@
+{
+  "minecraft": "26.3",
+  "terrablender_version": "26.3.0.0.9",
+  "bop_version": "",
+  "artifacts": [
+    {
+      "id": "fabric-api",
+      "version": "0.165.0+26.3",
+      "filename": "fabric-api-0.165.0+26.3.jar",
+      "sha512": "0a4b8a14e847b71567b557b43d906c2167fa263eeeef37454a821ba286996e3da1616dc2d9647736d28a250d5ecf400541cae808359b29a62324a8a6f2ad5e30"
+    },
+    {
+      "id": "terrablender",
+      "version": "26.3.0.0.9",
+      "filename": "TerraBlender-fabric-26.3-26.3.0.0.9.jar",
+      "sha512": "183f809fe992aaaaf4d84c594730b95b392338caf17b690debbb14434b23b46f5923cfcc5aecb81368ea06a299503a3738dcf942b7f179abd000f1312cf2cbdb"
+    }
+  ],
+  "profile_sha256": "1a1fcf5b9bf4624dddf2d66b4580b594f6a98d92e27d39e72464d4299e47b87c",
+  "boundary_sha256": "c6f75c170441a44eaf72f8cf627d597c9584ce3f2bf7069d330409d932a9adcd",
+  "oracle_sha256": "0ff7644f6c394f748eb18e3f47261cc0613f64896b3ecd4ae0f3c2023d566068",
+  "raster_cells": 110592,
+  "boundary_targets": 1024,
+  "exporter": "Same public-API exporter as terrablender.provenance.json, with BOP/GlitchCore absent from runtime classpath.",
+  "registry_zero_biome": "minecraft:badlands"
+}

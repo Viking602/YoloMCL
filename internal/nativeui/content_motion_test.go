@@ -18,6 +18,7 @@ func TestContentSwapKeepsLatestTargetAndUnchangedSlots(t *testing.T) {
 		})
 	}, 300, 120)
 	initial := append([]byte(nil), tt.Image().Pix...)
+	rest, _ := tt.Find("局部过渡 value")
 	tt.Advance(300 * time.Millisecond)
 	if !bytes.Equal(initial, tt.Image().Pix) {
 		t.Fatal("unchanged content animated")
@@ -25,9 +26,15 @@ func TestContentSwapKeepsLatestTargetAndUnchangedSlots(t *testing.T) {
 	target = "Intermediate"
 	tt.Frame()
 	tt.Advance(20 * time.Millisecond)
+	if rect, _ := tt.Find("局部过渡 value"); rect != rest {
+		t.Fatalf("outgoing content moved instead of fading in place: %+v -> %+v", rest, rect)
+	}
 	target = "Latest"
 	tt.Frame()
 	tt.Advance(46 * time.Millisecond)
+	if rect, _ := tt.Find("局部过渡 value"); rect != rest {
+		t.Fatalf("incoming content moved instead of fading in place: %+v -> %+v", rest, rect)
+	}
 	if !tt.HasText("Latest") || tt.HasText("First") || tt.HasText("Intermediate") {
 		t.Fatal("rapid switching displayed an obsolete target")
 	}

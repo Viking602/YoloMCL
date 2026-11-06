@@ -40,11 +40,17 @@ func projectDialogFixture(t testing.TB, count int) (*App, *ui.Tester, *int) {
 		a.packRemote[id] = &launcher.PackPreview{}
 	}
 	frames := new(int)
+	a.dialogInitial = a.form
 	tt := ui.NewTester(func(c *ui.Context) {
 		*frames++
 		c.SetTheme(theme)
 		root := ui.Box(c).Fill().Background(bg)
-		a.dialogView(c, root)
+		if a.surfaceKind(a.dialog) == surfacePage {
+			root.Children(func() { a.taskPage(c) })
+		} else {
+			a.dialogView(c, root)
+		}
+		a.confirmationView(c)
 	}, 1536, 1024)
 	return a, tt, frames
 }
@@ -236,13 +242,14 @@ func TestProjectDialogMotionAndDismissal(t *testing.T) {
 	for _, dismiss := range []string{"escape", "backdrop", "cancel"} {
 		t.Run(dismiss, func(t *testing.T) {
 			a, tt, _ := projectDialogFixture(t, 39)
+			a.project.Type = "resourcepack"
 			a.dialog, a.dialogOpen = "project", true
 			tt.Frame()
 			tt.Advance(60 * time.Millisecond)
 			mid, _ := tt.Find("活动弹窗")
 			tt.Advance(250 * time.Millisecond)
 			end, _ := tt.Find("活动弹窗")
-			if math.Abs(float64(mid.W-end.W)) > .01 || mid.Y <= end.Y {
+			if math.Abs(float64(mid.W-end.W)) > .01 || mid.X <= end.X {
 				t.Fatalf("dialog should slide without scaling: %+v %+v", mid, end)
 			}
 			switch dismiss {

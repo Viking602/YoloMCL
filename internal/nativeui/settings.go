@@ -36,7 +36,7 @@ func (a *App) preferences(c *ui.Context) {
 	s := uiScale(c)
 	surface := ui.Hex("#f9fafd")
 	ui.Column(c.Key("settings-layout")).Grow(1).MinHeight(0).FillWidth().Children(func() {
-		header := ui.Box(c.Key("settings-header")).Label("设置固定标题栏").FillWidth().Padding(22*s, pageGutter*s, 20*s).Shrink(0).Background(surface)
+		header := ui.Box(c.Key("settings-header")).Label("设置固定标题栏").FillWidth().Padding(24*s, pageGutter*s, 20*s).Shrink(0).Background(surface)
 		target := float32(0)
 		if track := scrollTracks["settings-scroll"]; track != nil && track.st.Y > 1 {
 			target = 1
@@ -54,6 +54,7 @@ func (a *App) preferences(c *ui.Context) {
 					a.accountSettings(c)
 					a.versionAndLangSettings(c)
 					a.runtimeSettings(c)
+					a.globalKeyBindingsSection(c)
 					a.javaSection(c)
 					a.modCacheSettings(c)
 					a.aboutSettings(c)
@@ -75,22 +76,30 @@ func (a *App) accountSettings(c *ui.Context) {
 	t := a.tr()
 	settingsGroup(c, "账号面板", a.L("logpanels.account"), "", func() {
 		ac := a.account()
-		name, desc := t.SideAccountAdd, a.L("settings.no_account_yet_one_account_is_shared_by")
+		name := t.SideAccountAdd
 		if ac != nil {
 			name = ac.Name
-			desc = a.accountKindTag(*ac)
-			if n := len(a.snapshot.Accounts); n > 1 {
-				desc += fmt.Sprintf(a.L("settings.accounts"), n)
-			}
 		}
 		lead := func() {
 			a.headAvatar(c, ac, settingIcon*s, func() {
-				ui.Box(c).Size(settingIcon*s, settingIcon*s).Radius(999).LinearGradient(tintGradient(ui.Hex("#64d2ff"), accentIndigo)).Center().Shrink(0).Children(func() {
+				ui.Box(c).Size(settingIcon*s, settingIcon*s).Radius(radiusPill).LinearGradient(tintGradient(ui.Hex("#64d2ff"), accentIndigo)).Center().Shrink(0).Children(func() {
 					ui.Icon(c, icons["account"]).Size(15*s, 15*s).TextColor(panel)
 				})
 			})
 		}
-		settingRow(c, lead, name, desc, func() {
+		detail := func() {
+			if ac == nil {
+				label(c, a.L("settings.no_account_yet_one_account_is_shared_by")).FillWidth().MinWidth(0).FontSize(typeFootnote * s)
+				return
+			}
+			ui.Row(c).FillWidth().MinWidth(0).Gap(space1 * s).AlignItems(ui.Center).Children(func() {
+				a.accountTypeTag(c, *ac)
+				if n := len(a.snapshot.Accounts); n > 1 {
+					label(c, fmt.Sprintf(a.L("settings.accounts"), n)).FontSize(typeFootnote * s).NoWrap().Shrink(0)
+				}
+			})
+		}
+		settingRowWithDetail(c, lead, name, detail, func() {
 			text, icon := a.L("settings.manage"), "account"
 			if ac == nil {
 				text, icon = t.SideAccountAdd, "plus"
@@ -108,14 +117,14 @@ const settingsColumnWidth float32 = 860
 func (a *App) settingsHeader(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Row(c).Label("页面标题栏").Font(uiSansFamily()).FillWidth().Gap(14 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Label("页面标题栏").Font(uiSansFamily()).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
 		a.settingsBack(c)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, t.SettingsTitle).Label("页面标题 " + t.SettingsTitle).FontSize(typeDisplay * s).FontWeight(700).TextColor(ink).SingleLine()
 			tooltip(c, ui.Text(c, t.SettingsDesc).Label("设置简要说明").FontSize(typeFootnote*s).TextColor(muted).FillWidth().MinWidth(0).SingleLine(), t.SettingsDesc)
 		})
 		ui.Row(c.Key("settings-actions")).Label("设置操作栏").Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			tooltip(c, ui.Row(c).Label("设置自动保存提示"), t.SettingsDefaultHint).Padding(5*s, 9*s).Gap(5 * s).Radius(999).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
+			tooltip(c, ui.Row(c).Label("设置自动保存提示"), t.SettingsDefaultHint).Padding(4*s, 8*s).Gap(4 * s).Radius(radiusPill).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["check"]).Size(11*s, 11*s).TextColor(successInk)
 				ui.Text(c, a.L("settings.auto_save")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
 			})
@@ -285,7 +294,7 @@ func (a *App) memoryRow(c *ui.Context) {
 			label(c, t.MemAutoExplain).FontSize(typeFootnote * s).FillWidth().MinWidth(0)
 			return
 		}
-		ui.Row(c).FillWidth().Gap(14 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
 			minMB, maxMB := 1024., a.memoryMaximum()
 			if maxMB < 1024 {
 				minMB = 512
@@ -297,7 +306,7 @@ func (a *App) memoryRow(c *ui.Context) {
 			position := math.Max(lo, math.Min(hi, math.Log2(max(a.memory, 512))))
 			// Divide the full logarithmic range so both ends are reachable,
 			// including physical memory limits that are not powers of two.
-			slider := ui.SliderBase(c.Key("memory-slider"), &position, lo, hi).Label(t.SettingsMemorySliderAria).Grow(1).MinWidth(0).Height(btnMd * s).PaddingX(10 * s).Step((hi - lo) / 128)
+			slider := ui.SliderBase(c.Key("memory-slider"), &position, lo, hi).Label(t.SettingsMemorySliderAria).Grow(1).MinWidth(0).Height(btnMd * s).PaddingX(12 * s).Step((hi - lo) / 128)
 			if slider.Changed() {
 				value := math.Pow(2, position)
 				a.memory = math.Max(minMB, math.Min(maxMB, math.Round(value/128)*128))
@@ -310,11 +319,11 @@ func (a *App) memoryRow(c *ui.Context) {
 			slider.Draw(func(p *ui.Painter, r ui.Rect) {
 				track := ui.Rect{X: r.X + 10*s, Y: r.Y + r.H/2 - 3*s, W: r.W - 20*s, H: 6 * s}
 				fraction := float32((position - lo) / (hi - lo))
-				p.Fill(track, ui.RGBA(120, 120, 128, .18), 3*s)
+				p.Fill(track, ui.RGBA(120, 120, 128, .18), radiusPill)
 				p.FillGradient(ui.Rect{X: track.X, Y: track.Y, W: max(track.W*fraction, 6*s), H: track.H}, appleAccentGradient(false), 3*s)
 				knob := ui.Rect{X: track.X + track.W*fraction - 11*s, Y: r.Y + r.H/2 - 11*s, W: 22 * s, H: 22 * s}
-				p.Shadow(knob, 11*s, 0, 2*s, 6*s, 0, ui.RGBA(0, 0, 0, .2))
-				p.Fill(knob, panel, 11*s)
+				p.Shadow(knob, radiusPill, 0, 2*s, 6*s, 0, ui.RGBA(0, 0, 0, .2))
+				p.Fill(knob, panel, radiusPill)
 			})
 			var presets []string
 			for _, mb := range []int{2048, 4096, 8192, 12288} {

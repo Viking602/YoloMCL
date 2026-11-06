@@ -41,7 +41,11 @@ func TestOnlyLogLinesScroll(t *testing.T) {
 					tt.Frame()
 					tt.Advance(400 * time.Millisecond)
 					fixed := map[string]ui.Rect{}
-					for _, label := range []string{"实例标签", "日志摘要", "日志工具栏"} {
+					labels := []string{"日志摘要", "日志工具栏"}
+					if !dialog {
+						labels = append(labels, "实例标签")
+					}
+					for _, label := range labels {
 						var ok bool
 						fixed[label], ok = tt.Find(label)
 						if !ok {

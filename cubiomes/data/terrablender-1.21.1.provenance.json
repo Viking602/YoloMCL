@@ -1,0 +1,51 @@
+{
+  "sources": {
+    "biomesoplenty\\api\\BOPAPI.java": "79c7aaeeb3b9fccbddd662c764a54cde89943a1b96e61eaa1193a47507d142f3",
+    "biomesoplenty\\api\\biome\\BOPBiomes.java": "78d5d114dfc55442299795d03bbaa6cbf237d5ed6820065e7340c41dd365e4e8",
+    "biomesoplenty\\util\\biome\\BiomeUtil.java": "25f27a0e1ec610c97ecf505080fa23af7d5f9ac230aaab517145acf7a0cf004b",
+    "biomesoplenty\\biome\\BOPOverworldBiomeBuilder.java": "57886b3f77cdce27cc1eac8d893b33e3cb7beed4eac24c921b3429efe9c66fd9",
+    "biomesoplenty\\biome\\BOPRareOverworldBiomeBuilder.java": "bd63aa7bed8525f6317ea9e5576e04456d5402027137e84b05c58ab4a2a1748a",
+    "biomesoplenty\\biome\\BOPSecondaryOverworldBiomeBuilder.java": "23d95061f54a00f181e882bfd9d34e73b519947ec70e19e15bc70ecb7d9c8609",
+    "biomesoplenty\\worldgen\\BOPNetherRegionCommon.java": "1d79c9acf4c56f349355a316bcf13469fa74cc775ef5149e5fa165e4033977c0",
+    "biomesoplenty\\worldgen\\BOPNetherRegionRare.java": "ceb6033cd5777f2fe70c4987bbd0c08843fd1a769c376d5a73b5845a2d298aaf",
+    "biomesoplenty\\worldgen\\BOPOverworldRegionPrimary.java": "f1f18e8097559d408285e329668750544f7018c68da2c40043d5392cc405f189",
+    "biomesoplenty\\worldgen\\BOPOverworldRegionRare.java": "ff8a9c7ded1bcd703e6140c7bdd2a1b8eb870a9d67942cc52bcfc9372ff92abf",
+    "biomesoplenty\\worldgen\\BOPOverworldRegionSecondary.java": "0122b4241cd0810979abf275ce131d5b854b56d028fc52ff7bd8ddad893c563f"
+  },
+  "minecraft_named_sha256": "ecc41a0972fcb2234c78ee36e442cc34109c4b9d94ed0ce3d54265e8e37b988d",
+  "terrablender_sha512": "9d4b2a1be5139c0fb2fad92ed21805b17d9e83b6ea48e637e018bb14063c1823a206390755dbfe8d025c20fd62ac11cdd84db53ddb956dabaeda01bff57bac50",
+  "minecraft": "1.21.1",
+  "profile_artifacts": [
+    {
+      "filename": "[\u524d\u7f6e]GlitchCore-fabric-1.21.1-2.1.0.0.jar",
+      "id": "glitchcore",
+      "sha512": "ccd5c3812faf1161f61a894deec609eb6c3de36debe63dc00b75698a9b71dfb30bc00e0a34c3e030b3adb4c224e829783f66ad66768c28dedbefc024ddbd6041",
+      "version": "2.1.0.0"
+    },
+    {
+      "filename": "[\u524d\u7f6e]TerraBlender-fabric-1.21.1-4.1.0.8.jar",
+      "id": "terrablender",
+      "sha512": "f933f0c70babe3cf1efe3b8121486f26db9d48799b6d50557ec4f7bc47e553fe00c837f4940d70aa2eab7f13f91065a9e56c0cc53f8aa2393edaf423f80997b8",
+      "version": "4.1.0.8"
+    },
+    {
+      "filename": "[\u6269\u5c55-\u7fa4\u7cfb]BiomesOPlenty-fabric-1.21.1-21.1.0.14.jar",
+      "id": "biomesoplenty",
+      "sha512": "88d834068ea857a5c6de39854f899c96c7905a0a5e9fca3e3316350386b8238d70e28ea2d6dffb89313909e5e385f91a1aa96f746c0064bf43526cf872d8e7f6",
+      "version": "21.1.0.14"
+    }
+  ],
+  "source_commits": {
+    "TerraBlender": "c90344362b5e813c43f38fed19ea82412c1fffc3",
+    "BiomesOPlenty": "32ec5f0a17c2101802fc0458f3c6ea85052f70fb"
+  },
+  "method": "Compile unchanged public BOP region/builder/biome utility sources against Minecraft 1.21.1 and TerraBlender 4.1.0.8; minimal config/API holders supply the explicit toggle masks. Export only numeric parameters, biome identifiers and expected table hashes. External Java tooling remains outside this repository.",
+  "reference_fabric_full_boot": false,
+  "toggle_configurations": 92,
+  "fixture_sha256": {
+    "cubiomes\\data\\terrablender-bop-1.21.1-fallbacks.json.gz": "fc3b274bf3b5a79dc6352119df6396272af06172631f17142a32614983ed9714",
+    "cubiomes\\data\\terrablender-bop-1.21.1.json.gz": "fd2d8259093c4fbd425e435020b1b98aedb78bdcb891976b5873b1ff552c1589",
+    "cubiomes\\data\\terrablender-only-1.21.1.json.gz": "0690df9c993fca6c3002b07db31313803ae9c3600244f3ef655709e89e1bf30c",
+    "cubiomes\\testdata\\terrablender-bop-1.21.1-toggles.json.gz": "47ee1e002544729ca6ab7fe25901dbeb901c27399088db35e115920b9097ebc5"
+  }
+}

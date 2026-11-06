@@ -31,7 +31,6 @@ type javaGetState struct {
 	lastDone     int
 	lastAt       time.Time
 	speed        float64 // KB/s, smoothed
-	confirm      string  // home awaiting a second click to uninstall
 }
 
 var needJavaRE = regexp.MustCompile(`需要 Java (\d+)，还没有安装`)
@@ -180,7 +179,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 	s := uiScale(c)
 	g := &a.javaGet
 	if g.needFor != "" {
-		ui.Row(c.Key("java-need")).FillWidth().Height(52*s).Padding(0, 14*s).Gap(10 * s).Radius(12 * s).Background(accentSoft).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key("java-need")).FillWidth().Height(52*s).Padding(0, 16*s).Gap(12 * s).Radius(radiusControl * s).Background(accentSoft).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
 			ui.Text(c, fmt.Sprintf(a.L("javaget_ui.needs_java_which_is_not_installed_the_launch"), g.needFor, g.major)).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
 		})
@@ -215,9 +214,9 @@ func (a *App) javaGetDialog(c *ui.Context) {
 	}
 	label(c, a.L("javaget_ui.version")).FontSize(typeFootnote * s).FontWeight(600)
 	// Two by two: every card the same size, nothing clipped or cut short.
-	ui.Column(c.Key("java-majors")).FillWidth().Gap(10 * s).Padding(2 * s).Children(func() {
+	ui.Column(c.Key("java-majors")).FillWidth().Gap(12 * s).Padding(4 * s).Children(func() {
 		for r := 0; r < len(majors); r += 2 {
-			ui.Row(c).FillWidth().Gap(10 * s).Children(func() {
+			ui.Row(c).FillWidth().Gap(12 * s).Children(func() {
 				for k := r; k < r+2; k++ {
 					if k >= len(majors) {
 						ui.Box(c).Grow(1).Basis(0)
@@ -225,7 +224,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 					}
 					m := majors[k]
 					sel := g.major == m
-					b := ui.ButtonBase(c.Key(fmt.Sprint("java-major-", m))).Label(fmt.Sprintf("Java %d", m)).Grow(1).Basis(0).MinWidth(0).Height(64*s).PaddingX(16*s).Gap(10*s).Radius(14*s).AlignItems(ui.Center).Border(1, line).Background(raised)
+					b := ui.ButtonBase(c.Key(fmt.Sprint("java-major-", m))).Label(fmt.Sprintf("Java %d", m)).Grow(1).Basis(0).MinWidth(0).Height(64*s).PaddingX(16*s).Gap(12*s).Radius(radiusCard*s).AlignItems(ui.Center).Border(1, line).Background(raised)
 					if sel {
 						b.Background(accentSoft).Border(2, accent)
 					} else if b.Hovered() {
@@ -268,20 +267,20 @@ func (a *App) javaGetDialog(c *ui.Context) {
 				}
 			}
 			sel := g.source == src && off != nil
-			b := ui.ButtonBase(c.Key("java-src-"+src)).Label(javaSourceName(a, src)).FillWidth().Height(52*s).PaddingX(14*s).Gap(12*s).Radius(12*s).AlignItems(ui.Center).Border(1, line).Background(raised)
+			b := ui.ButtonBase(c.Key("java-src-"+src)).Label(javaSourceName(a, src)).FillWidth().Height(52*s).PaddingX(16*s).Gap(12*s).Radius(radiusControl*s).AlignItems(ui.Center).Border(1, line).Background(raised)
 			if sel {
 				b.Background(accentSoft).Border(2, accent)
 			} else if b.Hovered() && off != nil {
 				b.Background(panel)
 			}
 			if b.Children(func() {
-				ui.Box(c).Size(16*s, 16*s).Radius(999).Border(2, map[bool]ui.Color{true: accent, false: line}[sel]).Center().Shrink(0).Children(func() {
+				ui.Box(c).Size(16*s, 16*s).Radius(radiusPill).Border(2, map[bool]ui.Color{true: accent, false: line}[sel]).Center().Shrink(0).Children(func() {
 					if sel {
-						ui.Box(c).Size(8*s, 8*s).Radius(999).Background(accent)
+						ui.Box(c).Size(8*s, 8*s).Radius(radiusPill).Background(accent)
 					}
 				})
 				javaBrandIcon(c, javaVendor(a, launcher.InstalledJava{Managed: true, Source: src}), 30*s)
-				ui.Column(c).Grow(1).MinWidth(0).Gap(2 * s).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
 					ui.Text(c, javaSourceName(a, src)).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).NoWrap()
 					desc := a.L("javaget_ui.what_the_official_launcher_uses_each_file_checked")
 					switch src {
@@ -307,7 +306,7 @@ func (a *App) javaGetDialog(c *ui.Context) {
 			}
 		}
 	})
-	ui.Row(c.Key("java-get-foot")).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("java-get-foot")).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		label(c, a.L("javaget_ui.installs_into_yolomcl_s_data_folder_and_joins")).FontSize(typeCaption * s).Grow(1).MinWidth(0).SingleLine()
 		if button(c, "java-get-go", fmt.Sprintf(a.L("instance_settings.download_java"), g.major), "download", true, pick == nil) && pick != nil {
 			id, e := a.service.InstallJava(pick.Major, pick.Source)
@@ -344,13 +343,13 @@ func (a *App) javaProgress(c *ui.Context, j *launcher.Job) {
 	if j.Total > 0 {
 		frac = min(1, float32(j.Done)/float32(j.Total))
 	}
-	ui.Column(c.Key("java-progress")).FillWidth().Gap(10*s).Padding(16*s).Radius(14*s).Background(raised).Border(1, glassEdge).Children(func() {
+	ui.Column(c.Key("java-progress")).FillWidth().Gap(12*s).Padding(16*s).Radius(radiusCard*s).Background(raised).Border(1, glassEdge).Children(func() {
 		ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, fmt.Sprintf(a.L("javaget_ui.downloading_java"), g.jobMajor)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).Grow(1)
 			ui.Text(c, javaSourceName(a, g.source)).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 		})
-		ui.Box(c).FillWidth().Height(8 * s).Radius(999).Background(ui.RGBA(120, 130, 160, .16)).Clip().Children(func() {
-			ui.Box(c).WidthPercent(frac * 100).Height(8 * s).Radius(999).Background(accent)
+		ui.Box(c).FillWidth().Height(8 * s).Radius(radiusPill).Background(ui.RGBA(120, 130, 160, .16)).Clip().Children(func() {
+			ui.Box(c).WidthPercent(frac * 100).Height(8 * s).Radius(radiusPill).Background(accent)
 		})
 		ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
 			size := a.L("javaget_ui.preparing")
@@ -379,11 +378,11 @@ func (a *App) javaMajorCard(c *ui.Context, m int, installed bool) {
 	s := uiScale(c)
 	g := &a.javaGet
 	ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
-		ui.Row(c).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, fmt.Sprintf("Java %d", m)).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink).NoWrap()
 			for _, o := range g.offers {
 				if o.Major == m && o.LTS {
-					ui.Row(c).Padding(1*s, 6*s).Radius(999).Background(accent.Alpha(.12)).Children(func() {
+					ui.Row(c).Padding(4*s, 8*s).Radius(radiusPill).Background(accent.Alpha(.12)).Children(func() {
 						ui.Text(c, "LTS").FontSize(typeCaption2 * s).FontWeight(700).TextColor(accent).NoWrap()
 					})
 					break
@@ -393,7 +392,7 @@ func (a *App) javaMajorCard(c *ui.Context, m int, installed bool) {
 		ui.Text(c, javaHint(a, m)).FontSize(typeCaption * s).FontFeatures("tnum").TextColor(muted).NoWrap()
 	})
 	if installed {
-		ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(successInk.Alpha(.12)).Children(func() {
+		ui.Row(c).Shrink(0).Padding(4*s, 8*s).Radius(radiusPill).Background(successInk.Alpha(.12)).Children(func() {
 			ui.Text(c, a.L("discover.installed")).FontSize(typeCaption2 * s).FontWeight(700).TextColor(successInk).NoWrap()
 		})
 	}

@@ -1,0 +1,81 @@
+{
+  "minecraft": "26.3",
+  "artifacts": [
+    {
+      "id": "fabric-api",
+      "version": "0.165.0+26.3",
+      "filename": "fabric-api-0.165.0+26.3.jar",
+      "sha512": "0a4b8a14e847b71567b557b43d906c2167fa263eeeef37454a821ba286996e3da1616dc2d9647736d28a250d5ecf400541cae808359b29a62324a8a6f2ad5e30"
+    },
+    {
+      "id": "terrablender",
+      "version": "26.3.0.0.9",
+      "filename": "TerraBlender-fabric-26.3-26.3.0.0.9.jar",
+      "sha512": "183f809fe992aaaaf4d84c594730b95b392338caf17b690debbb14434b23b46f5923cfcc5aecb81368ea06a299503a3738dcf942b7f179abd000f1312cf2cbdb"
+    },
+    {
+      "id": "biomesoplenty",
+      "version": "26.3.0.0.15",
+      "filename": "BiomesOPlenty-fabric-26.3-26.3.0.0.15.jar",
+      "sha512": "8f5198d5ad7de6b288ccbc5aeea0de274e73692a04b5d28ba3fa5a25052e9701432f116d94debcd0a33aaf6d8d7fa38f6c77253cefe234efbf472fa9affdbb88"
+    },
+    {
+      "id": "glitchcore",
+      "version": "26.3.0.0.5",
+      "filename": "GlitchCore-fabric-26.3-26.3.0.0.5.jar",
+      "sha512": "f975535e561285898163e7512008fe61ffaac66b6fc60a4e4763d0f2279617f75900d7a2ab2708d8dc348337119df61d2783aa101a9f1a24020f99888aa0d457"
+    }
+  ],
+  "artifact_urls": {
+    "fabric-api": "https://cdn.modrinth.com/data/P7dR8mSH/versions/EQKgpeKu/fabric-api-0.165.0%2B26.3.jar",
+    "terrablender": "https://cdn.modrinth.com/data/kkmrDlKT/versions/xirJYe1V/TerraBlender-fabric-26.3-26.3.0.0.9.jar",
+    "biomes-o-plenty": "https://cdn.modrinth.com/data/HXF82T3G/versions/MAQI6dsY/BiomesOPlenty-fabric-26.3-26.3.0.0.15.jar",
+    "glitchcore": "https://cdn.modrinth.com/data/s3dmwKy5/versions/kfFeDnrp/GlitchCore-fabric-26.3-26.3.0.0.5.jar"
+  },
+  "minecraft_provenance": "latest-26.3.provenance.json",
+  "profile_sha256": "6c1c19c73f5049a0ff517b715b9830cd27efc8152ea3e5a3efe19d71bbe2c194",
+  "boundary_sha256": "cb9ddc959268e921e8149861169df20fac349cbd960fefdb837780899f755dcf",
+  "oracle_sha256": "0be8d6afa795447ab7a222903a62c98752cf71f50efb61b6169ca21a9bfb33ac",
+  "dense_oracle_canonical_sha256": "4f093c03e897ed6c4aabafc0fe7c169f7e42faee7af559dcbc25e465f9c4119d",
+  "raster_cells": 110592,
+  "raster_count": 27,
+  "boundary_targets": 3584,
+  "source_references": {
+    "terrablender": "https://github.com/Glitchfiend/TerraBlender/tree/7d7a778ab9c14d0091581ed51ada0821e69761b8",
+    "biomesoplenty": "https://github.com/Glitchfiend/BiomesOPlenty/tree/cc292da4989591b081bc57326648a4ac3724ca8d"
+  },
+  "license_facts": {
+    "TerraBlender": "Core region/mixin source LGPL-3.0-or-later; inspect each file notice.",
+    "BiomesOPlenty": "All rights reserved. No implementation source, artwork or other assets copied. Tables contain runtime numerical mappings and identifiers."
+  },
+  "exporter_method": "Public Regions.get/getIndex + Region.addBiomes, registry holder filtering, IExtendedParameterList.findValuePositional/getUniqueness, EndBiomeRegistry, BiomeSource.createResolver; no private fields; no server or HTTP listener.",
+  "reference_environment": "Java sources and pinned runtime retained outside the Go repository.",
+  "fallbacks_sha256": "1c81eaca03fd4a7e6ae0694615e21024246404df38e088c6a93f832804986af1",
+  "toggle_fixture_sha256": "627ea73bdacfaf777214e7e4088a9b955bfb488b9297392859e9639c51682f50",
+  "toggle_reference_configs": 86,
+  "toggle_entry_comparisons": 2161094,
+  "toggle_method": "Unmodified public BOP region constructors in isolated Fabric loader instances; config supplied before first ModConfig access. No mod entrypoints or registries needed because the public numeric region builders do not dereference their registry argument. Each run verifies complete ordered parameter geometry SHA-256.",
+  "config_fixture_sha256": "bfd147677f0b2a7e34d5f28eb5e06f3aa71c106073745a2452288efaca2b0ede",
+  "config_raster_cells": 221184,
+  "config_variants": [
+    "all68_biomes_disabled",
+    "mixed_toggles_sizes2_to6_and_zero_weights"
+  ],
+  "external_reference_sources_sha256": {
+    "native-export.py": "edce2d06ac354dba7d19d4f31c50da1ce2ba09de97f6ebd533051db440e30e8d",
+    "native-package.py": "5854f00d259ab9158690d94efea8c225f1edfd2bdc37dc3a84386d6773eec0ab",
+    "native-toggle-export.py": "a66353a26a5ed6981f53f0099b4f29e9f7d3e2c0003805183005b8bf24750388",
+    "test/RuntimeProbeLauncher.java": "953a36f491543ef0e40eba081aa5a0c54f2fec87022045764022e6b5ceaf97b1",
+    "test/dev/yolomcl/seedmap/NativeTerraBlenderExport.java": "79531b2f5d4e46371d79fdc997104ff8df633294fdd00576f018198a58ab5d0f",
+    "test/dev/yolomcl/seedmap/NativeTerraBlenderPacks.java": "02fe8ed3d4baee765a40046a02f2c0c7cfd6b1cf1f195ebbcfdaa4320a16728c",
+    "test/dev/yolomcl/seedmap/NativeBOPTables.java": "ea16e8e9f7c8bac80d37fcfc2b0b72e0c8c1c31d58d6b0e452648c662879667b",
+    "test/dev/yolomcl/seedmap/NativeTerraBlenderBenchmark.java": "de0d6d83922d52a9845d60a7a2bfdb572babc1749cbad5fdeb9a4c1e74461993"
+  },
+  "combined_pack_fixture_sha256": "74774f3b954da794a56b52a87c4adef2833a974b10818b659069bb8c92a46c36",
+  "combined_pack_raster_cells": 245760,
+  "end_zero_weight_fallback": "minecraft:ocean (BiomeInitialLayer.getDefaultIndex); raw registry-zero metadata is not the fallback",
+  "license_text_sha256": {
+    "LICENSE-TerraBlender-LGPL.txt": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118",
+    "LICENSE-GPL-3.0.txt": "203c10ae2f92356d658522ee61db97e5daad634c5dc4190bc0bd23a1511a33b4"
+  }
+}

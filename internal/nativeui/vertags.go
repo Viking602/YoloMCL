@@ -45,7 +45,7 @@ func microTag(c *ui.Context, tg verTag, tip string) {
 	if lbl == "" {
 		lbl = "版本标签 " + tg.text
 	}
-	e := ui.Row(c).Label(lbl).Shrink(0).Padding(1.5*s, 5.5*s).Radius(5*s).Background(tg.color.Alpha(.10)).Border(1, tg.color.Alpha(.20)).Children(func() {
+	e := ui.Row(c).Label(lbl).Shrink(0).Padding(4*s, 4*s).Radius(radiusChip*s).Background(tg.color.Alpha(.10)).Border(1, tg.color.Alpha(.20)).Children(func() {
 		ui.Text(c, midEllipsis(c, tg.text, tagMaxWidth*s, typeCaption2*s, 600)).FontSize(typeCaption2 * s).FontWeight(600).TextColor(tg.color).NoWrap()
 	})
 	if tip != "" {
@@ -58,12 +58,13 @@ func microTag(c *ui.Context, tg verTag, tip string) {
 // the rest collapse into "+N".
 func titleWithTags(c *ui.Context, title, tip string, size float32, weight int, tags []verTag, maxTags int) {
 	s := uiScale(c)
-	ui.Row(c).FillWidth().MinWidth(0).Gap(5 * s).AlignItems(ui.Start).Children(func() {
-		tooltip(c, ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine(), tip)
+	ui.Row(c).FillWidth().MinWidth(0).Gap(4 * s).AlignItems(ui.Start).Children(func() {
+		e := ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine()
+		textTooltip(c, e, title, tip, ui.Font{Family: c.Theme().Font, Size: size, Weight: weight}, 1)
 		if len(tags) == 0 {
 			return
 		}
-		ui.Row(c).Shrink(0).Gap(3*s).Margin(size*.12, 0, 0, 0).Children(func() {
+		ui.Row(c).Shrink(0).Gap(4*s).Margin(size*.12, 0, 0, 0).Children(func() {
 			shown := tags
 			if len(tags) > maxTags {
 				shown = tags[:maxTags-1]
@@ -284,7 +285,7 @@ func loaderLogo(c *ui.Context, loader string, size float32) bool {
 	if k == "" {
 		return false
 	}
-	ui.Box(c).Size(size, size).Radius(size*.26).Shrink(0).Background(panel).Border(1, line).Clip().Center().Children(func() {
+	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Shrink(0).Background(panel).Border(1, line).Clip().Center().Children(func() {
 		inner := size * .8
 		if k == "forge" || k == "vanilla" {
 			inner = size // full-bleed app-icon style logos
@@ -300,7 +301,7 @@ func javaTag(c *ui.Context, major int) {
 		return
 	}
 	scale := uiScale(c)
-	ui.Row(c).Label(fmt.Sprintf("Java 标签 %d", major)).Shrink(0).Padding(2*scale, 8*scale).Radius(999).Background(accent.Alpha(.10)).Border(1, accent.Alpha(.18)).Children(func() {
+	ui.Row(c).Label(fmt.Sprintf("Java 标签 %d", major)).Shrink(0).Padding(space1*scale, space2*scale).Radius(radiusPill).Background(accent.Alpha(.10)).Border(1, accent.Alpha(.18)).Children(func() {
 		ui.Text(c, fmt.Sprintf("Java %d", major)).FontSize(typeCaption2 * scale).FontWeight(600).TextColor(accent).NoWrap().Shrink(0)
 	})
 }

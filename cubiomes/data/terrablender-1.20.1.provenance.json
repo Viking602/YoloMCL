@@ -1,0 +1,51 @@
+{
+  "minecraft": "1.20.1",
+  "loader_contract": "Forge direct static configuration/setup listeners",
+  "framework": "TerraBlender 3.0.1.10",
+  "consumer_fixture": "YUNG's Cave Biomes 2.0.5",
+  "verified_at": "2026-10-27",
+  "source_references": {
+    "terrablender": "https://github.com/Glitchfiend/TerraBlender/tree/76361917d2d649bfe0457c220c7c8ad2c6c44a6c",
+    "yungscavebiomes": "https://github.com/YUNG-GANG/YUNGs-Cave-Biomes/tree/07c069b2f1ac92cbea554f613320f4efe9b4e3ea",
+    "class_format": "https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html",
+    "instruction_semantics": "https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-6.html"
+  },
+  "artifacts_sha512": {
+    "TerraBlender-forge-1.20.1-3.0.1.10.jar": "ef0c98e3d652f420a08a8d4205661ecb61c990ff19fabe04b9a0334b6a1bc671079dde74199a847e25df96f2a8262a35f37a0fca3c8fec95f7139074734ff8f5",
+    "YungsCaveBiomes-1.20.1-Forge-2.0.5.jar": "c09d75eec4a9e4245e2f0a7cb0b64b6da70ccd46b3d351c2d6baded3deb2f15f6980229be40cc85557b2ccd468f5a4d6b74bb28190723647076aba49bebcaf36"
+  },
+  "reference_environment": "External developer-only JDK 21 project; Minecraft 1.20.1 named JAR produced with official Mojang mappings and ForgeAutoRenamingTool. No Java sources, classes, project or runtime is bundled in MCL.",
+  "minecraft_named_jar_sha256": "c13a549b96b6802185e9a1aa3f2e131d0f00c589251e4b0af3220eba033c6345",
+  "vanilla_method": "Compile a package-local wrapper calling the actual OverworldBiomeBuilder.addBiomes, preserve every original parameter and its order, serialize Biome then Space fields as compact JSON.",
+  "vanilla_parameter_count": 7593,
+  "vanilla_parameters_json_sha256": "713fccd0ec750da13df504264ee45031a46688960082592549e80638d8d5409e",
+  "registration_method": "Normally compile public YCB CaveBiomeRegion/CaveBiomeRegionParameters/ConfigModule/BiomeModule and public TB Region/RegionType/ParameterUtils/ModifiedVanillaOverworldBuilder/RegionUtils against Minecraft 1.20.1. Minimal compile-only mod-global/config and annotation stubs supply IDs and fields. Two protected vanilla builder calls are routed through a package-local access wrapper; their algorithm is unchanged. Invoke Region.addBiomes(null, consumer) and serialize every ordered parameter.",
+  "registration_parameters_per_config": 7595,
+  "registration_configs": [
+    {
+      "name": "default",
+      "json_sha256": "06ae110c9a4311814c85cac66809cf2fd9dd47d79fbe1f695e1741d25697c163"
+    },
+    {
+      "name": "changed",
+      "changes": "Frosted Caves temperature [-0.25,-0.15]; Lost Caves depth [0.4,0.7]; Dripstone Caves temperature [0.2,0.8]",
+      "json_sha256": "7250e377ae4c52dc8c365a2e514683826d6edb99d1aeacff72d4ca661d97f34c"
+    }
+  ],
+  "climate_method": "Construct the actual Minecraft Climate.ParameterList from the default source-produced region. Query 10000 targets in order: first 7595 alternate each box's minimum/maximum coordinates, remainder use java.util.Random(0x5eed), nextInt(24001)-12000 for each axis. Preserve previous-leaf state across queries.",
+  "climate_lookup_count": 10000,
+  "climate_json_sha256": "38a8ad66093278dee08246d9bd0b3dc54c81400f6faed7714f46d6a4732a1d68",
+  "external_reference_sources_sha256": {
+    "ExportParameters.java": "836ea2b0b5f8cb7e8607437f4238585c96df1eb7f7ee547d007a5463f65054fe",
+    "RegistrationReference.java": "d9aa2b4d0e2822c5a844a788fda8fba0c5beb55ddd4c94407e19052464045ff4",
+    "ClimateReference.java": "2bb9d8f4f48fc28434f83908c3841ca3d83ed3b6a4ab4e2615a302121d51aeb9",
+    "VanillaParameters.java": "a2a4230846efd74059ef853e7b00da4324798064f1c44ddc96a7e91de5092735",
+    "ModifiedVanillaOverworldBuilder.java": "ed57fca74e26d8af34c374fa66999afe0bf33d9a9da3dd08c73985b1996e4cd4"
+  },
+  "license_facts": {
+    "TerraBlender": "Public source carries LGPL-3.0-or-later notices; existing license texts are retained in this directory.",
+    "YUNGs-Cave-Biomes": "Public repository LICENSE says All Rights Reserved, Copyright (c) 2022 YUNGNICKYOUNG. No mod implementation or assets copied into this repository; retained fixtures are functional numerical mappings, identifiers and results.",
+    "Minecraft": "Copyright Mojang/Microsoft. Ordered numerical builder output and reference results only; no game implementation or JAR distributed."
+  },
+  "scope": "Registration parameters and ordered climate lookup, not complete Forge lifecycle, arbitrary Mixins, multi-JAR event ordering, final blocks or structure existence. Production reads installed consumer JARs with native Go and never launches Java."
+}

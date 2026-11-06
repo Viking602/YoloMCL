@@ -16,12 +16,13 @@ func uiScale(c *ui.Context) float32 {
 func (a *App) View(c *ui.Context) {
 	a.frameSerial.Add(1)
 	a.drainEvents()
+	a.reconcileSeedMap()
 	a.refreshSystemLanguage()
 	s := uiScale(c)
 	localTheme := *theme
 	localTheme.FontSize = 14.5 * s
-	localTheme.Radius = 9 * s
-	localTheme.Spacing = 16.0 / 3 * s // TextInput pads 1.5×/2.5× this: 8 / 13 DIPs, so 35-DIP fields center their text
+	localTheme.Radius = radiusControl * s
+	localTheme.Spacing = space2 * s // Native half-step spacing also stays on the 4-DIP grid.
 	// The toolkit's bars only hit-test; scrollArea paints the visible thumb.
 	// Keyboard focus: an opaque accent ring, 2 DIPs, 1 DIP off the control,
 	// drawn by the toolkit only when focus came from the keyboard.
@@ -39,7 +40,7 @@ func (a *App) View(c *ui.Context) {
 	}
 	// One continuous chrome material for the title bar and the sidebar; the
 	// content sits on a lighter inset panel (contentPanel).
-	rootCol := ui.Column(c).Fill().Background(chromeBg)
+	rootCol := ui.Column(c).Lang(a.lang()).Fill().Background(chromeBg)
 	draggingFiles := rootCol.FileDragOver()
 	if dropped := rootCol.DroppedFiles(); len(dropped) > 0 {
 		a.handleDroppedFiles(dropped)
@@ -52,12 +53,15 @@ func (a *App) View(c *ui.Context) {
 				// short slide in the direction of travel along the top nav.
 				ui.Box(c.Key("page-slot")).Label("页面视口").Fill().Clip().Children(func() {
 					ui.Column(c.Key("page-" + a.page)).Absolute().Left(0).Top(0).Right(0).Bottom(0).Transition(slideTransition(s, a.pageDir, false)).Children(func() {
+						if a.taskPage(c) {
+							return
+						}
 						if a.page == "settings" {
 							contentPanel(ui.Column(c.Key("content-panel")), s).Grow(1).MinHeight(0).Margin(0, 10*s, 10*s, 10*s).Children(func() { a.preferences(c) })
 							return
 						}
 						if a.page == "home" {
-							a.instanceView(c)
+							a.instancePageWithDraft(func() { a.instanceView(c) })
 							return
 						}
 						if a.page == "discover" {
@@ -79,14 +83,13 @@ func (a *App) View(c *ui.Context) {
 							})
 						})
 					})
-					a.toast(c)
 				})
 			})
 		})
 		if draggingFiles {
 			t := a.tr()
-			popover(ui.Box(c).Absolute().Left(18*s).Right(18*s).Top(56*s).Bottom(18*s), 28*s, s).BorderLinearGradient(ui.LinearGradient{From: accent, To: accentViolet, Angle: 120}).Border(2, accent).Center().Children(func() {
-				ui.Column(c).AlignItems(ui.Center).Gap(14 * s).Padding(36 * s).Children(func() {
+			popover(ui.Box(c).Absolute().Left(18*s).Right(18*s).Top(56*s).Bottom(18*s), radiusDialog*s, s).BorderLinearGradient(ui.LinearGradient{From: accent, To: accentViolet, Angle: 120}).Border(2, accent).Center().Children(func() {
+				ui.Column(c).AlignItems(ui.Center).Gap(16 * s).Padding(36 * s).Children(func() {
 					appleSoftIconBox(c, 68*s, "tasks", accent, accentIndigo, panel)
 					ui.Text(c, t.DropOverlayTitle).FontSize(typeTitle1 * s).Bold().TextColor(ink)
 					label(c, t.DropOverlayDesc).FontSize(typeBody * s)
@@ -95,6 +98,8 @@ func (a *App) View(c *ui.Context) {
 		}
 	})
 	a.dialogView(c, rootCol)
+	a.confirmationView(c)
+	ui.Overlay(c, func() { a.toast(c) })
 }
 
 // windowBar is the title bar of the frameless window and the app's top
@@ -106,7 +111,7 @@ func (a *App) windowBar(c *ui.Context) {
 	s := uiScale(c)
 	tb := a.titlebar(c)
 	height := max(barHeight*s, 36)
-	ui.Row(c.Key("window-title")).Label("主导航").Height(height).FillWidth().Padding(0, tb.Right, 0, tb.Left+18*s).Gap(10 * s).AlignItems(ui.Center).DragWindow().Children(func() {
+	ui.Row(c.Key("window-title")).Label("主导航").Height(height).FillWidth().Padding(0, tb.Right, 0, tb.Left+space5*s).Gap(12 * s).AlignItems(ui.Center).DragWindow().Children(func() {
 		tooltip(c, ui.Row(c.Key("sidebar-brand")).Label(t.BrandAria), t.AppTitle).AlignItems(ui.Center).Gap(space2 * s).Shrink(0).Children(func() {
 			brandMark(c, 23.5*s)
 			ui.Text(c, "YoloMCL").FontSize(typeHeadline * s).FontWeight(800).TextColor(ink).NoWrap()
@@ -115,15 +120,11 @@ func (a *App) windowBar(c *ui.Context) {
 		a.navBar(c)
 		ui.Spacer(c).Grow(1)
 		a.jobPill(c)
-		langBtn := tooltip(c, ui.ButtonBase(c.Key("lang-toggle")).Label(t.LangToggleLabel), t.LangToggleTooltip).Height(btnSm*s).PaddingX(12*s).Gap(5*s).Radius(999).Border(1, glassEdge).Shadow(0, 1, 3, 0, ui.RGBA(40, 52, 110, .08)).AlignItems(ui.Center)
-		if langBtn.Hovered() {
-			langBtn.Background(panel)
-		} else {
-			langBtn.Background(ui.RGBA(255, 255, 255, .6))
-		}
+		langBtn := tooltip(c, ui.ButtonBase(c.Key("lang-toggle")).Label(t.LangToggleLabel), t.LangToggleTooltip).Height(btnMd * s).PaddingX(btnPad * s).Gap(btnGap * s).Font(uiSansFamily()).AlignItems(ui.Center)
+		styleButtonMaterial(langBtn, s, buttonGhost, false)
 		if langBtn.Children(func() {
-			ui.Icon(c, icons["globe"]).Size(12*s, 12*s).TextColor(accent)
-			ui.Text(c, t.LangToggleLabel).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).NoWrap()
+			ui.Icon(c, icons["globe"]).Size(16*s, 16*s).TextColor(inkSecondary)
+			ui.Text(c, t.LangToggleLabel).FontSize(typeCallout * s).FontWeight(600).TextColor(inkSecondary).NoWrap()
 		}).Clicked() {
 			a.toggleLanguage()
 		}
@@ -206,8 +207,8 @@ func (a *App) settingsBack(c *ui.Context) {
 		prev = "home"
 	}
 	name := map[string]string{"home": t.NavHome, "mods": t.NavMods, "discover": t.NavDiscover, "wardrobe": t.NavWardrobe, "tasks": t.NavTasks}[prev]
-	b := tooltip(c, ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel), fmt.Sprintf(a.L("shell.back_to"), name)).Size(34*s, 34*s).Shrink(0).Radius(11 * s).Center()
-	styleButton(b, s, false, false)
+	b := tooltip(c, ui.ButtonBase(c.Key("settings-back")).Label(t.BackLabel), fmt.Sprintf(a.L("shell.back_to"), name)).Size(34*s, 34*s).Shrink(0).Radius(radiusControl * s).Center()
+	styleButtonMaterial(b, s, buttonGhost, false)
 	if b.Children(func() {
 		ui.Icon(c, icons["chevron-left"]).Size(15*s, 15*s).TextColor(inkSecondary)
 	}).Clicked() {
@@ -230,12 +231,12 @@ func (a *App) scrollEndPad(s float32) float32 {
 }
 
 // chromeBg is the shared title bar + sidebar material.
-var chromeBg = ui.Hex("#edf0f7")
+var chromeBg = ui.Hex("#f0f1f3")
 
-var contentBackground = ui.Hex("#f9fafd")
+var contentBackground = ui.Hex("#fafafb")
 
 // contentPanel is the lighter, inset content surface: one hairline, one
 // radius, the same 10-DIP margin to the window edges everywhere.
 func contentPanel(e ui.Element, s float32) ui.Element {
-	return e.Margin(0, 10*s, 10*s, 0).Radius(14*s).Background(contentBackground).Border(1, ui.RGBA(60, 70, 110, .10)).Clip().Shadow(0, 1*s, 3*s, 0, ui.RGBA(30, 40, 80, .04))
+	return e.Margin(0, 8*s, 8*s, 0).Radius(radiusChrome*s).Background(contentBackground).Border(s, line).Clip().Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
 }

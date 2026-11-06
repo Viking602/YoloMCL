@@ -51,6 +51,28 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 	var value any
 	var err error
 	switch method {
+	case "keyBindings":
+		value, err = s.ReadKeyBindingValues(ctx, c.RootID, c.Version)
+	case "gameSettingsBackups":
+		value, err = s.GameSettingsBackups(ctx, c.RootID, c.Version)
+	case "backupGameSettings", "restoreGameSettings":
+		var req GameSettingsBackupRequest
+		if err = json.Unmarshal([]byte(payload), &req); err == nil {
+			if method == "backupGameSettings" {
+				value, err = s.BackupGameSettings(ctx, req)
+			} else {
+				value, err = s.RestoreGameSettings(ctx, req)
+			}
+		}
+	case "saveKeyBindings", "applyKeyBindings":
+		var req KeyBindingsRequest
+		if err = json.Unmarshal([]byte(payload), &req); err == nil {
+			if method == "saveKeyBindings" {
+				value, err = s.SaveKeyBindings(ctx, req)
+			} else {
+				value, err = s.ApplyKeyBindings(ctx, req)
+			}
+		}
 	case "backupWorld":
 		value, err = s.BackupWorld(c.RootID, c.Version, c.Name)
 	case "restoreWorld":
@@ -166,6 +188,8 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		value, err = s.LaunchAgain(c.RootID, c.AccountID)
 	case "stop":
 		err = s.Stop(c.RootID)
+	case "stopSession":
+		err = s.StopSession(c.ID)
 	case "logs":
 		value, err = s.Logs(c.RootID)
 	case "retryJob":

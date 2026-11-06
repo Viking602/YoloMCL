@@ -12,13 +12,15 @@ import (
 
 // World is one save folder in the instance's saves directory.
 type World struct {
-	Dir        string    `json:"dir"`
-	Name       string    `json:"name"`
-	Mode       string    `json:"mode"` // survival, creative, adventure, spectator, hardcore
-	LastPlayed time.Time `json:"lastPlayed,omitempty"`
-	Size       int64     `json:"size"`
-	Backups    int       `json:"backups"`
-	HasIcon    bool      `json:"hasIcon"`
+	Dir           string    `json:"dir"`
+	Name          string    `json:"name"`
+	Mode          string    `json:"mode"` // survival, creative, adventure, spectator, hardcore
+	LastPlayed    time.Time `json:"lastPlayed,omitempty"`
+	Size          int64     `json:"size"`
+	Backups       int       `json:"backups"`
+	HasIcon       bool      `json:"hasIcon"`
+	RandomSeed    int64     `json:"randomSeed"`
+	HasRandomSeed bool      `json:"hasRandomSeed"`
 }
 
 // WorldBackup is one zip in backups/<world>/.
@@ -101,6 +103,7 @@ func readWorldSummary(saves string, en os.DirEntry) World {
 	if levelErr == nil {
 		if f, e := os.Open(level); e == nil {
 			if li, e := ParseLevelDat(f); e == nil {
+				w.RandomSeed, w.HasRandomSeed = li.RandomSeed, li.HasRandomSeed
 				if li.Name != "" {
 					w.Name = li.Name
 				}

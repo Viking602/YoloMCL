@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/buildinfo"
@@ -13,7 +12,7 @@ import (
 func (a *App) aboutSettings(c *ui.Context) {
 	s := uiScale(c)
 	info := buildinfo.Current()
-	glass(ui.Column(c.Key("关于 YoloMCL 面板")).Label("关于 YoloMCL 面板").FillWidth().Padding(space3*s, settingPadX*s).Gap(12*s), radiusCard*s-4*s, s).Children(func() {
+	glass(ui.Column(c.Key("关于 YoloMCL 面板")).Label("关于 YoloMCL 面板").FillWidth().Padding(space3*s, settingPadX*s).Gap(12*s), radiusCard*s, s).Children(func() {
 		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			brandMark(c, 30*s)
 			ui.Text(c, "YoloMCL").Font("MCL Pixel").FontSize(typeTitle2 * s).TextColor(ink).NoWrap().Shrink(0)
@@ -26,7 +25,7 @@ func (a *App) aboutSettings(c *ui.Context) {
 			if iconOnlyButton(c, "about-github", "github", "GitHub / "+buildinfo.Repository, btnSm*s, false) {
 				c.OpenURL(buildinfo.RepositoryURL)
 			}
-			if fixedButton(c, "about-commit", info.ShortCommit(), "", 0, btnSm*s, false, info.Commit == "") {
+			if variantButton(c, "about-commit", info.ShortCommit(), "", buttonText, info.Commit == "") {
 				c.OpenURL(buildinfo.RepositoryURL + "/commit/" + info.Commit)
 			}
 			if fixedButton(c, "open-data", a.tr().SettingsOpenDataBtn, "folder", 0, btnSm*s, false, false) {
@@ -84,7 +83,7 @@ func (a *App) launcherUpdateButton(c *ui.Context) {
 	s := uiScale(c)
 	switch a.launcherUpdate.phase {
 	case "disabled":
-		if fixedButton(c, "launcher-download", a.L("about.get_release"), "download", 0, btnSm*s, false, false) {
+		if variantButton(c, "launcher-download", a.L("about.get_release"), "download", buttonText, false) {
 			c.OpenURL(buildinfo.ReleasesURL + "/latest")
 		}
 	case "available", "installing":
@@ -93,7 +92,7 @@ func (a *App) launcherUpdateButton(c *ui.Context) {
 		}
 	case "ready":
 		if fixedButton(c, "launcher-restart", a.L("about.restart_launcher"), "refresh", 0, btnSm*s, true, a.launcherRestartBlocked()) {
-			mygo.App.Relaunch()
+			a.restartLauncher()
 		}
 	default:
 		if fixedButton(c, "launcher-check", a.L("about.check_for_updates"), "refresh", 0, btnSm*s, false, a.launcherUpdate.phase == "checking") {

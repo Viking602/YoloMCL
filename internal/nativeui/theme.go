@@ -2,17 +2,17 @@ package nativeui
 
 import "github.com/egoist/mygo/ui"
 
-// Apple-inspired light palette: aurora canvas, frosted white surfaces, system accents.
+// Light desktop chrome: paper surfaces, blue accents and quiet separators.
 var (
-	bg            = ui.Hex("#f1f4fb")
+	bg            = ui.Hex("#f3f4f6")
 	panel         = ui.Hex("#ffffff")
-	raised        = ui.RGBA(246, 248, 252, .9)
-	line          = ui.RGBA(60, 72, 110, .10)
-	lineStrong    = ui.RGBA(60, 72, 110, .18)
+	raised        = ui.Hex("#f8f9fa")
+	line          = ui.RGBA(15, 23, 42, .10)
+	lineStrong    = ui.RGBA(15, 23, 42, .18)
 	glassEdge     = ui.RGBA(255, 255, 255, .9)
-	ink           = ui.Hex("#1d1d1f")
-	inkSecondary  = ui.Hex("#3a3a44")
-	muted         = ui.Hex("#5f6170") // ≥4.5:1 on frosted white over the aurora
+	ink           = ui.Hex("#222833")
+	inkSecondary  = ui.Hex("#424956")
+	muted         = ui.Hex("#626b78")
 	accent        = ui.Hex("#007aff") // Apple System Blue
 	accentIndigo  = ui.Hex("#5e5ce6") // Apple System Indigo
 	accentViolet  = ui.Hex("#af52de") // Apple System Purple
@@ -21,8 +21,8 @@ var (
 	blue          = ui.Hex("#0a84ff")
 	danger        = ui.Hex("#ff3b30") // Apple System Red
 	dangerSoft    = ui.RGBA(255, 59, 48, .10)
-	fieldColor    = ui.RGBA(118, 128, 160, .10)
-	fieldHover    = ui.RGBA(118, 128, 160, .17)
+	fieldColor    = ui.Hex("#f0f1f3")
+	fieldHover    = ui.Hex("#e7e9ed")
 	selectedColor = ui.RGBA(0, 122, 255, .14)
 	success       = ui.Hex("#34c759") // Apple System Green
 	successInk    = ui.Hex("#15803d")
@@ -52,18 +52,19 @@ func newTheme() *ui.Theme {
 	theme.Warning = warningInk
 	theme.Font = uiFontFamily(titlebarOS())
 	theme.FontSize = 14.5
-	theme.Radius = 9
-	theme.Spacing = 16.0 / 3
-	theme.Focus = ui.RGBA(0, 122, 255, .25)
+	theme.Radius = radiusControl
+	theme.Spacing = space2
+	theme.Focus = accent.Alpha(.25)
+	theme.Selection = selectedColor
 	return theme
 }
 
-// Apple Oklab gradient helpers.
+// Shared blue-to-indigo accent for primary actions and selected items.
 func appleAccentGradient(hovered bool) ui.LinearGradient {
 	if hovered {
-		return ui.LinearGradient{From: ui.Hex("#2b95ff"), To: ui.Hex("#7471f0"), Angle: 120}
+		return ui.LinearGradient{From: buttonMaterials[buttonPrimary].hoverTop, To: buttonMaterials[buttonPrimary].hoverBottom, Angle: 120}
 	}
-	return ui.LinearGradient{From: ui.Hex("#0a84ff"), To: accentIndigo, Angle: 120}
+	return ui.LinearGradient{From: buttonMaterials[buttonPrimary].top, To: buttonMaterials[buttonPrimary].bottom, Angle: 120}
 }
 
 // tintGradient is the two-tone squircle fill of a colored row or header icon.
@@ -71,16 +72,14 @@ func tintGradient(from, to ui.Color) ui.LinearGradient {
 	return ui.LinearGradient{From: from, To: to, Angle: 135}
 }
 
-// glass styles e as a frosted surface: translucent white over the aurora
-// canvas, a bright hairline edge and a soft two-layer ambient shadow.
+// Existing surface helper uses opaque paper with a quiet contact edge.
 func glass(e ui.Element, radius, s float32) ui.Element {
-	return e.Radius(radius).LinearGradient(ui.LinearGradient{From: ui.RGBA(255, 255, 255, .82), To: ui.RGBA(255, 255, 255, .66), Angle: 180}).
-		Border(1, glassEdge).Shadow(0, 12*s, 32*s, -10*s, ui.RGBA(40, 52, 110, .14)).Shadow(0, 1*s, 3*s, 0, ui.RGBA(40, 52, 110, .05))
+	return e.Radius(radius).Background(panel).Border(s, line).Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
 }
 
 // popover styles floating layers (dialogs, menus) that sit above content
 // and must stay legible over anything.
 func popover(e ui.Element, radius, s float32) ui.Element {
-	return e.Radius(radius).LinearGradient(ui.LinearGradient{From: ui.RGBA(255, 255, 255, 1), To: ui.RGBA(248, 249, 253, 1), Angle: 180}).
-		Border(1, glassEdge).Shadow(0, 24*s, 60*s, -12*s, ui.RGBA(30, 40, 90, .28)).Shadow(0, 0, 0, 1, ui.RGBA(30, 40, 90, .06))
+	return e.Radius(radius).Background(panel).Border(s, lineStrong).
+		Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .08)).Shadow(0, 8*s, 16*s, -5*s, ui.RGBA(0, 0, 0, .14))
 }

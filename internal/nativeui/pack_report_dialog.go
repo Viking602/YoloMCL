@@ -26,7 +26,7 @@ func (a *App) packDialog(c *ui.Context) {
 		}
 	}
 	for _, f := range r.Files {
-		ui.Row(c).Gap(14 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(16 * s).AlignItems(ui.Center).Children(func() {
 			pathLabel(c, f.Path, 13*s)
 			status := a.packFileStatusText(f.Status)
 			color := muted

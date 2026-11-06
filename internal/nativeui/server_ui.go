@@ -136,7 +136,7 @@ func (a *App) ovServer(c *ui.Context, st launcher.InstanceStatus) {
 			a.contentBody(c, "server-details").Grow(1).MinHeight(0).Gap(12 * s).Justify(ui.Center).Children(func() {
 				ui.Row(c.Key("server-identity")).Label("服务器标识").FillWidth().Height(66 * s).Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 					a.serverIcon(c, probe.icon)
-					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 						tooltip(c, ui.Text(c, address).FontSize(typeTitle2*s).FontWeight(650).TextColor(ink).SingleLine().FillWidth(), address)
 						description := a.L("server_ui.multiplayer_server")
 						if info != nil && info.Description != "" {
@@ -154,7 +154,7 @@ func (a *App) ovServer(c *ui.Context, st launcher.InstanceStatus) {
 				text = a.L("server_ui.attempted")
 			}
 			tooltip(c, ui.Text(c, text+agoText(a, server.Connected)).FontSize(typeCaption*s).TextColor(muted).SingleLine().Grow(1).Basis(0).MinWidth(0), server.Connected.Local().Format("2006-01-02 15:04:05"))
-			copy := ui.ButtonBase(c.Key("ov-copy-server")).Label(a.L("server_ui.copy_address")).Height(28 * s).PaddingX(8 * s).Radius(8 * s).Gap(5 * s).Shrink(0).AlignItems(ui.Center)
+			copy := ui.ButtonBase(c.Key("ov-copy-server")).Label(a.L("server_ui.copy_address")).Height(28 * s).PaddingX(8 * s).Radius(radiusChip * s).Gap(4 * s).Shrink(0).AlignItems(ui.Center)
 			color := ui.Transparent
 			if copy.Hovered() {
 				color = accentSoft
@@ -183,8 +183,8 @@ func (a *App) serverStatusBadge(c *ui.Context, probe serverProbe) {
 	} else if !probe.checked.IsZero() {
 		text, label = a.L("server_ui.unreachable"), a.L("server_ui.server_unreachable")
 	}
-	ui.Row(c.Key("server-status-slot")).Label("服务器状态").Height(23 * s).PaddingX(8 * s).Gap(5 * s).Radius(999).Background(color.Alpha(.08)).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(5*s, 5*s).Radius(3 * s).Background(color).Shrink(0)
+	ui.Row(c.Key("server-status-slot")).Label("服务器状态").Height(23 * s).PaddingX(8 * s).Gap(4 * s).Radius(radiusPill).Background(color.Alpha(.08)).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Size(5*s, 5*s).Radius(radiusMin * s).Background(color).Shrink(0)
 		numText(c, text, typeCaption*s, color).Label(label).FontWeight(600)
 	})
 }
@@ -200,7 +200,7 @@ func (a *App) serverMetrics(c *ui.Context, info *launcher.ServerStatus) {
 			version = info.Version
 		}
 	}
-	ui.Row(c.Key("server-metrics")).Label("服务器数据").FillWidth().Height(68*s).Shrink(0).Padding(10*s, 12*s).Gap(12 * s).Radius(10 * s).Background(ui.RGBA(100, 120, 160, .055)).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("server-metrics")).Label("服务器数据").FillWidth().Height(68*s).Shrink(0).Padding(12*s, 12*s).Gap(12 * s).Radius(radiusControl * s).Background(ui.RGBA(100, 120, 160, .055)).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(.8).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, a.L("server_ui.players_online")).FontSize(typeCaption * s).TextColor(muted).SingleLine().FillWidth()
 			numText(c, players, typeTitle*s, ink).FontWeight(650).SingleLine().FillWidth()
@@ -215,7 +215,7 @@ func (a *App) serverMetrics(c *ui.Context, info *launcher.ServerStatus) {
 
 func (a *App) serverIcon(c *ui.Context, source ui.ImageSource) {
 	s := uiScale(c)
-	ui.Box(c.Key("server-icon-slot")).Label("服务器图标").Size(42*s, 42*s).Radius(12 * s).Background(accentSoft).Clip().Center().Shrink(0).Children(func() {
+	ui.Box(c.Key("server-icon-slot")).Label("服务器图标").Size(42*s, 42*s).Radius(radiusControl * s).Background(accentSoft).Clip().Center().Shrink(0).Children(func() {
 		if source != nil {
 			img := ui.Image(c.Key("server-icon-image"), source).Size(42*s, 42*s).Fit(ui.Cover)
 			if !c.Preferences().ReduceMotion {

@@ -58,9 +58,9 @@ func (a *App) loadAppearance() {
 			if a.offlineDefault() {
 				a.showVanilla(normalizeSkinModel(v.Model))
 			}
-			if h := skinHead(imageFromData(v.Skin)); h != nil {
-				a.accountHead(launcher.Account{ID: id}) // ensure cache maps exist
-				a.avatars.heads[id] = ui.NewBitmap(h).Pixelated()
+			if h := accountSkinHead(*ac, launcher.AccountSkin{Skin: v.Skin, Model: v.Model}); h != nil {
+				a.invalidateHead(id)
+				a.rememberHead(id, ui.NewBitmap(h).Pixelated())
 			}
 			a.selectedCape = t.WardrobeCapeNone
 			for _, cape := range v.Capes {

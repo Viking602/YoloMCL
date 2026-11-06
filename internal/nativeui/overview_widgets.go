@@ -15,7 +15,7 @@ var overviewCardBackground = ui.RGBA(255, 255, 255, .76).Over(contentBackground)
 func ovRegion(c *ui.Context, key, title string, actions, fn func()) {
 	s := uiScale(c)
 	ui.Column(c.Key(key)).Label(title).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Clip().Padding(16*s, 20*s).Gap(4*s).Radius(radiusCard*s).Background(overviewCardBackground).Border(1, glassEdge).Shadow(0, 1*s, 3*s, 0, ui.RGBA(40, 52, 110, .05)).Children(func() {
-		ui.Row(c).FillWidth().Height(30 * s).Shrink(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Height(30 * s).Shrink(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			tooltip(c, ui.Text(c, title).FontSize(typeHeadline*s).FontWeight(700).TextColor(ink).SingleLine().Grow(1).MinWidth(0), title)
 			if actions != nil {
 				actions()
@@ -53,10 +53,10 @@ func valueText(c *ui.Context, v string) {
 // the global page for account and defaults.
 func (a *App) instanceScopeNote(c *ui.Context) {
 	s := uiScale(c)
-	ui.Row(c.Key("inst-scope-note")).Label("实例设置范围").FillWidth().Height(40 * s).PaddingX(14 * s).Gap(10 * s).Radius(10 * s).Background(ui.RGBA(120, 130, 160, .07)).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("inst-scope-note")).Label("实例设置范围").FillWidth().Height(40 * s).PaddingX(16 * s).Gap(12 * s).Radius(radiusControl * s).Background(ui.RGBA(120, 130, 160, .07)).AlignItems(ui.Center).Children(func() {
 		ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(muted).Shrink(0)
 		label(c, a.L("overview_widgets.only_this_instance_account_and_defaults_are_global")).FontSize(typeFootnote * s).SingleLine().Grow(1).Basis(0).MinWidth(0)
-		b := ui.ButtonBase(c.Key("inst-open-global")).Label(a.L("overview_widgets.global_settings")).Height(26 * s).PaddingX(8 * s).Radius(7 * s).Gap(4 * s).AlignItems(ui.Center).Shrink(0)
+		b := ui.ButtonBase(c.Key("inst-open-global")).Label(a.L("overview_widgets.global_settings")).Height(26 * s).PaddingX(8 * s).Radius(radiusChip * s).Gap(4 * s).AlignItems(ui.Center).Shrink(0)
 		bg := ui.Transparent
 		if b.Hovered() {
 			bg = accentSoft

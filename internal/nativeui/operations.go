@@ -18,6 +18,8 @@ type pendingRequest struct {
 // their own request's pending state, so adding a new command cannot dim the
 // rest of the window. Read-only commands do not rescan installed instances.
 var commandNoSnapshot = map[string]bool{
+	"keyBindings": true, "saveKeyBindings": true, "applyKeyBindings": true,
+	"gameSettingsBackups": true, "backupGameSettings": true, "restoreGameSettings": true,
 	"logs": true, "versions": true, "fetchAuthServerName": true,
 	"checkPack": true, "packUpdateReport": true, "planPackUpdate": true,
 	"inspectPack": true, "previewRemotePack": true, "startMicrosoft": true,

@@ -1,0 +1,11 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/cubiomes/modjar
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkInstalledRegistration-16    	      67	   9060633 ns/op	10339616 B/op	   24576 allocs/op
+BenchmarkInstalledRegistration-16    	      57	   9614228 ns/op	10245737 B/op	   24572 allocs/op
+BenchmarkInstalledRegistration-16    	      80	  10469282 ns/op	10249274 B/op	   24573 allocs/op
+BenchmarkInstalledRegistration-16    	      67	  10640457 ns/op	10245315 B/op	   24572 allocs/op
+BenchmarkInstalledRegistration-16    	      76	  10689968 ns/op	10248187 B/op	   24573 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/cubiomes/modjar	4.050s

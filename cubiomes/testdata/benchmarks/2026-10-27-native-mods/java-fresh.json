@@ -1,0 +1,133 @@
+{
+  "java": "26.0.2+10",
+  "method": "BiomeSource.createCachingResolver(RandomState) recreated per raster; registry IDs into reused short[16384]; 2s warmup; 5 rounds \u003e\u003d500ms; no I/O, startup, transport or formatting in timed region",
+  "results": [
+    {
+      "seed": "42",
+      "dimension": "overworld",
+      "warmup_iterations": 59,
+      "median_ns_per_tile": 3.283159375E7,
+      "rounds": [
+        {
+          "iterations": 16,
+          "elapsed_ns": 510240800,
+          "ns_per_tile": 3.189005E7
+        },
+        {
+          "iterations": 15,
+          "elapsed_ns": 503649600,
+          "ns_per_tile": 3.357664E7
+        },
+        {
+          "iterations": 16,
+          "elapsed_ns": 525050700,
+          "ns_per_tile": 3.281566875E7
+        },
+        {
+          "iterations": 16,
+          "elapsed_ns": 529630300,
+          "ns_per_tile": 3.310189375E7
+        },
+        {
+          "iterations": 16,
+          "elapsed_ns": 525305500,
+          "ns_per_tile": 3.283159375E7
+        }
+      ],
+      "fnv1a_names": "ab0ba4dd63717fca",
+      "range": [
+        8192,
+        64,
+        -8192,
+        4,
+        128,
+        128
+      ]
+    },
+    {
+      "seed": "42",
+      "dimension": "nether",
+      "warmup_iterations": 458,
+      "median_ns_per_tile": 4494452.678571428,
+      "rounds": [
+        {
+          "iterations": 113,
+          "elapsed_ns": 504910300,
+          "ns_per_tile": 4468232.743362832
+        },
+        {
+          "iterations": 109,
+          "elapsed_ns": 500576100,
+          "ns_per_tile": 4592441.28440367
+        },
+        {
+          "iterations": 115,
+          "elapsed_ns": 503978200,
+          "ns_per_tile": 4382419.130434782
+        },
+        {
+          "iterations": 112,
+          "elapsed_ns": 503378700,
+          "ns_per_tile": 4494452.678571428
+        },
+        {
+          "iterations": 109,
+          "elapsed_ns": 503161100,
+          "ns_per_tile": 4616156.880733945
+        }
+      ],
+      "fnv1a_names": "7d81057eaf752324",
+      "range": [
+        8192,
+        64,
+        -8192,
+        4,
+        128,
+        128
+      ]
+    },
+    {
+      "seed": "42",
+      "dimension": "end",
+      "warmup_iterations": 20,
+      "median_ns_per_tile": 1.0085428E8,
+      "rounds": [
+        {
+          "iterations": 5,
+          "elapsed_ns": 504271400,
+          "ns_per_tile": 1.0085428E8
+        },
+        {
+          "iterations": 5,
+          "elapsed_ns": 510984900,
+          "ns_per_tile": 1.0219698E8
+        },
+        {
+          "iterations": 6,
+          "elapsed_ns": 588995800,
+          "ns_per_tile": 9.816596666666667E7
+        },
+        {
+          "iterations": 5,
+          "elapsed_ns": 510438100,
+          "ns_per_tile": 1.0208762E8
+        },
+        {
+          "iterations": 5,
+          "elapsed_ns": 502993200,
+          "ns_per_tile": 1.0059864E8
+        }
+      ],
+      "fnv1a_names": "4bc91a14694ced36",
+      "range": [
+        8192,
+        64,
+        -8192,
+        4,
+        128,
+        128
+      ]
+    }
+  ],
+  "minecraft": "26.3"
+}

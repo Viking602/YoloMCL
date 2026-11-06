@@ -26,7 +26,9 @@ func settingsTester(t *testing.T) (*App, *ui.Tester) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	t.Cleanup(a.cancel)
+	// Finish background settings saves before the next test measures process-
+	// wide allocations or removes this fixture's temporary data directory.
+	t.Cleanup(func() { a.cancel(); a.bgWG.Wait() })
 	a.systemLanguage = LangZH // deterministic system preference for this fixture
 	a.normalizeStateValues()
 	a.page = "settings"
@@ -93,6 +95,32 @@ func TestSettingsApprovedLayoutAndSmallWindow(t *testing.T) {
 	tt.Scroll(700, 400, 0, 10000)
 	if r, ok := tt.Find("关于 YoloMCL 面板"); !ok || r.W <= 0 || r.H <= 0 || r.Y < 42 || r.Y+r.H > 720 {
 		t.Fatalf("About footer is not reachable: %+v", r)
+	}
+}
+
+func TestSettingsAccountUsesSharedTypeBadge(t *testing.T) {
+	for _, lang := range []string{LangZH, LangEN} {
+		a, tt := settingsTester(t)
+		a.OverrideLanguage(lang)
+		a.snapshot.Accounts = []launcher.Account{{ID: "official", Name: "Official Player", Kind: "microsoft"}, {ID: "offline", Name: "Offline Player", Kind: "offline"}}
+		for _, size := range [][2]int{{1536, 1024}, {900, 600}} {
+			tt.SetSize(size[0], size[1])
+			for _, ac := range a.snapshot.Accounts {
+				a.snapshot.ActiveAccount = ac.ID
+				tt.Frame()
+				tt.Advance(250 * time.Millisecond)
+				badge, ok := tt.Find("类型标签 " + ac.Kind)
+				icon, iconOK := tt.Find("类型图标 " + ac.Kind)
+				panel, panelOK := tt.Find("账号面板")
+				if !ok || !iconOK || !panelOK || icon.W <= 0 || icon.X < badge.X || icon.X+icon.W > badge.X+badge.W || badge.X < panel.X || badge.X+badge.W > panel.X+panel.W {
+					t.Fatalf("settings account badge is missing or clipped: %s badge=%+v icon=%+v panel=%+v", ac.Kind, badge, icon, panel)
+				}
+				if !tt.HasText(fmt.Sprintf(a.L("settings.accounts"), len(a.snapshot.Accounts))) {
+					t.Fatal("account count was lost when showing the shared badge")
+				}
+				snapshotUI(t, tt, fmt.Sprintf("settings-account-%s-%s-%d", lang, ac.Kind, size[0]))
+			}
+		}
 	}
 }
 

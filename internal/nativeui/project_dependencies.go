@@ -91,18 +91,39 @@ func (a *App) ensurePlan() {
 	}()
 }
 
-// planChecked: missing required rows default on, optional off.
-func (a *App) planChecked(it launcher.PlanItem) bool {
-	if v, ok := a.planOff[it.Key]; ok {
-		return !v
+// planNeeded follows required edges from the target, active installed mods and
+// explicitly selected extras. Cycles cannot activate an unchecked optional
+// branch, and a shared child stays selected while any active parent needs it.
+func (a *App) planNeeded() map[string]bool {
+	needed := map[string]bool{}
+	children := map[string][]string{}
+	var queue []string
+	for _, it := range a.plan {
+		parents := it.RequiredBy
+		if len(parents) == 0 && it.Role == "required" && it.Parent != "" {
+			parents = []string{it.Parent}
+		}
+		for _, parent := range parents {
+			children[parent] = append(children[parent], it.Key)
+		}
+		selected := it.Role == "target" || it.Status == "installed" || (it.Role == "required" && len(parents) == 0)
+		if off, explicit := a.planOff[it.Key]; explicit && it.Role != "target" {
+			selected = !off
+		}
+		if selected {
+			needed[it.Key] = true
+			queue = append(queue, it.Key)
+		}
 	}
-	switch it.Status {
-	case "install":
-		return it.Role == "target" || it.Role == "required"
-	case "disabled":
-		return it.Role == "required"
+	for i := 0; i < len(queue); i++ {
+		for _, child := range children[queue[i]] {
+			if !needed[child] && !a.planOff[child] {
+				needed[child] = true
+				queue = append(queue, child)
+			}
+		}
 	}
-	return false
+	return needed
 }
 
 func (a *App) planJobState() *launcher.Job {
@@ -119,8 +140,9 @@ func (a *App) planJobState() *launcher.Job {
 
 // planSelection is what one confirm installs.
 func (a *App) planSelection() (items []launcher.PlanInstall, enable, skip []string) {
+	needed := a.planNeeded()
 	for _, it := range a.plan {
-		on := a.planChecked(it)
+		on := needed[it.Key]
 		switch {
 		case it.Role == "target" && (it.Status == "install"):
 			replace := a.planReplace
@@ -155,6 +177,7 @@ func (a *App) planTitle(it launcher.PlanItem) string {
 
 func (a *App) installDeps(c *ui.Context) {
 	s := uiScale(c)
+	needed := a.planNeeded()
 	var deps []launcher.PlanItem
 	var target *launcher.PlanItem
 	for i := range a.plan {
@@ -172,7 +195,7 @@ func (a *App) installDeps(c *ui.Context) {
 		}
 		note.Height(note.AnimateTo("height", noteH, motionMove)).Children(func() {
 			if noteH > 0 {
-				ui.Row(c.Key("installed-mod-note")).FillWidth().Height(38 * s).PaddingX(14 * s).Radius(10 * s).Background(accentSoft).Gap(10 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
+				ui.Row(c.Key("installed-mod-note")).FillWidth().Height(38 * s).PaddingX(16 * s).Radius(radiusControl * s).Background(accentSoft).Gap(12 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
 					ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
 					msg := a.L("project_dependencies.this_mod_is_already_installed")
 					if target.Note != "" {
@@ -182,8 +205,8 @@ func (a *App) installDeps(c *ui.Context) {
 				})
 			}
 		})
-		ui.Column(c.Key("dependency-content")).FillWidth().Gap(10 * s).Children(func() {
-			ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Column(c.Key("dependency-content")).FillWidth().Gap(12 * s).Children(func() {
+			ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, a.L("project_dependencies.dependencies")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
 				if len(deps) > 0 {
 					numText(c, fmt.Sprint(len(deps)), typeFootnote*s, muted)
@@ -200,7 +223,7 @@ func (a *App) installDeps(c *ui.Context) {
 				}
 			})
 			if !a.selectedProjectVersionFits() {
-				ui.Row(c.Key("dependency-incompatible")).FillWidth().MinHeight(54 * s).Padding(12 * s).Radius(10 * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
+				ui.Row(c.Key("dependency-incompatible")).FillWidth().MinHeight(54 * s).Padding(12 * s).Radius(radiusControl * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
 					ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(warningInk).Shrink(0)
 					ui.Text(c, a.L("project_dependencies.this_version_does_not_match_the_instance_choose")).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0)
 				})
@@ -214,7 +237,7 @@ func (a *App) installDeps(c *ui.Context) {
 			}
 			if a.planErr != "" {
 				u := a.planErrUI
-				ui.Column(c).FillWidth().Padding(12*s, 14*s).Radius(10 * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).Children(func() {
+				ui.Column(c).FillWidth().Padding(12*s, 16*s).Radius(radiusControl * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).Children(func() {
 					ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 						ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(warningInk).Shrink(0)
 						ui.Text(c, u.Title).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).Grow(1).MinWidth(0)
@@ -235,7 +258,7 @@ func (a *App) installDeps(c *ui.Context) {
 			}
 			// Reserve one row while checking; grow the viewport as rows arrive.
 			// Text and icons stay at native size, with only opacity/position animated.
-			box := ui.Box(c.Key("dependency-list")).Label("前置列表").FillWidth().Radius(12*s).Border(1, line).Clip()
+			box := ui.Box(c.Key("dependency-list")).Label("前置列表").FillWidth().Radius(radiusControl*s).Border(1, line).Clip()
 			h := float32(max(1, len(deps))*55+2) * s
 			box.Height(box.AnimateTo("height", h, motionMove)).Children(func() {
 				ui.Column(c.Key("dependency-rows-" + a.planKey)).FillWidth().Shrink(0).Transition(heroSwap(c)).Children(func() {
@@ -244,7 +267,7 @@ func (a *App) installDeps(c *ui.Context) {
 						if a.planLoading {
 							key, txt = "loading", a.L("project_dependencies.checking_dependencies")
 						}
-						ui.Row(c.Key("dependency-" + key)).Label("前置状态").FillWidth().Height(54 * s).PaddingX(14 * s).Gap(10 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
+						ui.Row(c.Key("dependency-" + key)).Label("前置状态").FillWidth().Height(54 * s).PaddingX(16 * s).Gap(12 * s).AlignItems(ui.Center).Transition(heroSwap(c)).Children(func() {
 							if a.planLoading {
 								statusSpinner(c, 14*s)
 							} else {
@@ -259,7 +282,7 @@ func (a *App) installDeps(c *ui.Context) {
 							if i > 0 {
 								ui.Box(c).FillWidth().Height(s).Background(line).Margin(0, 0, 0, 56*s)
 							}
-							a.depRow(c, it)
+							a.depRow(c, it, needed[it.Key])
 						})
 					}
 				})
@@ -268,29 +291,29 @@ func (a *App) installDeps(c *ui.Context) {
 	})
 }
 
-func (a *App) depRow(c *ui.Context, it launcher.PlanItem) {
+func (a *App) depRow(c *ui.Context, it launcher.PlanItem, on bool) {
 	s := uiScale(c)
 	job := a.planJobState()
 	checkable := it.Status == "install" || it.Status == "disabled"
-	on := a.planChecked(it)
-	b := ui.ButtonBase(c.Key("dep-" + it.Key)).Label(it.Title).FillWidth().Height(54 * s).PaddingX(14 * s).Gap(12 * s).AlignItems(ui.Center).Disabled(!checkable || job != nil)
+	on = on && checkable
+	b := ui.ButtonBase(c.Key("dep-" + it.Key)).Label(it.Title).FillWidth().Height(54 * s).PaddingX(16 * s).Gap(12 * s).AlignItems(ui.Center).Disabled(!checkable || job != nil)
 	if b.Hovered() && checkable {
 		b.Background(ui.RGBA(120, 130, 160, .06))
 	}
 	if b.Children(func() {
 		// checkbox
-		ui.Box(c).Size(18*s, 18*s).Radius(5*s).Shrink(0).Border(1.5, map[bool]ui.Color{true: accent, false: ui.RGBA(60, 70, 110, .28)}[on && checkable]).Background(map[bool]ui.Color{true: accent, false: ui.Transparent}[on && checkable]).Opacity(map[bool]float32{true: 1, false: .35}[checkable]).Center().Children(func() {
+		ui.Box(c).Size(18*s, 18*s).Radius(radiusChip*s).Shrink(0).Border(1.5, map[bool]ui.Color{true: accent, false: ui.RGBA(60, 70, 110, .28)}[on && checkable]).Background(map[bool]ui.Color{true: accent, false: ui.Transparent}[on && checkable]).Opacity(map[bool]float32{true: 1, false: .35}[checkable]).Center().Children(func() {
 			if on && checkable {
 				ui.Icon(c, icons["check"]).Size(11*s, 11*s).TextColor(panel)
 			}
 		})
 		size := 30 * s
 		if img := a.remoteImage(it.Icon); img != nil {
-			ui.Box(c).Size(size, size).Radius(size * .22).Clip().Shrink(0).Children(func() { ui.Image(c, img).Size(size, size).Fit(ui.Contain) })
+			ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Clip().Shrink(0).Children(func() { ui.Image(c, img).Size(size, size).Fit(ui.Contain) })
 		} else {
 			letterTile(c, it.Title, size, false)
 		}
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, a.planTitle(it)).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).SingleLine().FillWidth().MinWidth(0)
 			sub := it.Version
 			if it.Title != a.planTitle(it) {
@@ -310,6 +333,7 @@ func (a *App) depRow(c *ui.Context, it launcher.PlanItem) {
 			a.planOff = map[string]bool{}
 		}
 		a.planOff[it.Key] = on
+		a.projectEdited = true
 	}
 }
 
@@ -327,8 +351,9 @@ func (a *App) depStatus(c *ui.Context, it launcher.PlanItem, job *launcher.Job) 
 			case st == "done":
 				quietTag(c, a.L("install_dialog.done"), successInk)
 			default:
-				quietTag(c, a.L("job.state.failed"), danger)
-				tooltip(c, ui.Box(c).Size(0, 0), classifyError(a.isEN(), strings.TrimPrefix(st, "failed: "), nil).Text())
+				tooltip(c, ui.ButtonBase(c.Key("dep-error-"+it.Key)).Label(a.L("job.state.failed")), classifyError(a.isEN(), strings.TrimPrefix(st, "failed: "), nil).Text()).Children(func() {
+					quietTag(c, a.L("job.state.failed"), danger)
+				})
 			}
 			return
 		}

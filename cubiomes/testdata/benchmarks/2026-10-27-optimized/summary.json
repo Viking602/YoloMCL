@@ -1,0 +1,414 @@
+{
+  "before": {
+    "BenchmarkReference/b1.7.3/Overworld": {
+      "ns/op": 2306590.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.6.4/Overworld": {
+      "ns/op": 97774.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.7.10/Overworld": {
+      "ns/op": 185239.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.12.2/Overworld": {
+      "ns/op": 187836.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.16.5/Overworld": {
+      "ns/op": 246759.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.17.1/Overworld": {
+      "ns/op": 248908.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.20.1/Overworld": {
+      "ns/op": 27237857.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.20.1/Large": {
+      "ns/op": 22941569.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.17.1/Nether": {
+      "ns/op": 2046679.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.17.1/End": {
+      "ns/op": 1007138.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.20.1/End": {
+      "ns/op": 887139.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/b1.7.3/Overworld": {
+      "ns/op": 7983.0,
+      "B/op": 9152.0,
+      "allocs/op": 26.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.6.4/Overworld": {
+      "ns/op": 2805.0,
+      "B/op": 10240.0,
+      "allocs/op": 12.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.7.10/Overworld": {
+      "ns/op": 3359.0,
+      "B/op": 11472.0,
+      "allocs/op": 13.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.12.2/Overworld": {
+      "ns/op": 3345.0,
+      "B/op": 11472.0,
+      "allocs/op": 13.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.16.5/Overworld": {
+      "ns/op": 4264.0,
+      "B/op": 11832.0,
+      "allocs/op": 15.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.17.1/Overworld": {
+      "ns/op": 4275.0,
+      "B/op": 11832.0,
+      "allocs/op": 15.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.20.1/Overworld": {
+      "ns/op": 4318630.0,
+      "B/op": 1788496.0,
+      "allocs/op": 7849.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.20.1/Large": {
+      "ns/op": 4231374.0,
+      "B/op": 1788340.0,
+      "allocs/op": 7833.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.17.1/Nether": {
+      "ns/op": 20062.0,
+      "B/op": 9616.0,
+      "allocs/op": 31.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.17.1/End": {
+      "ns/op": 19514.0,
+      "B/op": 5944.0,
+      "allocs/op": 12.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.20.1/End": {
+      "ns/op": 2648613.0,
+      "B/op": 1445366.0,
+      "allocs/op": 4762.0,
+      "rounds": 5
+    },
+    "BenchmarkEndMoving/1.17.1": {
+      "ns/op": 1040503.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkEndMoving/1.20.1": {
+      "ns/op": 1039073.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkBuiltinDocuments": {
+      "ns/op": 2226834.0,
+      "B/op": 1374810.0,
+      "allocs/op": 4419.0,
+      "rounds": 5
+    },
+    "BenchmarkCompileSeed": {
+      "ns/op": 1121841.0,
+      "B/op": 351790.0,
+      "allocs/op": 3119.0,
+      "rounds": 5
+    }
+  },
+  "after": {
+    "BenchmarkReference/b1.7.3/Overworld": {
+      "ns/op": 2414019.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.6.4/Overworld": {
+      "ns/op": 77709.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.7.10/Overworld": {
+      "ns/op": 165016.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.12.2/Overworld": {
+      "ns/op": 164593.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.16.5/Overworld": {
+      "ns/op": 227186.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.17.1/Overworld": {
+      "ns/op": 226263.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.20.1/Overworld": {
+      "ns/op": 22480081.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.20.1/Large": {
+      "ns/op": 19525120.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.17.1/Nether": {
+      "ns/op": 2093509.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.17.1/End": {
+      "ns/op": 110748.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReference/1.20.1/End": {
+      "ns/op": 162344.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/b1.7.3/Overworld": {
+      "ns/op": 8254.0,
+      "B/op": 9184.0,
+      "allocs/op": 26.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.6.4/Overworld": {
+      "ns/op": 2862.0,
+      "B/op": 10272.0,
+      "allocs/op": 12.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.7.10/Overworld": {
+      "ns/op": 3528.0,
+      "B/op": 11504.0,
+      "allocs/op": 13.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.12.2/Overworld": {
+      "ns/op": 3541.0,
+      "B/op": 11504.0,
+      "allocs/op": 13.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.16.5/Overworld": {
+      "ns/op": 4462.0,
+      "B/op": 11864.0,
+      "allocs/op": 15.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.17.1/Overworld": {
+      "ns/op": 4590.0,
+      "B/op": 11864.0,
+      "allocs/op": 15.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.20.1/Overworld": {
+      "ns/op": 42565.0,
+      "B/op": 28228.0,
+      "allocs/op": 281.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.20.1/Large": {
+      "ns/op": 43007.0,
+      "B/op": 28244.0,
+      "allocs/op": 281.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.17.1/Nether": {
+      "ns/op": 9127.0,
+      "B/op": 9648.0,
+      "allocs/op": 31.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.17.1/End": {
+      "ns/op": 2082.0,
+      "B/op": 5976.0,
+      "allocs/op": 12.0,
+      "rounds": 5
+    },
+    "BenchmarkReferenceNew/1.20.1/End": {
+      "ns/op": 1108.0,
+      "B/op": 984.0,
+      "allocs/op": 9.0,
+      "rounds": 5
+    },
+    "BenchmarkEndMoving/1.17.1": {
+      "ns/op": 139518.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkEndMoving/1.20.1": {
+      "ns/op": 207618.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkBuiltinDocuments": {
+      "ns/op": 88285.0,
+      "B/op": 163305.0,
+      "allocs/op": 514.0,
+      "rounds": 5
+    },
+    "BenchmarkCompileSeed": {
+      "ns/op": 108084.0,
+      "B/op": 35339.0,
+      "allocs/op": 336.0,
+      "rounds": 5
+    }
+  },
+  "c": {
+    "b1.7.3/Overworld": 3511739.063,
+    "1.6.4/Overworld": 34255.359,
+    "1.7.10/Overworld": 60037.573,
+    "1.12.2/Overworld": 59514.526,
+    "1.16.5/Overworld": 98915.283,
+    "1.17.1/Overworld": 98739.502,
+    "1.20.1/Overworld": 36330524.999,
+    "1.20.1/Large": 29035025.0,
+    "1.17.1/Nether": 1758335.156,
+    "1.17.1/End": 171660.547,
+    "1.20.1/End": 170901.465
+  },
+  "c_initialization": {
+    "b1.7.3/Overworld": 4094.051,
+    "1.6.4/Overworld": 207.425,
+    "1.7.10/Overworld": 297.626,
+    "1.12.2/Overworld": 297.046,
+    "1.16.5/Overworld": 900.075,
+    "1.17.1/Overworld": 921.053,
+    "1.20.1/Overworld": 13682.465,
+    "1.20.1/Large": 14120.355,
+    "1.17.1/Nether": 3612.161,
+    "1.17.1/End": 684.562,
+    "1.20.1/End": 818.373
+  },
+  "mcl": {
+    "BenchmarkMultiNoiseTile": {
+      "ns/op": 15002451.0,
+      "B/op": 66600.0,
+      "allocs/op": 8.0,
+      "rounds": 5
+    },
+    "BenchmarkLegacyTile/1.7.10": {
+      "ns/op": 279534.0,
+      "B/op": 68907.0,
+      "allocs/op": 8.0,
+      "rounds": 5
+    },
+    "BenchmarkLegacyTile/1.12.2": {
+      "ns/op": 278666.0,
+      "B/op": 68927.0,
+      "allocs/op": 8.0,
+      "rounds": 5
+    },
+    "BenchmarkLegacyTile/1.17.1": {
+      "ns/op": 341224.0,
+      "B/op": 68718.0,
+      "allocs/op": 8.0,
+      "rounds": 5
+    }
+  },
+  "latest_26_3": {
+    "BenchmarkLatest/Overworld": {
+      "ns/op": 21725600.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkLatest/Large": {
+      "ns/op": 21332314.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkLatest/Nether": {
+      "ns/op": 3274149.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    },
+    "BenchmarkLatest/End": {
+      "ns/op": 173910.0,
+      "B/op": 0.0,
+      "allocs/op": 0.0,
+      "rounds": 5
+    }
+  },
+  "viewport": {
+    "BenchmarkSeedMapViewportFirstPaint/complete": {
+      "ns/op": 482197567.0,
+      "complete-ns/op": 482176300.0,
+      "first-paint-ns/op": 482176300.0,
+      "B/op": 2603029.0,
+      "allocs/op": 278.0,
+      "rounds": 5
+    },
+    "BenchmarkSeedMapViewportFirstPaint/progressive": {
+      "ns/op": 480430367.0,
+      "complete-ns/op": 480345633.0,
+      "first-paint-ns/op": 19683467.0,
+      "B/op": 8508600.0,
+      "allocs/op": 302.0,
+      "rounds": 5
+    }
+  }
+}

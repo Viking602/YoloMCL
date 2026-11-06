@@ -175,7 +175,7 @@ func (a *App) wardrobeCapeCard(c *ui.Context) {
 		}
 		active := a.activeCapeName()
 		const tileW, tileH = 72, 100
-		ui.Row(c).FillWidth().Wrap().Gap(10 * s).Children(func() {
+		ui.Row(c).FillWidth().Wrap().Gap(12 * s).Children(func() {
 			a.capeTile(c, launcher.Cape{ID: noCapeKey, Name: t.WardrobeCapeNone, Active: active == t.WardrobeCapeNone}, nil, tileW*s, tileH*s)
 			for _, cape := range a.appearance.Capes {
 				cp := cape
@@ -223,7 +223,7 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 		tip += a.L("wardrobe_cape.couldn_t_load_preview_click_to_retry")
 	}
 	// Fixed box: thumbnail, one name line, nothing else, so rows align.
-	b := tooltip(c, ui.ButtonBase(c.Key("cape-"+key)).Label(name), tip).Size(w, h).Shrink(0).Column().Gap(5 * s).AlignItems(ui.Center)
+	b := tooltip(c, ui.ButtonBase(c.Key("cape-"+key)).Label(name), tip).Size(w, h).Shrink(0).Column().Gap(4 * s).AlignItems(ui.Center)
 	edge := ui.Transparent
 	if sel {
 		edge = accent
@@ -231,13 +231,13 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 		edge = ui.RGBA(60, 72, 110, .22)
 	}
 	b.Children(func() {
-		ui.Box(c).Size(w, h-22*s).Shrink(0).Radius(10*s).Background(ui.RGBA(120, 130, 160, .10)).Border(2, b.AnimateColor("edge", edge, fastAnim)).Center().Children(func() {
+		ui.Box(c).Size(w, h-22*s).Shrink(0).Radius(radiusControl*s).Background(ui.RGBA(120, 130, 160, .10)).Border(2, b.AnimateColor("edge", edge, fastAnim)).Center().Children(func() {
 			if key == noCapeKey {
 				ui.Icon(c, icons["cross"]).Size(16*s, 16*s).TextColor(muted)
 			} else if thumb != nil {
 				ui.Image(c, thumb).Size(30*s, 48*s)
 			} else if failed {
-				ui.Column(c).Label("披风加载失败 " + name).Gap(5 * s).AlignItems(ui.Center).Children(func() {
+				ui.Column(c).Label("披风加载失败 " + name).Gap(4 * s).AlignItems(ui.Center).Children(func() {
 					ui.Icon(c, icons["refresh"]).Size(16*s, 16*s).TextColor(muted)
 					ui.Text(c, a.L("discover_feed.retry")).FontSize(typeCaption * s).TextColor(muted)
 				})
@@ -247,7 +247,7 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 				ui.Icon(c, icons["skin"]).Size(20*s, 20*s).TextColor(muted)
 			}
 			if cape.Active {
-				ui.Box(c).Absolute().Top(5*s).Right(5*s).Size(16*s, 16*s).Radius(999).Background(successInk).Border(1.5, panel).Center().Children(func() {
+				ui.Box(c).Absolute().Top(5*s).Right(5*s).Size(16*s, 16*s).Radius(radiusPill).Background(successInk).Border(1.5, panel).Center().Children(func() {
 					ui.Icon(c, icons["check"]).Size(9*s, 9*s).TextColor(panel)
 				})
 			}

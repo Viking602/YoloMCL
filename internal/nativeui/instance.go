@@ -6,11 +6,10 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
-type instTabItem struct{ key, text string }
-
-func (a *App) instTabs(_ launcher.Instance) []instTabItem {
-	return []instTabItem{
+func (a *App) instTabs(_ launcher.Instance) []underlineTab {
+	return []underlineTab{
 		{"overview", a.L("instance.overview")},
+		{"seedmap", a.L("seedmap.open")},
 		{"mods", a.L("storage.label.mods")},
 		{"resourcepack", a.L("storage.label.resourcepacks")},
 		{"shader", a.L("storage.label.shaderpacks")},
@@ -23,6 +22,9 @@ func (a *App) instTabs(_ launcher.Instance) []instTabItem {
 // setInstTab switches the right-side tab and loads what it shows.
 func (a *App) setInstTab(tab string) {
 	if a.launcherUpdateRequired() {
+		return
+	}
+	if tab != a.instTab && a.guardDiscard(a.hasUnsavedDraft(), func() { a.setInstTab(tab) }) {
 		return
 	}
 	if tab == "" {
@@ -101,14 +103,18 @@ func (a *App) instanceView(c *ui.Context) {
 							if a.instTab == "logs" {
 								// The log pane owns its scrolling. Its header and toolbar
 								// stay fixed, with the line list taking the remaining space.
-								ui.Column(c.Key("instance-log-pane")).Fill().MinHeight(0).Padding(22*s, pageGutter*s, 22*s).Gap(16 * s).Clip().Children(func() {
+								ui.Column(c.Key("instance-log-pane")).Fill().MinHeight(0).Padding(24*s, pageGutter*s, 24*s).Gap(16 * s).Clip().Children(func() {
 									a.instanceTabContent(c, *r)
 								})
 								return
 							}
+							if a.instTab == "seedmap" {
+								ui.Column(c.Key("instance-seedmap-pane")).Fill().MinHeight(0).Padding(16*s, pageGutter*s, 16*s).Children(func() { a.instanceTabContent(c, *r) })
+								return
+							}
 							tabScroll := scrollArea(c, "page-scroll-home-"+a.instTab)
 							a.tabViewBounds = tabScroll.LayoutBounds()
-							tabScroll.Grow(1).MinHeight(0).Padding(22*s, pageGutter*s, 32*s).Children(func() {
+							tabScroll.Grow(1).MinHeight(0).Padding(24*s, pageGutter*s, 32*s).Children(func() {
 								ui.Column(c).FillWidth().Gap(20 * s).Children(func() {
 									a.instanceTabContent(c, *r)
 								})
@@ -158,6 +164,8 @@ func (a *App) instanceTabContent(c *ui.Context, r launcher.Instance) {
 		a.embedMods = false
 	case "worlds":
 		a.worldsView(c, r)
+	case "seedmap":
+		a.seedMapPanel(c)
 	case "logs":
 		if a.dialog != "logs" { // the all-games window owns the log pane while open
 			a.logsDialog(c)

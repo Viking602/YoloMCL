@@ -8,6 +8,8 @@ import (
 )
 
 func (a *App) openProject(p launcher.Project) {
+	a.suspendVersionDraft()
+	a.projectEdited = false
 	a.cancelProjectRequests()
 	a.dialogGen++
 	a.project = &p
@@ -30,6 +32,7 @@ func (a *App) openProject(p launcher.Project) {
 			a.form.Name = uniqueDirName(dir, cleanName(p.Title))
 		}
 	}
+	a.dialogInitial = a.form
 	a.reloadProjectVersions()
 }
 

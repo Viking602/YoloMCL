@@ -66,7 +66,7 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 			// Storage categories and pack actions must not move the panel footer.
 			ovPair(c, "ov-details", narrow, 340, func() {
 				a.ovPanel(c, "ov-run", a.L("overview.runtime"), st, func() {
-					if iconOnlyButton(c, "ov-config", "settings", a.L("overview.version_settings"), 28*s, false) && a.overviewActionReady("ov-run") {
+					if iconOnlyButton(c, "ov-config", "settings", a.L("overview.version_settings"), btnSm*s, false) && a.overviewActionReady("ov-run") {
 						a.setInstTab("settings")
 					}
 				}, func() {
@@ -92,8 +92,8 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 					} else if st.Dir != "" {
 						text = fmtSize(st.Total)
 					}
-					a.rollNumber(c, "storage-total", text, typeHeadline*s, 700, ink, true).Width(104 * s)
-					if iconOnlyButton(c, "ov-refresh", "refresh", a.L("overview.refresh_overview"), 26*s, false) && a.overviewActionReady("ov-dir") {
+					a.fadeNumber(c, "storage-total", text, typeHeadline*s, 700, ink, true).Width(104 * s)
+					if iconOnlyButton(c, "ov-refresh", "refresh", a.L("overview.refresh_overview"), btnSm*s, false) && a.overviewActionReady("ov-dir") {
 						a.refreshInstanceStatus(true)
 					}
 				}, func() { a.ovDir(c, st, r, false) })
@@ -156,22 +156,22 @@ func (a *App) ovStats(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 		for start := 0; start < len(items); start += cols {
 			ui.Row(c).FillWidth().Height(108 * s).Shrink(0).Gap(12 * s).Children(func() {
 				for _, it := range items[start:min(start+cols, len(items))] {
-					b := ui.ButtonBase(c.Key("ov-stat-"+it.key)).Label(it.title).Grow(1).Basis(0).MinWidth(0).FillHeight().Clip().Padding(14*s, 16*s).Radius(radiusCard*s).Border(1, glassEdge)
+					b := ui.ButtonBase(c.Key("ov-stat-"+it.key)).Label(it.title).Grow(1).Basis(0).MinWidth(0).FillHeight().Clip().Padding(16*s, 16*s).Radius(radiusCard*s).Border(1, glassEdge)
 					bg := ui.RGBA(255, 255, 255, .76)
 					if b.Hovered() {
 						bg = it.tone.Alpha(.08)
 					}
 					b.Background(b.AnimateColor("bg", bg, fastAnim).Over(contentBackground))
 					if b.Children(func() {
-						ui.Column(c).Fill().Gap(6 * s).Children(func() {
-							ui.Row(c).FillWidth().Gap(7 * s).AlignItems(ui.Center).Children(func() {
+						ui.Column(c).Fill().Gap(8 * s).Children(func() {
+							ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 								ui.Icon(c, icons[it.icon]).Size(13*s, 13*s).TextColor(it.tone).Shrink(0)
 								ui.Text(c, it.title).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).MinWidth(0)
 							})
 							key := "stat-value-" + it.key
 							a.rollNumber(c, key, it.value, typeDisplay*s, 750, ink).FillWidth()
 							hintKey := "stat-hint-" + it.key
-							tooltip(c, a.rollNumber(c, hintKey, it.hint, typeCaption*s, 400, muted).FillWidth(), it.hint)
+							tooltip(c, a.fadeNumber(c, hintKey, it.hint, typeCaption*s, 400, muted).FillWidth(), it.hint)
 						})
 					}).Clicked() && a.overviewActionReady("stat-value-"+it.key) {
 						a.setInstTab(it.tab)
@@ -200,7 +200,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 	r, st = swappedOverviewPanel(a, c, "ov-world", signature, r, st)
 	a.resetContentChildren("ov-world", "world-size", "world-backups")
 	a.ovPanel(c, "ov-world", a.L("overview.recent_world"), st, func() {
-		if fixedButton(c, "ov-worlds", a.L("overview.all_worlds"), "chevron", 0, 26*s, false, false) && a.overviewActionReady("ov-world") {
+		if fixedButton(c, "ov-worlds", a.L("overview.all_worlds"), "chevron", 0, btnSm*s, false, false) && a.overviewActionReady("ov-world") {
 			a.setInstTab("worlds")
 		}
 	}, func() {
@@ -214,7 +214,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 			return
 		}
 		ui.Row(c).FillWidth().PaddingY(12 * s).Gap(16 * s).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(72*s, 72*s).Shrink(0).Radius(14 * s).Clip().Background(successSoft).Center().Children(func() {
+			ui.Box(c).Size(72*s, 72*s).Shrink(0).Radius(radiusCard * s).Clip().Background(successSoft).Center().Children(func() {
 				var img ui.ImageSource
 				if w.HasIcon {
 					id, ver, dir := r.ID, r.SelectedVersion, w.Dir
@@ -229,7 +229,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 					ui.Icon(c, icons["cube"]).Size(32*s, 32*s).TextColor(successInk)
 				}
 			})
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(9 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(8 * s).Children(func() {
 				tooltip(c, ui.Text(c, w.Name).FontSize(typeTitle1*s).FontWeight(700).TextColor(ink).SingleLine().FillWidth(), w.Name)
 				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 					if mode, ok := i18n.Lookup(a.isEN(), "world.mode."+w.Mode); ok {
@@ -239,7 +239,7 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 				})
 			})
 		})
-		ui.Row(c).FillWidth().Height(64*s).Shrink(0).Padding(10*s, 14*s).Gap(20 * s).Radius(10 * s).Background(raised).Children(func() {
+		ui.Row(c).FillWidth().Height(64*s).Shrink(0).Padding(12*s, 16*s).Gap(20 * s).Radius(radiusControl * s).Background(raised).Children(func() {
 			size := fmtSize(w.Size)
 			if st.StoragePending {
 				size = a.L("overview.calculating")
@@ -248,9 +248,9 @@ func (a *App) ovWorld(c *ui.Context, r launcher.Instance, st launcher.InstanceSt
 				{a.L("overview.world_size"), size, "world-size"},
 				{a.L("overview.local_backups"), fmt.Sprintf(a.L("overview.saved"), w.Backups), "world-backups"},
 			} {
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 					ui.Text(c, it[0]).FontSize(typeCaption * s).TextColor(muted).SingleLine()
-					a.rollNumber(c, it[2], it[1], typeCallout*s, 650, ink).FillWidth()
+					a.fadeNumber(c, it[2], it[1], typeCallout*s, 650, ink).FillWidth()
 				})
 			}
 		})
@@ -281,7 +281,7 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 		if st.Screenshots > 0 {
 			quietTag(c, fmt.Sprintf(a.L("storage.count.screenshots"), st.Screenshots), muted)
 		}
-		if iconOnlyButton(c, "ov-shots-open", "folder", a.L("overview.open_screenshots_folder"), 28*s, false) && a.overviewActionReady("ov-shot") {
+		if iconOnlyButton(c, "ov-shots-open", "folder", a.L("overview.open_screenshots_folder"), btnSm*s, false) && a.overviewActionReady("ov-shot") {
 			a.openSub("screenshots")
 		}
 	}, func() {
@@ -300,7 +300,7 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 		shot := st.LatestShot
 		id, ver, file := r.ID, r.SelectedVersion, shot.File
 		img := a.localIcon(overviewShotKey(r, *shot), func() ([]byte, error) { return a.service.ScreenshotPreview(id, ver, file) })
-		ui.Box(c.Key("ov-shot-image")).FillWidth().Grow(1).Basis(0).MinHeight(0).Radius(12 * s).Clip().Background(accentSoft).Children(func() {
+		ui.Box(c.Key("ov-shot-image")).FillWidth().Grow(1).Basis(0).MinHeight(0).Radius(radiusControl * s).Clip().Background(accentSoft).Children(func() {
 			if img != nil {
 				image := ui.Image(c.Key("screenshot-preview-ready"), img).Absolute().Left(0).Top(0).Right(0).Bottom(0).Fit(ui.Cover)
 				if !c.Preferences().ReduceMotion {
@@ -309,7 +309,7 @@ func (a *App) ovScreenshot(c *ui.Context, r launcher.Instance, st launcher.Insta
 				return
 			}
 			ui.Image(c, landscape).Absolute().Left(0).Top(0).Right(0).Bottom(0).Fit(ui.Cover).Opacity(.16)
-			ui.Column(c).Fill().Center().PaddingX(16 * s).Gap(9 * s).Children(func() {
+			ui.Column(c).Fill().Center().PaddingX(16 * s).Gap(8 * s).Children(func() {
 				title, hint := a.L("overview.latest_screenshot"), a.L("overview.open_the_folder_to_view_the_original")
 				ui.Text(c, title).FontSize(typeTitle * s).FontWeight(650).TextColor(ink).SingleLine()
 				ui.Text(c, hint).FontSize(typeFootnote * s).TextColor(muted).SingleLine().FillWidth().TextAlign(ui.Center)
@@ -331,7 +331,7 @@ func overviewShotKey(r launcher.Instance, shot launcher.InstanceScreenshot) stri
 func (a *App) ovPanel(c *ui.Context, key, title string, st launcher.InstanceStatus, actions, content func()) {
 	ovRegion(c, key, title, func() {
 		if actions != nil {
-			ui.Row(c.Key(key + "-actions")).Gap(6 * uiScale(c)).AlignItems(ui.Center).Children(actions)
+			ui.Row(c.Key(key + "-actions")).Gap(space2 * uiScale(c)).AlignItems(ui.Center).Children(actions)
 		}
 	}, func() {
 		a.contentBody(c, key).Grow(1).MinHeight(0).Gap(4 * uiScale(c)).Children(content)
@@ -341,10 +341,10 @@ func (a *App) ovPanel(c *ui.Context, key, title string, st launcher.InstanceStat
 func ovLoading(c *ui.Context) {
 	s := uiScale(c)
 	ui.Column(c).Label("概览加载占位").FillWidth().Grow(1).MinHeight(0).PaddingY(12 * s).Gap(12 * s).Children(func() {
-		ui.Box(c).Size(44*s, 44*s).Radius(12 * s).Background(raised)
-		for _, width := range []float32{.72, .48, .60} {
+		skeleton(c, "icon").Size(44*s, 44*s)
+		for i, width := range []float32{.72, .48, .60} {
 			ui.Row(c).FillWidth().Height(10 * s).Children(func() {
-				ui.Box(c).Grow(width).Basis(0).FillHeight().Radius(5 * s).Background(raised)
+				skeleton(c, fmt.Sprint("line-", i)).Grow(width).Basis(0).FillHeight()
 				ui.Spacer(c).Grow(1 - width).Basis(0)
 			})
 		}
@@ -390,9 +390,9 @@ func (a *App) ovLastSession(c *ui.Context, r launcher.Instance, st launcher.Inst
 	case !st.LastLog.IsZero():
 		title, detail = a.L("overview.recent_log"), agoText(a, st.LastLog)
 	}
-	b := ui.ButtonBase(c.Key("ov-last-session")).Font(uiSansFamily()).Label(a.L("overview.view_session_logs")).FillWidth().Height(58*s).Shrink(0).Padding(10*s, 12*s).Gap(10 * s).Radius(10 * s).Background(raised).AlignItems(ui.Center)
+	b := ui.ButtonBase(c.Key("ov-last-session")).Font(uiSansFamily()).Label(a.L("overview.view_session_logs")).FillWidth().Height(58*s).Shrink(0).Padding(12*s, 12*s).Gap(12 * s).Radius(radiusControl * s).Background(raised).AlignItems(ui.Center)
 	if b.Children(func() {
-		ui.Box(c).Size(30*s, 32*s).Radius(8*s).Background(panel).Border(1, line).Shrink(0).Center().Children(func() {
+		ui.Box(c).Size(30*s, 32*s).Radius(radiusChip*s).Background(panel).Border(1, line).Shrink(0).Center().Children(func() {
 			ui.Icon(c, icons["terminal"]).Size(16*s, 16*s).TextColor(tone)
 		})
 		text := swappedContent(a, c, "last-session-text", [2]string{title, detail}, [2]string{title, detail})

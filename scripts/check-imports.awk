@@ -1,9 +1,13 @@
 # Check the canonical import groups and runtime package boundaries after goimports.
 function allowed(pkg, dep) {
+  if (pkg ~ /^tools\//) return dep ~ /^tools\/internal\//
   if (pkg == ".") return dep == "internal/app"
   if (pkg == "internal/app") return dep ~ /^internal\/(buildinfo|launcher|nativeui)$/
-  if (pkg == "internal/nativeui") return dep ~ /^internal\/(launcher|buildinfo|i18n)$/
-  if (pkg == "internal/launcher") return dep ~ /^internal\/(config|i18n|launcher\/(memory|proctree|textenc|vault))$/
+  if (pkg == "internal/nativeui") return dep == "cubiomes" || dep ~ /^internal\/(launcher|buildinfo|i18n|structure3d|worldgen)$/
+  if (pkg == "internal/launcher") return dep == "cubiomes" || dep == "cubiomes/modjar" || dep ~ /^internal\/(config|i18n|mcworld|structure3d|worldgen|launcher\/(memory|proctree|textenc|vault))$/
+  if (pkg == "internal/mcworld") return dep == "internal/structure3d"
+  if (pkg == "internal/structure3d") return dep == "internal/worldgen"
+  if (pkg == "cubiomes/modjar") return dep == "cubiomes"
   return 0
 }
 function inspect(line, name, first, group, dep) {
@@ -19,6 +23,9 @@ function inspect(line, name, first, group, dep) {
   }
   previous = group
   if (FILENAME ~ /_test\.go$/) return
+  if (pkg == "cubiomes" && group != 0) {
+    print FILENAME ": cubiomes must depend only on the standard library" > "/dev/stderr"; failed = 1
+  }
   if ((name == "github.com/egoist/mygo" || index(name, "github.com/egoist/mygo/") == 1) && pkg !~ /^internal\/(app|nativeui)$/) {
     print FILENAME ": UI dependency is not allowed here" > "/dev/stderr"; failed = 1
   }

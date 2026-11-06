@@ -37,6 +37,22 @@ func TestJavaReleaseVersionsWithoutStartingJVM(t *testing.T) {
 	}
 }
 
+func TestWorldgenJavaMetadataDoesNotRequireAnExecutable(t *testing.T) {
+	path := javaFixture(t, t.TempDir(), "22.0.1")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := javaReleaseInfo(path); err != nil || info.Major != 22 {
+		t.Fatalf("metadata-only runtime: %+v %v", info, err)
+	}
+	if err := os.Remove(filepath.Join(filepath.Dir(filepath.Dir(path)), "release")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := javaReleaseInfo(path); err == nil {
+		t.Fatal("missing runtime metadata accepted")
+	}
+}
+
 func TestJavaDiscoveryDedupPortableCacheAndRefresh(t *testing.T) {
 	s := testService(t)
 	disk := s.dir

@@ -11,7 +11,7 @@ func openPath(path string) error { return mygo.Shell.OpenPath(path) }
 
 func field(c *ui.Context, name string, value *string, placeholder string) {
 	s := uiScale(c)
-	ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+	ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 		label(c, name).FontWeight(600)
 		textField(c.Key(name), value).Label(name + "输入").Placeholder(placeholder).FillWidth()
 	})
@@ -20,9 +20,9 @@ func field(c *ui.Context, name string, value *string, placeholder string) {
 func (a *App) folderField(c *ui.Context, name string, value *string) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+	ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 		label(c, name).FontWeight(600)
-		ui.Row(c).FillWidth().Gap(10 * s).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).Children(func() {
 			textField(c.Key(name), value).Label(name + "输入").Placeholder(t.DialogChooseFolder).Grow(1).MinWidth(0)
 			if button(c, "folder-"+name, t.DialogBrowseBtn, "folder", false, a.dialogPending()) {
 				a.chooseFolder(value)

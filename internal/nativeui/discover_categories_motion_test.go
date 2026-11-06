@@ -44,11 +44,11 @@ func TestDiscoverCategoriesWaitForVisibleContent(t *testing.T) {
 	snapshotUI(t, tt, "categories-waiting-for-content")
 	ps := discoverMotionProjects(0, 18)
 	showDiscoverResults(a, tt, launcher.SearchQuery{Source: "modrinth", Type: "modpack"}, ps)
-	tt.Advance(400 * time.Millisecond)
+	tt.Advance(180 * time.Millisecond)
 	if m.contentReady || m.progress != 0 || !a.discoverMotion.revealing {
 		t.Fatal("categories overtook the visible cards' entrance")
 	}
-	tt.Advance(240 * time.Millisecond)
+	tt.Advance(300 * time.Millisecond)
 	if !m.contentReady || m.progress <= 0 || m.progress >= 1 {
 		t.Fatalf("categories did not ease in after the cards: %+v", m)
 	}
@@ -59,8 +59,8 @@ func TestDiscoverCategoriesWaitForVisibleContent(t *testing.T) {
 	snapshotUI(t, tt, "categories-entering")
 	tt.Advance(350 * time.Millisecond)
 	end, _ := tt.Find("发现分类")
-	if m.progress != 1 || mid.X != end.X || math.Abs(float64(mid.W-end.W)) > .1 || math.Abs(float64(mid.H-end.H)) > .1 || mid.Y <= end.Y || mid.Y-end.Y > 8 {
-		t.Fatalf("categories did not lift into place at native size: mid=%+v end=%+v progress=%v", mid, end, m.progress)
+	if m.progress != 1 || mid.X != end.X || mid.Y != end.Y || math.Abs(float64(mid.W-end.W)) > .1 || math.Abs(float64(mid.H-end.H)) > .1 {
+		t.Fatalf("categories did not fade in at their final position: mid=%+v end=%+v progress=%v", mid, end, m.progress)
 	}
 	if bytes.Equal(midPixels, overviewRegionPixels(tt.Image(), end)) {
 		t.Fatal("category appearance did not animate")

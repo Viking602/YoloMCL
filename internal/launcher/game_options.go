@@ -19,7 +19,7 @@ type GameOptions struct {
 	ShaderPack        string
 	ShadersOn         bool
 	HasOptions        bool
-	ResourcePackOrder []string // pack files, highest priority first
+	ResourcePackOrder []string // file names and modid:pack ids, highest priority first
 }
 
 func parseProps(b []byte) map[string]string {
@@ -160,12 +160,76 @@ func readGameOptions(ctx context.Context, dir string) (GameOptions, error) {
 					return st, fmt.Errorf("parse resourcePacks in options.txt: %w", err)
 				}
 				for i := len(list) - 1; i >= 0; i-- { // the last entry wins in game
-					if f, ok := strings.CutPrefix(list[i], "file/"); ok {
-						st.ResourcePackOrder = append(st.ResourcePackOrder, f)
+					if name, ok := resourcePackFileEntry(list[i]); ok {
+						st.ResourcePackOrder = append(st.ResourcePackOrder, name)
+						continue
+					}
+					if id, ok := resourcePackEmbeddedEntry(list[i]); ok {
+						st.ResourcePackOrder = append(st.ResourcePackOrder, id)
 					}
 				}
 			}
 		}
 	}
 	return st, nil
+}
+
+// resourcePackFileEntry maps an options.txt resourcePacks id to a name under
+// resourcepacks/. Accepts modern "file/<name>" and bare zip/folder names some
+// loaders write. Skips vanilla/mod_resources/fabric/builtin and namespaced
+// embedded packs (see resourcePackEmbeddedEntry).
+func resourcePackFileEntry(id string) (string, bool) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return "", false
+	}
+	if name, ok := strings.CutPrefix(id, "file/"); ok {
+		name = strings.TrimSpace(name)
+		if name == "" || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+			return "", false
+		}
+		return name, true
+	}
+	switch strings.ToLower(id) {
+	case "vanilla", "fabric", "quilt", "mod_resources", "mod_data", "server", "programmer_art", "high_contrast":
+		return "", false
+	}
+	if strings.HasPrefix(id, "builtin/") || strings.HasPrefix(id, "generated/") {
+		return "", false
+	}
+	// Namespaced embedded packs (modid:path) are not files under resourcepacks/.
+	if strings.Contains(id, ":") {
+		return "", false
+	}
+	if strings.Contains(id, "/") || strings.Contains(id, "\\") {
+		return "", false
+	}
+	// Bare zip/jar or folder pack name.
+	low := strings.ToLower(id)
+	if strings.HasSuffix(low, ".zip") || strings.HasSuffix(low, ".jar") || !strings.Contains(id, ".") {
+		return id, true
+	}
+	return "", false
+}
+
+// resourcePackEmbeddedEntry accepts modid:pack for Forge/NeoForge/Fabric
+// embedded packs living at resourcepacks/<pack>/ inside the mod jar.
+func resourcePackEmbeddedEntry(id string) (string, bool) {
+	id = strings.TrimSpace(id)
+	mod, pack, ok := strings.Cut(id, ":")
+	if !ok {
+		return "", false
+	}
+	mod, pack = strings.TrimSpace(mod), strings.TrimSpace(pack)
+	if mod == "" || pack == "" {
+		return "", false
+	}
+	if strings.ContainsAny(mod, `/\`) || strings.ContainsAny(pack, `/\`) {
+		return "", false
+	}
+	switch strings.ToLower(mod) {
+	case "file", "builtin", "generated", "minecraft":
+		return "", false
+	}
+	return mod + ":" + pack, true
 }

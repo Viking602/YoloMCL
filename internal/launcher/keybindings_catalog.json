@@ -1,0 +1,295 @@
+{
+  "vanilla": [
+    {
+      "id": "key_key.attack",
+      "label": "keybindings.action.attack",
+      "default": "key.mouse.left"
+    },
+    {
+      "id": "key_key.use",
+      "label": "keybindings.action.use",
+      "default": "key.mouse.right"
+    },
+    {
+      "id": "key_key.forward",
+      "label": "keybindings.action.forward",
+      "default": "key.keyboard.w"
+    },
+    {
+      "id": "key_key.left",
+      "label": "keybindings.action.left",
+      "default": "key.keyboard.a"
+    },
+    {
+      "id": "key_key.back",
+      "label": "keybindings.action.back",
+      "default": "key.keyboard.s"
+    },
+    {
+      "id": "key_key.right",
+      "label": "keybindings.action.right",
+      "default": "key.keyboard.d"
+    },
+    {
+      "id": "key_key.jump",
+      "label": "keybindings.action.jump",
+      "default": "key.keyboard.space"
+    },
+    {
+      "id": "key_key.sneak",
+      "label": "keybindings.action.sneak",
+      "default": "key.keyboard.left.shift"
+    },
+    {
+      "id": "key_key.sprint",
+      "label": "keybindings.action.sprint",
+      "default": "key.keyboard.left.control"
+    },
+    {
+      "id": "key_key.drop",
+      "label": "keybindings.action.drop",
+      "default": "key.keyboard.q"
+    },
+    {
+      "id": "key_key.inventory",
+      "label": "keybindings.action.inventory",
+      "default": "key.keyboard.e"
+    },
+    {
+      "id": "key_key.chat",
+      "label": "keybindings.action.chat",
+      "default": "key.keyboard.t"
+    },
+    {
+      "id": "key_key.playerlist",
+      "label": "keybindings.action.playerlist",
+      "default": "key.keyboard.tab"
+    },
+    {
+      "id": "key_key.pickItem",
+      "label": "keybindings.action.pick_item",
+      "default": "key.mouse.middle"
+    },
+    {
+      "id": "key_key.command",
+      "label": "keybindings.action.command",
+      "default": "key.keyboard.slash"
+    },
+    {
+      "id": "key_key.screenshot",
+      "label": "keybindings.action.screenshot",
+      "default": "key.keyboard.f2"
+    },
+    {
+      "id": "key_key.togglePerspective",
+      "label": "keybindings.action.perspective",
+      "default": "key.keyboard.f5"
+    },
+    {
+      "id": "key_key.smoothCamera",
+      "label": "keybindings.action.smooth_camera",
+      "default": "key.keyboard.unknown"
+    },
+    {
+      "id": "key_key.fullscreen",
+      "label": "keybindings.action.fullscreen",
+      "default": "key.keyboard.f11"
+    },
+    {
+      "id": "key_key.spectatorOutlines",
+      "label": "keybindings.action.outlines",
+      "default": "key.keyboard.unknown"
+    },
+    {
+      "id": "key_key.swapOffhand",
+      "label": "keybindings.action.swap_hands",
+      "aliases": [
+        "key_key.swapHands"
+      ],
+      "default": "key.keyboard.f"
+    },
+    {
+      "id": "key_key.advancements",
+      "label": "keybindings.action.advancements",
+      "aliases": [
+        "key_key.achievements"
+      ],
+      "default": "key.keyboard.l"
+    },
+    {
+      "id": "key_key.saveToolbarActivator",
+      "label": "keybindings.action.save_toolbar",
+      "default": "key.keyboard.c"
+    },
+    {
+      "id": "key_key.loadToolbarActivator",
+      "label": "keybindings.action.load_toolbar",
+      "default": "key.keyboard.x"
+    },
+    {
+      "id": "key_key.socialInteractions",
+      "label": "keybindings.action.social",
+      "default": "key.keyboard.p"
+    },
+    {
+      "id": "key_key.hotbar.1",
+      "label": "keybindings.action.hotbar_1",
+      "default": "key.keyboard.1"
+    },
+    {
+      "id": "key_key.hotbar.2",
+      "label": "keybindings.action.hotbar_2",
+      "default": "key.keyboard.2"
+    },
+    {
+      "id": "key_key.hotbar.3",
+      "label": "keybindings.action.hotbar_3",
+      "default": "key.keyboard.3"
+    },
+    {
+      "id": "key_key.hotbar.4",
+      "label": "keybindings.action.hotbar_4",
+      "default": "key.keyboard.4"
+    },
+    {
+      "id": "key_key.hotbar.5",
+      "label": "keybindings.action.hotbar_5",
+      "default": "key.keyboard.5"
+    },
+    {
+      "id": "key_key.hotbar.6",
+      "label": "keybindings.action.hotbar_6",
+      "default": "key.keyboard.6"
+    },
+    {
+      "id": "key_key.hotbar.7",
+      "label": "keybindings.action.hotbar_7",
+      "default": "key.keyboard.7"
+    },
+    {
+      "id": "key_key.hotbar.8",
+      "label": "keybindings.action.hotbar_8",
+      "default": "key.keyboard.8"
+    },
+    {
+      "id": "key_key.hotbar.9",
+      "label": "keybindings.action.hotbar_9",
+      "default": "key.keyboard.9"
+    }
+  ],
+  "legacy": {
+    "0": "unknown",
+    "1": "escape",
+    "2": "1",
+    "3": "2",
+    "4": "3",
+    "5": "4",
+    "6": "5",
+    "7": "6",
+    "8": "7",
+    "9": "8",
+    "10": "9",
+    "11": "0",
+    "12": "minus",
+    "13": "equal",
+    "14": "backspace",
+    "15": "tab",
+    "16": "q",
+    "17": "w",
+    "18": "e",
+    "19": "r",
+    "20": "t",
+    "21": "y",
+    "22": "u",
+    "23": "i",
+    "24": "o",
+    "25": "p",
+    "26": "left.bracket",
+    "27": "right.bracket",
+    "28": "enter",
+    "29": "left.control",
+    "30": "a",
+    "31": "s",
+    "32": "d",
+    "33": "f",
+    "34": "g",
+    "35": "h",
+    "36": "j",
+    "37": "k",
+    "38": "l",
+    "39": "semicolon",
+    "40": "apostrophe",
+    "41": "grave.accent",
+    "42": "left.shift",
+    "43": "backslash",
+    "44": "z",
+    "45": "x",
+    "46": "c",
+    "47": "v",
+    "48": "b",
+    "49": "n",
+    "50": "m",
+    "51": "comma",
+    "52": "period",
+    "53": "slash",
+    "54": "right.shift",
+    "55": "keypad.multiply",
+    "56": "left.alt",
+    "57": "space",
+    "58": "caps.lock",
+    "59": "f1",
+    "60": "f2",
+    "61": "f3",
+    "62": "f4",
+    "63": "f5",
+    "64": "f6",
+    "65": "f7",
+    "66": "f8",
+    "67": "f9",
+    "68": "f10",
+    "69": "num.lock",
+    "70": "scroll.lock",
+    "71": "keypad.7",
+    "72": "keypad.8",
+    "73": "keypad.9",
+    "74": "keypad.subtract",
+    "75": "keypad.4",
+    "76": "keypad.5",
+    "77": "keypad.6",
+    "78": "keypad.add",
+    "79": "keypad.1",
+    "80": "keypad.2",
+    "81": "keypad.3",
+    "82": "keypad.0",
+    "83": "keypad.decimal",
+    "87": "f11",
+    "88": "f12",
+    "100": "f13",
+    "101": "f14",
+    "102": "f15",
+    "103": "f16",
+    "104": "f17",
+    "105": "f18",
+    "113": "f19",
+    "141": "keypad.equal",
+    "156": "keypad.enter",
+    "157": "right.control",
+    "181": "keypad.divide",
+    "183": "print.screen",
+    "184": "right.alt",
+    "197": "pause",
+    "199": "home",
+    "200": "up",
+    "201": "page.up",
+    "203": "left",
+    "205": "right",
+    "207": "end",
+    "208": "down",
+    "209": "page.down",
+    "210": "insert",
+    "211": "delete",
+    "219": "left.win",
+    "220": "right.win",
+    "221": "menu"
+  }
+}

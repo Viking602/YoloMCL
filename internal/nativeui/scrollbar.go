@@ -16,12 +16,12 @@ import (
 // same strip, inside the scroll area's right inset, so it never covers
 // content as long as the area keeps scrollGutter free on the right.
 const (
-	scrollThumbIdle  float32 = 5  // DIPs at 1×
-	scrollThumbHot   float32 = 8  // under the pointer / dragging
-	scrollHitWidth   float32 = 10 // toolkit bar width = hit strip
-	scrollThumbMin   float32 = 32 // minimum thumb length
-	scrollEdgeMargin float32 = 3  // thumb ↔ container edge
-	scrollGutter     float32 = 14 // right padding a scroll area keeps free
+	scrollThumbIdle  float32 = 5      // DIPs at 1×
+	scrollThumbHot   float32 = 8      // under the pointer / dragging
+	scrollHitWidth   float32 = 10     // toolkit bar width = hit strip
+	scrollThumbMin   float32 = 32     // minimum thumb length
+	scrollEdgeMargin float32 = space1 // thumb ↔ container edge
+	scrollGutter     float32 = space4 // right padding a scroll area keeps free
 )
 
 var (

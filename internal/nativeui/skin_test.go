@@ -1,16 +1,38 @@
 package nativeui
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"math"
+	"os"
+	"os/exec"
+	"regexp"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
+
+// AllocsPerRun reads process-wide counters. Keep these strict zero-allocation
+// checks separate from asynchronous font/image workers started by UI tests.
+func isolatedSkinAllocations(t *testing.T) bool {
+	t.Helper()
+	if os.Getenv("MCL_SKIN_ALLOC_TEST") == t.Name() {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^"+regexp.QuoteMeta(t.Name())+"$", "-test.count=1")
+	cmd.Env = append(os.Environ(), "MCL_SKIN_ALLOC_TEST="+t.Name())
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("isolated skin allocation check: %v\n%s", err, output)
+	}
+	return true
+}
 
 func BenchmarkSkinPreview(b *testing.B) {
 	p := newSkinPreview()
@@ -24,6 +46,9 @@ func BenchmarkSkinPreview(b *testing.B) {
 }
 
 func TestLeavingWardrobeReleasesScratchAndKeepsPreview(t *testing.T) {
+	if isolatedSkinAllocations(t) {
+		return
+	}
 	p := newSkinPreview()
 	p.yaw, p.zoom, p.zoomGoal = 1.4, 1.2, 1.2
 	p.render(440, 520)
@@ -124,6 +149,9 @@ func TestSkinRasterTransparency(t *testing.T) {
 }
 
 func TestSkinPreviewReusesBuffersAndRefreshesTextures(t *testing.T) {
+	if isolatedSkinAllocations(t) {
+		return
+	}
 	p := newSkinPreview()
 	p.render(160, 180)
 	p.render(160, 180)
@@ -175,6 +203,9 @@ func capeUVFixture(resolution int) *image.NRGBA {
 }
 
 func TestCapePreviewTextureFaces(t *testing.T) {
+	if isolatedSkinAllocations(t) {
+		return
+	}
 	for _, resolution := range []int{1, 2, 4} {
 		cape := capeUVFixture(resolution)
 		// Screen positions use a scale of 8 pixels per model unit. Compare

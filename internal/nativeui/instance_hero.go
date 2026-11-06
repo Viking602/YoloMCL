@@ -11,7 +11,7 @@ import (
 // instIcon draws a version's own icon (modpack icon on disk) or its loader
 // logo, on a white tile.
 func (a *App) instIcon(c *ui.Context, r launcher.Instance, v *launcher.VersionSummary, size float32) {
-	ui.Box(c).Size(size, size).Radius(size * .24).Background(panel).Center().Shrink(0).Clip().Children(func() {
+	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Background(panel).Center().Shrink(0).Clip().Children(func() {
 		if v != nil {
 			if img := a.versionIcon(r.ID, v.ID); img != nil {
 				ui.Image(c, img).Size(size, size).Fit(ui.Contain)
@@ -33,12 +33,12 @@ func (a *App) instIcon(c *ui.Context, r launcher.Instance, v *launcher.VersionSu
 // and type. Strong chips use the accent tint.
 func heroChip(c *ui.Context, icon, text string, strong bool) ui.Element {
 	s := uiScale(c)
-	bg, fg, edge := ui.RGBA(255, 255, 255, .72), inkSecondary, ui.RGBA(60, 72, 110, .10)
+	bg, fg, edge := panel, inkSecondary, line
 	if strong {
 		bg, fg, edge = accent.Alpha(.10), accent, accent.Alpha(.18)
 	}
 	// Optional metadata gives way to the complete loader build and history.
-	return tooltip(c, ui.Row(c).Shrink(1).MinWidth(0).Height(24*s).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(bg).Border(1, edge).AlignItems(ui.Center), text).Children(func() {
+	return tooltip(c, ui.Row(c).Shrink(1).MinWidth(0).Height(24*s).PaddingX(8*s).Gap(4*s).Radius(radiusChip*s).Background(bg).Border(1, edge).AlignItems(ui.Center), text).Children(func() {
 		if icon != "" && icons[icon] != nil {
 			ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(fg).Shrink(0)
 		}
@@ -53,10 +53,10 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 	t := a.tr()
 	v := a.gameVersion()
 	ui.Box(c).FillWidth().Padding(20*s, 24*s, 0, 24*s).Shrink(0).Children(func() {
-		ui.Row(c.Key("inst-hero")).Label("主版本卡").FillWidth().Padding(22*s, 24*s).Gap(20*s).Radius(radiusCard*s).AlignItems(ui.Center).Clip().
-			LinearGradient(ui.LinearGradient{Angle: 120, Stops: []ui.GradientStop{{Color: ui.Hex("#e8f0ff"), At: 0}, {Color: ui.Hex("#f1ecfd"), At: .6}, {Color: ui.Hex("#eaf6fb"), At: 1}}}).
-			Border(1, ui.RGBA(120, 130, 170, .14)).Children(func() {
-			ui.Box(c.Key("hero-icon-slot")).Label("版本图标").Size(68*s, 68*s).Shrink(0).Shadow(0, 4*s, 12*s, 0, ui.RGBA(40, 52, 110, .10)).Radius(16 * s).Background(panel).Children(func() {
+		ui.Row(c.Key("inst-hero")).Label("主版本卡").FillWidth().Padding(24*s, 24*s).Gap(20*s).Radius(radiusCard*s).AlignItems(ui.Center).Clip().
+			LinearGradient(ui.LinearGradient{From: panel, To: ui.Hex("#f5f6f8"), Angle: 180}).
+			Border(s, line).Children(func() {
+			ui.Box(c.Key("hero-icon-slot")).Label("版本图标").Size(68*s, 68*s).Shrink(0).Shadow(0, 4*s, 10*s, -3*s, ui.RGBA(0, 0, 0, .09)).Radius(radiusCard * s).Background(panel).Children(func() {
 				ui.Box(c.Key("hero-icon-" + a.versionSwapKey())).Fill().Transition(heroSwap(c)).Children(func() {
 					a.instIcon(c, r, v, 68*s)
 				})
@@ -74,7 +74,7 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 					})
 				})
 				ui.Row(c.Key("hero-meta")).Label("实例信息").FillWidth().Height(24 * s).MinWidth(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-					ui.Row(c.Key("hero-loader-slot")).Grow(1).Basis(0).MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Clip().Children(func() {
+					ui.Row(c.Key("hero-loader-slot")).Grow(1).Basis(0).MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Clip().Children(func() {
 						if v == nil {
 							label(c, dirLabel(r)).FontSize(typeCallout * s).SingleLine()
 							return
@@ -104,7 +104,7 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 				a.openSub("")
 			}
 			if verRunning(&r) && fixedButton(c, "dock-stop", t.HomeStopBtn, "cross", 0, btnLg*s, false, a.instancePending("stop")) {
-				a.execute("stop", map[string]string{"rootId": r.ID}, nil)
+				a.requestStop(r.ID, "", r.Name)
 			}
 			launchText, icon := t.HomeLaunchBtn, "play"
 			if verRunning(&r) {

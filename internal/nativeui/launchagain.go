@@ -54,11 +54,11 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 	}
 	used := a.inUseAccounts(*r)
 	ui.Text(c, a.L("launchagain.run_one_more_copy_of_this_pack_pick")).FontSize(typeFootnote * s).TextColor(inkSecondary)
-	ui.Column(c.Key("again-accounts")).FillWidth().Gap(6 * s).Children(func() {
+	ui.Column(c.Key("again-accounts")).FillWidth().Gap(8 * s).Children(func() {
 		for _, acc := range a.snapshot.Accounts {
 			ac := acc
 			sel := g.account == ac.ID
-			row := ui.ButtonBase(c.Key("again-"+ac.ID)).Label(ac.Name).FillWidth().Height(48*s).PaddingX(12*s).Gap(12*s).Radius(10*s).AlignItems(ui.Center).Border(1, line)
+			row := ui.ButtonBase(c.Key("again-"+ac.ID)).Label(ac.Name).FillWidth().Height(48*s).PaddingX(12*s).Gap(12*s).Radius(radiusControl*s).AlignItems(ui.Center).Border(1, line)
 			bg := ui.RGBA(255, 255, 255, .7)
 			if sel {
 				bg = accentSoft
@@ -68,13 +68,13 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 			}
 			row.Background(bg)
 			if row.Children(func() {
-				ui.Box(c).Size(16*s, 16*s).Radius(999).Border(1.5*s, ringColor(sel)).Center().Shrink(0).Children(func() {
+				ui.Box(c).Size(16*s, 16*s).Radius(radiusPill).Border(1.5*s, ringColor(sel)).Center().Shrink(0).Children(func() {
 					if sel {
-						ui.Box(c).Size(8*s, 8*s).Radius(999).Background(accent)
+						ui.Box(c).Size(8*s, 8*s).Radius(radiusPill).Background(accent)
 					}
 				})
 				a.headAvatar(c, &ac, 26*s, func() {
-					ui.Box(c).Size(26*s, 26*s).Radius(6*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
+					ui.Box(c).Size(26*s, 26*s).Radius(radiusChip*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
 						ui.Icon(c, icons["account"]).Size(13*s, 13*s).TextColor(accent)
 					})
 				})
@@ -95,7 +95,7 @@ func (a *App) launchAgainDialog(c *ui.Context) {
 			ui.Text(c, a.L("launchagain.one_microsoft_account_can_t_join_the_same")).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
 		}
 	})
-	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, a.L("launchagain.both_copies_share_saves_config_and_mods")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
 		if fixedButton(c, "again-go", a.L("launchagain.launch"), "play", 0, btnMd*s, true, g.account == "" || a.pendingAt("launchAgain", "rootId", g.rootID)) {
 			id, acc := g.rootID, g.account

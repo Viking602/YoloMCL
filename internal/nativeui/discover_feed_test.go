@@ -95,7 +95,7 @@ func assertDiscoverSwitchLoading(t *testing.T, a *App, tt *ui.Tester) {
 	if !a.searchLoading || !tt.HasText("资源加载提示") || !tt.HasText(a.tr().DiscoverLoading) || tt.HasText("搜索结果列表") || len(a.searchResult.Projects) != 0 {
 		t.Fatal("switch did not immediately replace the old results with a visible loading state")
 	}
-	if a.discoverMotion.scroll.st.Y != 0 || a.numberRolls["discover-total"].target != "—" {
+	if a.discoverMotion.scroll.st.Y != 0 || !tt.HasText("—") {
 		t.Fatal("loading kept the previous result count or scroll position")
 	}
 }

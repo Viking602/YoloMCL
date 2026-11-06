@@ -34,16 +34,16 @@ func (a *App) discoverView(c *ui.Context) {
 func (a *App) discoverRail(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Column(c.Key("discover-rail")).Label("发现筛选").Width(instListWidth*s).Shrink(0).FillHeight().Padding(20*s, 14*s, 16*s, 16*s).Gap(18 * s).Children(func() {
+	ui.Column(c.Key("discover-rail")).Label("发现筛选").Width(instListWidth*s).Shrink(0).FillHeight().Padding(20*s, 16*s, 16*s, 16*s).Gap(20 * s).Children(func() {
 		// Source: one segmented control with the providers' own logos.
-		ui.Row(c.Key("discover-source")).Label("来源").FillWidth().Padding(3 * s).Gap(3 * s).Radius(11 * s).Background(fieldColor).Children(func() {
+		ui.Row(c.Key("discover-source")).Label("来源").FillWidth().Padding(4 * s).Gap(4 * s).Radius(radiusControl * s).Background(fieldColor).Children(func() {
 			for _, src := range []struct {
 				key, name string
 				logo      *ui.SVG
 			}{{"modrinth", "Modrinth", modrinthLogo}, {"curseforge", "CurseForge", curseforgeLogo}} {
 				it := src
 				sel := a.provider == it.key
-				b := ui.ButtonBase(c.Key("brand-" + it.key)).Label(it.name).Grow(1).Basis(0).Height(30 * s).Gap(7 * s).Radius(8 * s).Justify(ui.Center).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("brand-" + it.key)).Label(it.name).Grow(1).Basis(0).Height(30 * s).Gap(8 * s).Radius(radiusChip * s).Justify(ui.Center).AlignItems(ui.Center)
 				bg := ui.Transparent
 				if sel {
 					bg = panel
@@ -66,7 +66,7 @@ func (a *App) discoverRail(c *ui.Context) {
 			}
 		})
 		// Type: rows like the instance list.
-		ui.Column(c).FillWidth().Gap(2 * s).Children(func() {
+		ui.Column(c).FillWidth().Gap(4 * s).Children(func() {
 			railTitle(c, a.L("discover.type"))
 			for _, ty := range []struct{ label, key, icon string }{
 				{t.DiscoverTypeModpack, "modpack", "layers"},
@@ -76,7 +76,7 @@ func (a *App) discoverRail(c *ui.Context) {
 			} {
 				it := ty
 				sel := normalizeResourceType(a.resourceType) == it.key
-				b := ui.ButtonBase(c.Key("discover-type-" + it.key)).Label(it.label).FillWidth().Height(40 * s).PaddingX(10 * s).Gap(11 * s).Radius(radiusRow * s).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("discover-type-" + it.key)).Label(it.label).FillWidth().Height(40 * s).PaddingX(12 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
 				bg, fg := ui.Transparent, ink
 				if sel {
 					bg, fg = accent, panel
@@ -107,7 +107,7 @@ func (a *App) discoverRail(c *ui.Context) {
 				a.search()
 			}
 			if v := a.gameVersion(); v != nil && kind != "modpack" && a.filterMC != v.Minecraft {
-				b := ui.ButtonBase(c.Key("discover-use-inst")).Label(a.L("discover.use_this_instance_s_version")).Height(28 * s).PaddingX(8 * s).Radius(7 * s).Gap(6 * s).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("discover-use-inst")).Label(a.L("discover.use_this_instance_s_version")).Height(28 * s).PaddingX(8 * s).Radius(radiusChip * s).Gap(8 * s).AlignItems(ui.Center)
 				bg := ui.Transparent
 				if b.Hovered() {
 					bg = accentSoft
@@ -129,9 +129,9 @@ func (a *App) discoverRail(c *ui.Context) {
 		a.discoverCatsRail(c)
 		ui.Spacer(c).Grow(1)
 		if r := a.root(); r != nil && normalizeResourceType(a.resourceType) != "modpack" {
-			ui.Row(c).FillWidth().Padding(10*s, 12*s).Radius(10 * s).Background(ui.RGBA(120, 130, 160, .07)).Gap(10 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().Padding(12*s, 12*s).Radius(radiusControl * s).Background(ui.RGBA(120, 130, 160, .07)).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				a.instIcon(c, *r, a.gameVersion(), 26*s)
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 					label(c, a.L("discover.installs_to")).FontSize(typeCaption * s)
 					name := r.Name
 					if v := a.gameVersion(); v != nil {
@@ -146,20 +146,20 @@ func (a *App) discoverRail(c *ui.Context) {
 
 func railTitle(c *ui.Context, text string) {
 	s := uiScale(c)
-	ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(650).TextColor(muted).PaddingX(10 * s).PaddingY(4 * s).SingleLine()
+	ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(650).TextColor(muted).PaddingX(12 * s).PaddingY(4 * s).SingleLine()
 }
 
 func (a *App) discoverToolbar(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Row(c.Key("discover-toolbar")).Label("搜索栏").FillWidth().Padding(18*s, pageGutter*s, 12*s).Gap(10 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+	ui.Row(c.Key("discover-toolbar")).Label("搜索栏").FillWidth().Padding(20*s, pageGutter*s, 12*s).Gap(12 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 		in := textField(c.Key("discover-query"), &a.query).Placeholder(t.DiscoverSearchHint).Label(t.DiscoverSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
 		submit := in.Submitted()
 		if in.Shortcut(0, ui.KeyEnter) {
 			submit = true
 		}
 		if strings.TrimSpace(a.query) != "" {
-			cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("discover.clear_search")).Size(24*s, 24*s).Radius(999).Center().Shrink(0)
+			cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("discover.clear_search")).Size(24*s, 24*s).Radius(radiusPill).Center().Shrink(0)
 			if cb.Hovered() {
 				cb.Background(ui.RGBA(120, 130, 160, .14))
 			}
@@ -170,7 +170,7 @@ func (a *App) discoverToolbar(c *ui.Context) {
 				submit = true
 			}
 		}
-		if fixedButton(c, "search-now", t.DiscoverSearchBtn, "search", 0, btnSm*s+4*s, true, false) {
+		if fixedButton(c, "search-now", t.DiscoverSearchBtn, "search", 0, btnMd*s, true, false) {
 			submit = true
 		}
 		if submit {
@@ -185,7 +185,7 @@ func (a *App) discoverToolbar(c *ui.Context) {
 		if len(a.searchResult.Projects) > 0 || (!a.searchLoading && a.searchError == "") {
 			count = a.formatResultCount(int64(a.searchResult.Total))
 		}
-		a.rollNumber(c, "discover-total", count, typeFootnote*s, 400, muted, true).Width(98 * s).Shrink(0)
+		a.fadeNumber(c, "discover-total", count, typeFootnote*s, 400, muted, true).Width(98 * s).Shrink(0)
 	})
 }
 
@@ -246,7 +246,7 @@ func (a *App) discoverResults(c *ui.Context) {
 
 func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int) ui.Element {
 	s := uiScale(c)
-	b := ui.ButtonBase(c.Key("card-"+discoverProjectKey(p))).Label("搜索结果 "+p.Title).MinWidth(0).Padding(16*s, 16*s, 14*s).Gap(12 * s).Radius(radiusCard * s).Column().Font(uiSansFamily())
+	b := ui.ButtonBase(c.Key("card-"+discoverProjectKey(p))).Label("搜索结果 "+p.Title).MinWidth(0).Padding(16*s, 16*s, 16*s).Gap(12 * s).Radius(radiusCard * s).Column().Font(uiSansFamily())
 	state := a.discoverMotion.cards[discoverProjectKey(p)]
 	a.animateDiscoverCard(c, b, state, index, columns)
 	ready := state.progress > .15
@@ -261,16 +261,18 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 	if b.Children(func() {
 		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			a.discoverIcon(c, p, state)
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				title, original := a.zhTitle(a.zhNames.Project(p), p.Title)
-				tooltip(c, ui.Text(c, title).FontSize(typeBody*s).FontWeight(650).TextColor(ink).SingleLine().FillWidth().MinWidth(0), p.Title)
+				titleLabel := ui.Text(c, title).FontSize(typeBody * s).FontWeight(650).TextColor(ink).SingleLine().FillWidth().MinWidth(0)
+				textTooltip(c, titleLabel, title, p.Title, ui.Font{Family: uiSansFamily(), Size: typeBody * s, Weight: 650}, 1)
 				if original != "" || p.Author != "" {
 					ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 						if original != "" {
-							ui.Text(c, original).FontSize(typeCaption * s).FontWeight(550).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
+							e := ui.Text(c, original).FontSize(typeCaption * s).FontWeight(550).TextColor(inkSecondary).SingleLine().Shrink(1).MinWidth(0)
+							textTooltip(c, e, original, "", ui.Font{Family: uiSansFamily(), Size: typeCaption * s, Weight: 550}, 1)
 						}
 						if p.Author != "" {
-							ui.Row(c).Gap(3 * s).AlignItems(ui.Center).Shrink(2).MinWidth(0).Children(func() {
+							ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(2).MinWidth(0).Children(func() {
 								ui.Icon(c, icons["account"]).Size(9*s, 9*s).TextColor(muted).Shrink(0)
 								tooltip(c, ui.Text(c, p.Author).FontSize(typeCaption*s).TextColor(muted).SingleLine().Shrink(1).MinWidth(0), a.L("discover.by")+p.Author)
 							})
@@ -281,10 +283,11 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 		})
 		desc := strings.Join(strings.Fields(p.Description), " ")
 		ui.Box(c).FillWidth().MinWidth(0).Height(38 * s).Children(func() {
-			ui.Text(c, desc).FontSize(typeFootnote * s).TextColor(inkSecondary).FillWidth().MinWidth(0).MaxLines(2).Ellipsis("…")
+			e := bodyText(c, desc).FontSize(typeFootnote * s).TextColor(inkSecondary).FillWidth().MaxLines(2).Ellipsis("…")
+			textTooltip(c, e, desc, "", ui.Font{Family: uiSansFamily(), Size: typeFootnote * s}, 2)
 		})
 		// Whole chips only, on their own row: one that would not fit is left out.
-		tagRow := ui.Row(c.Key("dtags-" + p.Source + p.ID)).FillWidth().Height(18 * s).Clip().Gap(6 * s).AlignItems(ui.Center)
+		tagRow := ui.Row(c.Key("dtags-" + p.Source + p.ID)).FillWidth().Height(18 * s).Clip().Gap(8 * s).AlignItems(ui.Center)
 		room := tagRow.LayoutBounds().W
 		tagRow.Children(func() {
 			for _, ch := range a.cardChips(p.Categories, room, s) {
@@ -294,13 +297,13 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 					catTag(c, cat, l, false)
 					continue
 				}
-				tb := tooltip(c, ui.ButtonBase(c.Key("ctag-"+p.ID+"-"+id)).Label(l), a.L("discover.filter_by_this_tag")).Radius(5 * s)
+				tb := tooltip(c, ui.ButtonBase(c.Key("ctag-"+p.ID+"-"+id)).Label(l), a.L("discover.filter_by_this_tag")).Radius(radiusChip * s)
 				if tb.Children(func() { catTag(c, cat, l, a.catSelected(id)) }).Clicked() && ready && !a.searchLoading && !a.catSelected(id) {
 					a.toggleCat(id)
 				}
 			}
 		})
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 				ui.Icon(c, icons["download"]).Size(11*s, 11*s).TextColor(muted)
 				numText(c, compactCount(p.Downloads), typeCaption*s, muted)
@@ -310,13 +313,13 @@ func (a *App) discoverCard(c *ui.Context, p launcher.Project, index, columns int
 			}
 			ui.Spacer(c).Grow(1)
 			if installed {
-				ui.Row(c).Height(28 * s).PaddingX(10 * s).Gap(5 * s).Radius(8 * s).Background(ui.RGBA(52, 199, 89, .12)).AlignItems(ui.Center).Shrink(0).Children(func() {
+				ui.Row(c).Height(28 * s).PaddingX(12 * s).Gap(4 * s).Radius(radiusChip * s).Background(ui.RGBA(52, 199, 89, .12)).AlignItems(ui.Center).Shrink(0).Children(func() {
 					ui.Icon(c, icons["check"]).Size(10*s, 10*s).TextColor(successInk)
 					ui.Text(c, a.L("discover.installed")).FontSize(typeFootnote * s).FontWeight(600).TextColor(successInk).NoWrap()
 				})
 			} else {
 				text := a.L("discover.download")
-				if fixedButton(c, "view-"+p.ID, text, "download", 0, 28*s, true, false) && ready {
+				if fixedButton(c, "view-"+p.ID, text, "download", 0, btnSm*s, true, false) && ready {
 					a.openProject(p)
 				}
 			}

@@ -1,0 +1,218 @@
+{
+  "date": "2026-10-27",
+  "platform": "Windows amd64",
+  "cpu": "AMD Ryzen 7 9800X3D",
+  "go": "go version go1.27.3 windows/amd64",
+  "java": "26.0.2+10",
+  "CGO_ENABLED": "0",
+  "GOAMD64": "v1",
+  "rounds": 5,
+  "benchtime": "500ms",
+  "sequence": [
+    "first Go tile run (go-first.txt)",
+    "MCL seeded-session construction (mcl-seed.txt)",
+    "configuration parity checks (not timed)",
+    "fresh Java run (java-fresh.json)",
+    "final Go tile run (go.txt)"
+  ],
+  "isolation": "Other agent CPU-heavy work paused during each measurement; timed commands sequential",
+  "seed": "42",
+  "range": [
+    8192,
+    64,
+    -8192,
+    4,
+    128,
+    128
+  ],
+  "observations": {
+    "BenchmarkTerraBlenderTile26_3/overworld-16": [
+      {
+        "iterations": 22,
+        "ns": 25933882.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 22,
+        "ns": 25581791.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 22,
+        "ns": 25061368.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 22,
+        "ns": 25814227.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 21,
+        "ns": 27011457.0,
+        "bytes": 0,
+        "allocs": 0
+      }
+    ],
+    "BenchmarkTerraBlenderTile26_3/nether-16": [
+      {
+        "iterations": 152,
+        "ns": 3932897.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 154,
+        "ns": 4063681.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 139,
+        "ns": 3920860.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 152,
+        "ns": 3866597.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 151,
+        "ns": 3913004.0,
+        "bytes": 0,
+        "allocs": 0
+      }
+    ],
+    "BenchmarkTerraBlenderTile26_3/end-16": [
+      {
+        "iterations": 307,
+        "ns": 1952210.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 307,
+        "ns": 1968426.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 308,
+        "ns": 2012835.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 303,
+        "ns": 2021968.0,
+        "bytes": 0,
+        "allocs": 0
+      },
+      {
+        "iterations": 296,
+        "ns": 1918338.0,
+        "bytes": 0,
+        "allocs": 0
+      }
+    ],
+    "BenchmarkSeedMapModSessionWithSeed-16": [
+      {
+        "iterations": 235,
+        "ns": 2549430.0,
+        "bytes": 393133,
+        "allocs": 4239
+      },
+      {
+        "iterations": 231,
+        "ns": 2564520.0,
+        "bytes": 392995,
+        "allocs": 4238
+      },
+      {
+        "iterations": 234,
+        "ns": 2601931.0,
+        "bytes": 392930,
+        "allocs": 4237
+      },
+      {
+        "iterations": 230,
+        "ns": 2541933.0,
+        "bytes": 392994,
+        "allocs": 4238
+      },
+      {
+        "iterations": 237,
+        "ns": 2515472.0,
+        "bytes": 393037,
+        "allocs": 4238
+      }
+    ]
+  },
+  "summary": {
+    "BenchmarkTerraBlenderTile26_3/overworld-16": {
+      "median_ms": 25.814227,
+      "min_ms": 25.061368,
+      "max_ms": 27.011457,
+      "median_bytes": 0,
+      "median_allocs": 0
+    },
+    "BenchmarkTerraBlenderTile26_3/nether-16": {
+      "median_ms": 3.92086,
+      "min_ms": 3.866597,
+      "max_ms": 4.063681,
+      "median_bytes": 0,
+      "median_allocs": 0
+    },
+    "BenchmarkTerraBlenderTile26_3/end-16": {
+      "median_ms": 1.968426,
+      "min_ms": 1.918338,
+      "max_ms": 2.021968,
+      "median_bytes": 0,
+      "median_allocs": 0
+    },
+    "BenchmarkSeedMapModSessionWithSeed-16": {
+      "median_ms": 2.54943,
+      "min_ms": 2.515472,
+      "max_ms": 2.601931,
+      "median_bytes": 392995,
+      "median_allocs": 4238
+    }
+  },
+  "java_comparison": {
+    "overworld": {
+      "java_median_ms": 32.83159375,
+      "native_go_median_ms": 25.814227,
+      "go_latency_reduction_percent": 21.373823042020323,
+      "java_to_go_time_ratio": 1.2718410568714689,
+      "fnv1a_names": "ab0ba4dd63717fca"
+    },
+    "nether": {
+      "java_median_ms": 4.494452678571428,
+      "native_go_median_ms": 3.92086,
+      "go_latency_reduction_percent": 12.76223646332274,
+      "java_to_go_time_ratio": 1.1462925681027705,
+      "fnv1a_names": "7d81057eaf752324"
+    },
+    "end": {
+      "java_median_ms": 100.85428,
+      "native_go_median_ms": 1.968426,
+      "go_latency_reduction_percent": 98.04824743183929,
+      "java_to_go_time_ratio": 51.2360027758219,
+      "fnv1a_names": "4bc91a14694ced36"
+    }
+  },
+  "method": {
+    "go": "Reusable output and sampler scratch; each GenerateIDs recomputes the raster; output hashes asserted outside timing; no completed-tile cache.",
+    "java": "BiomeSource.createCachingResolver(RandomState) recreated per raster; registry IDs into reused short[16384]; 2s warmup; 5 rounds >=500ms; no I/O, startup, transport or formatting in timed region",
+    "mcl": "Warm 8-entry immutable compiled-generator cache; NewLocalSampler with changing seeds, all three dimensions and session metadata. Includes allocations; not raster sampling.",
+    "scope": "CPU sampler only. Both methods produce numeric biome IDs with different language wrappers; hashes compare complete ordered biome names. Excludes initial registry loading, startup, transport, queues and rendering. Five rounds are insufficient for p95.",
+    "history": "go-first.txt and java-reference.json preserve earlier measurements; comparisons above use only java-fresh.json and final go.txt."
+  }
+}

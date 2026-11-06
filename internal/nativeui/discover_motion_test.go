@@ -64,8 +64,8 @@ func TestDiscoverLoadStaggersOnlyVisibleCards(t *testing.T) {
 	snapshotUI(t, tt, "discover-enter-215ms")
 	tt.Advance(450 * time.Millisecond)
 	end, _ := tt.Find("搜索结果 " + ps[0].Title)
-	if mid.Y <= end.Y || mid.X != end.X || mid.W != end.W {
-		t.Fatalf("initial entrance should lift without changing width: mid %+v end %+v", mid, end)
+	if mid != end {
+		t.Fatalf("initial entrance should fade without moving the card: mid %+v end %+v", mid, end)
 	}
 	if !bytes.Equal(railPixels, overviewRegionPixels(tt.Image(), rail)) {
 		t.Fatal("results loading repainted the filter rail")

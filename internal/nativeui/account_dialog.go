@@ -32,16 +32,16 @@ func (a *App) accountDialog(c *ui.Context) {
 }
 
 func (a *App) accountAddDialog(c *ui.Context) {
-	s := uiScale(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(space2 * s).Children(func() {
-		if len(a.snapshot.Accounts) > 0 {
+	if len(a.snapshot.Accounts) > 0 {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
 			if button(c, "account-add-back", a.tr().AccBackBtn, "chevron-left", false, a.dialogPending()) {
-				a.closeDialog() // Cancel an active sign-in before returning to the list.
-				a.openDialog("account")
+				back := func() { a.closeDialog(); a.openDialog("account") }
+				if !a.guardDiscard(a.dialogDirty(), back) {
+					back()
+				}
 			}
-		}
-		label(c, a.L("account_dialog.choose_how_to_sign_in_to_your_game")).Grow(1).MinWidth(0)
-	})
+		})
+	}
 	a.accountAddForm(c)
 }
 
@@ -94,7 +94,7 @@ func accountTypeIcon(c *ui.Context, kind string, size float32, tint ui.Color) {
 func accountTypeIconL(c *ui.Context, a *App, prefix, kind, server string, size float32, tint ui.Color) {
 	if kind == "yggdrasil" && server != "" && a != nil {
 		if bm := a.authIcon(server); bm != nil {
-			ui.Image(c, bm).Label(prefix+"favicon").Size(size, size).Radius(size * .2).Fit(ui.Contain).Shrink(0)
+			ui.Image(c, bm).Label(prefix+"favicon").Size(size, size).Radius(iconRadius(size, uiScale(c))).Fit(ui.Contain).Shrink(0)
 			return
 		}
 	}
@@ -117,7 +117,7 @@ func (a *App) accountTypeTag(c *ui.Context, ac launcher.Account) {
 		kind = "offline"
 	}
 	tagText := a.accountKindTag(ac)
-	ui.Row(c).Label("类型标签 "+kind).Shrink(1).MinWidth(0).Padding(2*s, 8*s, 2*s, 6*s).Gap(4*s).Radius(999).Background(col.Alpha(.12)).Border(1, col.Alpha(.22)).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Label("类型标签 "+kind).Shrink(1).MinWidth(0).Padding(4*s, 8*s, 4*s, 8*s).Gap(4*s).Radius(radiusPill).Background(col.Alpha(.12)).Border(1, col.Alpha(.22)).AlignItems(ui.Center).Children(func() {
 		accountTypeIconL(c, a, "类型图标 ", kind, ac.Server, 12*s, col)
 		tooltip(c, ui.Text(c, midEllipsis(c, tagText, 240*s, typeCaption2*s, 600)).Label(tagText).FontSize(typeCaption2*s).FontWeight(600).TextColor(col).Shrink(1).MinWidth(0).NoWrap(), ac.Server)
 	})
@@ -126,7 +126,7 @@ func (a *App) accountTypeTag(c *ui.Context, ac launcher.Account) {
 // currentTag marks the active account; same pill as the kind tag, solid accent.
 func currentTag(c *ui.Context, text string) {
 	s := uiScale(c)
-	ui.Row(c).Label("当前账号标签").Shrink(0).Padding(2*s, 8*s).Radius(999).Background(accent).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Label("当前账号标签").Shrink(0).Padding(4*s, 8*s).Radius(radiusPill).Background(accent).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, text).FontSize(typeCaption2 * s).FontWeight(700).TextColor(panel).NoWrap()
 	})
 }
@@ -140,7 +140,7 @@ func (a *App) accountList(c *ui.Context) {
 		label(c, fmt.Sprint(len(a.snapshot.Accounts))).FontSize(typeCallout * s)
 	})
 	scrollArea(c, "account-list-scroll").Label("账号列表").FillWidth().Margin(0, -scrollGutter*s, 0, 0).Padding(0, scrollGutter*s, 0, 0).MaxHeight(360 * s).Children(func() {
-		ui.Column(c).FillWidth().Gap(9 * s).Children(func() {
+		ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 			for _, account := range a.snapshot.Accounts {
 				ac := account
 				active := ac.ID == a.snapshot.ActiveAccount
@@ -148,19 +148,19 @@ func (a *App) accountList(c *ui.Context) {
 				if active {
 					bg, edge = accentSoft, accent.Alpha(.30)
 				}
-				ui.Row(c.Key("ac-"+ac.ID)).Label("账号行 "+ac.ID).FillWidth().Height(54*s).Padding(0, 14*s).Radius(radiusRow*s).Background(bg).Border(1, edge).Gap(12 * s).AlignItems(ui.Center).Children(func() {
+				ui.Row(c.Key("ac-"+ac.ID)).Label("账号行 "+ac.ID).FillWidth().Height(54*s).Padding(0, 16*s).Radius(radiusRow*s).Background(bg).Border(1, edge).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 					a.headAvatar(c, &ac, 30*s, func() {
-						ui.Box(c).Size(30*s, 30*s).Radius(7.5*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
+						ui.Box(c).Size(30*s, 30*s).Radius(radiusChip*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
 							ui.Icon(c, icons["account"]).Size(15*s, 15*s).TextColor(accent)
 						})
 					})
-					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 						fg := ink
 						if active {
 							fg = accent
 						}
 						tooltip(c, ui.Text(c, ac.Name).FillWidth().MinWidth(0).FontSize(typeBody*s).FontWeight(700).TextColor(fg).SingleLine(), ac.Name)
-						ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+						ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 							a.accountTypeTag(c, ac)
 							if active {
 								currentTag(c, t.HomeBadgeActive)
@@ -168,26 +168,17 @@ func (a *App) accountList(c *ui.Context) {
 						})
 					})
 					if !active && fixedButton(c, "use-account-"+ac.ID, t.AccSetCurrentBtn, "", 0, btnSm*s, false, a.dialogPending()) {
-						a.execute("select", map[string]string{"accountId": ac.ID}, func(json.RawMessage) {
-							if a.page == "wardrobe" {
-								a.loadAppearance()
-							}
-						})
+						a.selectAccount(ac.ID)
 					}
 					ui.Box(c).Width(space1 * s).Shrink(0)
-					if a.confirmRemove != ac.ID {
-						if iconOnlyButton(c, "delete-account-"+ac.ID, "cross", t.AccRemoveBtn, btnSm*s, a.dialogPending()) {
-							a.confirmRemove = ac.ID // second click removes; anything else cancels
-						}
-					} else if dangerButton(c, "confirm-delete-account-"+ac.ID, t.AccRemoveConfirm, btnSm*s, a.dialogPending()) {
-						a.confirmRemove = ""
+					a.confirmIcon(c, "delete-account-"+ac.ID, "cross", t.AccRemoveBtn, ac.Name, a.L("floating.account_remove_hint"), btnSm*s, a.dialogPending(), func() {
 						a.execute("removeAccount", map[string]string{"accountId": ac.ID}, func(json.RawMessage) {
 							a.invalidateHead(ac.ID)
 							if a.page == "wardrobe" {
 								a.loadAppearance()
 							}
 						})
-					}
+					})
 				})
 			}
 		})
@@ -211,14 +202,15 @@ func (a *App) accountAddForm(c *ui.Context) {
 		}
 	}
 	const segPad, segGap = 4, 4
-	segRow := ui.Row(c.Key("auth-segment")).Label("账号登录方式").FillWidth().Padding(segPad * s).Gap(segGap * s).Radius(13 * s).Background(ui.Hex("#eaeff7"))
+	innerRadius := nestedRadius(radiusControl, segPad) * s
+	segRow := ui.Row(c.Key("auth-segment")).Label("账号登录方式").FillWidth().Padding(segPad * s).Gap(segGap * s).Radius(radiusControl * s).Background(ui.Hex("#eaeff7"))
 	thumb := segRow.AnimateTo("thumb", float32(activeIndex), accountTabAnim)
 	segRow.Draw(func(p *ui.Painter, r ui.Rect) {
 		n := float32(len(tabs))
 		w := (r.W - 2*segPad*s - (n-1)*segGap*s) / n
 		box := ui.Rect{X: r.X + segPad*s + thumb*(w+segGap*s), Y: r.Y + segPad*s, W: w, H: r.H - 2*segPad*s}
-		p.Shadow(box, 10*s, 0, 2*s, 6*s, 0, ui.RGBA(15, 23, 42, .10))
-		p.Fill(box, panel, 10*s)
+		p.Shadow(box, innerRadius, 0, 2*s, 6*s, 0, ui.RGBA(15, 23, 42, .10))
+		p.Fill(box, panel, innerRadius)
 	}).Children(func() {
 		for i, item := range tabs {
 			tab := item
@@ -226,7 +218,7 @@ func (a *App) accountAddForm(c *ui.Context) {
 			// Label color crossfades with the thumb's distance from this tab.
 			near := 1 - min(1, abs32(thumb-float32(i)))
 			fg := mixColor(inkSecondary, accent, near)
-			b := ui.ButtonBase(c.Key("auth-" + tab.label)).Label(tab.label).Grow(1).Basis(0).MinWidth(0).Height(31 * s).Radius(8.5 * s).AlignItems(ui.Center).Justify(ui.Center).Gap(7 * s).Disabled(a.dialogPending())
+			b := ui.ButtonBase(c.Key("auth-" + tab.label)).Label(tab.label).Grow(1).Basis(0).MinWidth(0).Height(31 * s).Radius(innerRadius).AlignItems(ui.Center).Justify(ui.Center).Gap(8 * s).Disabled(a.dialogPending())
 			hover := ui.Transparent
 			if !active && b.Hovered() {
 				hover = ui.RGBA(255, 255, 255, .45)
@@ -253,7 +245,7 @@ func (a *App) accountAddForm(c *ui.Context) {
 
 	// Framed Form Card for the selected authentication method
 	mode := normalizeAccountTab(a.accountTab)
-	ui.Column(c.Key("auth-form-"+mode)).FillWidth().Gap(14*s).Padding(18*s).Radius(12*s).Background(raised).Border(1, line).Transition(slideTransition(s, max(a.accountTabDir, -1), false)).Children(func() {
+	ui.Column(c.Key("auth-form-"+mode)).FillWidth().Gap(16*s).Padding(20*s).Radius(radiusControl*s).Background(raised).Border(1, line).Transition(slideTransition(s, max(a.accountTabDir, -1), false)).Children(func() {
 		switch mode {
 		case "offline":
 			label(c, t.AccOfflineDesc)
@@ -275,7 +267,7 @@ func (a *App) accountAddForm(c *ui.Context) {
 				label(c, t.AccMSDesc).Grow(1)
 			})
 			if !a.snapshot.Services.Microsoft {
-				ui.Column(c).FillWidth().Gap(4*s).Padding(12*s).Radius(8*s).Background(panel).Border(1, line).Children(func() {
+				ui.Column(c).FillWidth().Gap(4*s).Padding(12*s).Radius(radiusChip*s).Background(panel).Border(1, line).Children(func() {
 					ui.Text(c, t.AccMSDisabled1).FontSize(typeCallout * s).FontWeight(600).TextColor(inkSecondary)
 					label(c, t.AccMSDisabled2).FontSize(typeCallout * s)
 				})
@@ -292,7 +284,7 @@ func (a *App) accountAddForm(c *ui.Context) {
 				})
 			} else {
 				label(c, t.AccMSCodePrompt)
-				ui.Row(c).FillWidth().Padding(14*s).Radius(10*s).Background(panel).Border(1, blue).Justify(ui.Center).Children(func() {
+				ui.Row(c).FillWidth().Padding(16*s).Radius(radiusControl*s).Background(panel).Border(1, blue).Justify(ui.Center).Children(func() {
 					ui.Text(c, a.device.UserCode).FontSize(typeHero * s).Bold().TextColor(accent).NoWrap()
 				})
 				ui.Row(c).Gap(12 * s).Children(func() {
@@ -306,10 +298,9 @@ func (a *App) accountAddForm(c *ui.Context) {
 				statusLine(c, t.AccMSWaiting, muted, true)
 			}
 		case "third":
-			label(c, t.AccThirdDesc)
 			a.authServerPicker(c)
 			field(c, t.AccThirdUserLabel, &a.form.Username, t.AccThirdUserHint)
-			ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+			ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 				label(c, t.AccThirdPassLabel).FontWeight(600)
 				textField(c, &a.form.Password).Label(t.AccThirdPassLabel).Placeholder(t.AccThirdPassHint).Password().FillWidth()
 			})
@@ -321,8 +312,16 @@ func (a *App) accountAddForm(c *ui.Context) {
 				}
 				selectBox(c, "third-profile-select", t.AccThirdProfileLabel, &a.form.Profile, names).FillWidth()
 			}
-			ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
-				if buttonWhy(c, "third-login", t.AccThirdLoginBtn, "account", true, whyOf(a.dialogPending(), t.WhyBusy, a.form.Server == "" || a.form.Username == "" || a.form.Password == "", t.WhyNeedLogin), true) {
+			ui.Row(c).FillWidth().Margin(4*s, 0, 0, 0).Children(func() {
+				busy := a.dialogPending()
+				disabled := busy || a.serverEdit != nil || strings.TrimSpace(a.form.Server) == "" || strings.TrimSpace(a.form.Username) == "" || a.form.Password == ""
+				text, icon := t.AccThirdLoginBtn, "arrow"
+				if busy && a.pendingOp("thirdLogin") {
+					text, icon = a.L("account_dialog.signing_in"), ""
+				}
+				fg := buttonForeground(true, disabled)
+				b := ui.ButtonBase(c.Key("third-login")).Label(text).Font(uiSansFamily()).FillWidth().Height(btnLg * s).PaddingX(btnPad * s).TextColor(fg).AlignItems(ui.Center).Justify(ui.Center).Gap(btnGap * s)
+				if finishButton(c, b, "third-login", text, icon, 16*s, fg, true, disabled) {
 					id := ""
 					for _, p := range a.profiles {
 						if p.Name == a.form.Profile {

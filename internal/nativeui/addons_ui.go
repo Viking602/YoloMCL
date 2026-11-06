@@ -130,7 +130,7 @@ func letterTile(c *ui.Context, text string, size float32, dim bool) {
 	if dim {
 		tone = muted
 	}
-	ui.Box(c).Size(size, size).Radius(size * .24).Background(tone.Alpha(.14)).Center().Shrink(0).Children(func() {
+	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Background(tone.Alpha(.14)).Center().Shrink(0).Children(func() {
 		ui.Text(c, letter).FontSize(size * .46).FontWeight(700).TextColor(tone).NoWrap()
 	})
 	_ = s
@@ -164,8 +164,8 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 	if compact {
 		height = 54
 	}
-	ui.Row(c.Key("addon-" + it.key)).Label("资源项 " + it.name).FillWidth().Height(height * s).Gap(6 * s).AlignItems(ui.Center).Children(func() {
-		b := tooltip(c, ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name), it.file).Grow(1).Basis(0).MinWidth(0).FillHeight().PaddingX(10 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
+	ui.Row(c.Key("addon-" + it.key)).Label("资源项 " + it.name).FillWidth().Height(height * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+		b := tooltip(c, ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name), it.file).Grow(1).Basis(0).MinWidth(0).FillHeight().PaddingX(12 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
 		bg := ui.Transparent
 		if b.Hovered() {
 			bg = ui.RGBA(120, 130, 160, .08)
@@ -184,7 +184,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 			}
 			ui.Box(c).Size(size, size).Shrink(0).Opacity(op).Children(func() {
 				if icon != nil {
-					ui.Box(c).Size(size, size).Radius(size * .22).Clip().Background(panel).Center().Children(func() {
+					ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Clip().Background(panel).Center().Children(func() {
 						ui.Image(c, icon).Size(size, size).Fit(ui.Contain)
 					})
 				} else {
@@ -195,7 +195,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 			if !it.enabled {
 				fg = muted
 			}
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(3 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(4 * s).Children(func() {
 				ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, primary).Shrink(1).MinWidth(0).FontSize(typeBody * s).FontWeight(600).TextColor(fg).SingleLine()
 					if secondary != "" {
@@ -215,7 +215,7 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 		}).Clicked() {
 			onToggle()
 		}
-		ui.Row(c).Shrink(0).Gap(10 * s).PaddingX(4 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Shrink(0).Gap(12 * s).PaddingX(4 * s).AlignItems(ui.Center).Children(func() {
 			if it.rank > 0 {
 				quietTag(c, fmt.Sprintf("#%d", it.rank), inkSecondary)
 			}
@@ -229,11 +229,11 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 				tooltip(c, ui.Icon(c, logo).Size(14*s, 14*s), sourceName(it.source)).Label(sourceName(it.source)).Shrink(0)
 			}
 			if it.size != "" {
-				ui.Text(c, it.size).Width(64 * s).TextAlign(ui.End).FontSize(typeCaption * s).TextColor(muted).NoWrap()
+				ui.Text(c, it.size).Width(64 * s).TextAlign(ui.End).FontFeatures("tnum").FontSize(typeCaption * s).TextColor(muted).NoWrap()
 			}
 		})
 		if actions != nil {
-			ui.Row(c).Shrink(0).Gap(2 * s).AlignItems(ui.Center).Children(actions)
+			ui.Row(c).Shrink(0).Gap(4 * s).AlignItems(ui.Center).Children(actions)
 		}
 	})
 }
@@ -260,7 +260,7 @@ func sourceName(src string) string {
 
 func quietTag(c *ui.Context, text string, tone ui.Color) {
 	s := uiScale(c)
-	ui.Row(c).Shrink(0).Height(18 * s).PaddingX(6 * s).Radius(5 * s).Background(tone.Alpha(.10)).Center().Children(func() {
+	ui.Row(c).Shrink(0).Height(18 * s).PaddingX(8 * s).Radius(radiusChip * s).Background(tone.Alpha(.10)).Center().Children(func() {
 		ui.Text(c, text).FontSize(typeCaption2 * s).FontWeight(600).TextColor(tone).NoWrap()
 	})
 }

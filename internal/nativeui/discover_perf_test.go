@@ -10,15 +10,15 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
-func TestDiscoverLiftKeepsSoftwareDrawingUntransformed(t *testing.T) {
-	for _, mode := range []discoverReveal{discoverLift, discoverExpand} {
-		t.Run(map[discoverReveal]string{discoverLift: "initial", discoverExpand: "after-filter"}[mode], func(t *testing.T) {
-			testDiscoverLift(t, mode)
+func TestDiscoverScrollFadeKeepsSoftwareDrawingUntransformed(t *testing.T) {
+	for _, mode := range []discoverReveal{discoverFade, discoverExpand} {
+		t.Run(map[discoverReveal]string{discoverFade: "initial", discoverExpand: "after-filter"}[mode], func(t *testing.T) {
+			testDiscoverScrollFade(t, mode)
 		})
 	}
 }
 
-func testDiscoverLift(t *testing.T, mode discoverReveal) {
+func testDiscoverScrollFade(t *testing.T, mode discoverReveal) {
 	t.Helper()
 	a := &App{}
 	a.discoverMotion.viewport = ui.Rect{W: 600, H: 400}
@@ -35,11 +35,11 @@ func testDiscoverLift(t *testing.T, mode discoverReveal) {
 		x, y = card.LocalToWindow(0, 0)
 	}, 600, 400)
 	tt.Advance(100 * time.Millisecond)
-	if state.progress <= 0 || state.progress >= 1 || layout.Y <= 80 {
-		t.Fatal("card did not retain its animated entrance")
+	if state.progress <= 0 || state.progress >= 1 || layout.X != 100 || layout.Y != 80 {
+		t.Fatal("card did not fade in at its final position")
 	}
 	if x != layout.X || y != layout.Y {
-		t.Fatal("card lift transformed its subtree instead of moving its layout")
+		t.Fatal("card fade transformed its subtree")
 	}
 	tt.Advance(400 * time.Millisecond)
 	if state.progress != 1 || math.Abs(float64(layout.Y-80)) > .01 {
@@ -61,7 +61,7 @@ func BenchmarkDiscoverScroll(b *testing.B) {
 		name  string
 		scale float32
 		mode  discoverReveal
-	}{{"1x", 1, discoverLift}, {"1.5x", 1.5, discoverLift}, {"filtered-1.5x", 1.5, discoverExpand}} {
+	}{{"1x", 1, discoverFade}, {"1.5x", 1.5, discoverFade}, {"filtered-1.5x", 1.5, discoverExpand}} {
 		b.Run(tc.name, func(b *testing.B) {
 			a := &App{provider: "modrinth", resourceType: "modpack", images: map[string]ui.ImageSource{"scroll-icon": icon}}
 			a.settings.Language = LangZH

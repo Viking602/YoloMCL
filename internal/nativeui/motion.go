@@ -6,10 +6,9 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// One motion system for the whole UI. Every animated value goes through
-// AnimateTo / Transition, so an interrupted animation continues from where
-// it is instead of jumping; the toolkit honours the desktop's reduce-motion
-// preference (values snap, nothing slides).
+// Shared timing for UI transitions. Seed-map tiles use capped paint-only fades
+// and the map camera integrates pointer velocity separately. Both honour the
+// desktop's reduce-motion preference, as do AnimateTo / Transition below.
 const (
 	motionDurEnter = 220 * time.Millisecond // things appearing / moving in
 	motionDurExit  = 150 * time.Millisecond // things leaving: quicker
@@ -36,15 +35,15 @@ var (
 )
 
 // The hero always shows the current selection. Keeping outgoing titles around
-// makes rapid switches overlap. Animate only the incoming artwork and text,
+// makes rapid switches overlap. Fade only the incoming artwork and text,
 // in fixed slots; the card surface and launch controls stay in place.
 func heroSwap(c *ui.Context) ui.ElementTransition {
 	if c.Preferences().ReduceMotion {
 		return ui.ElementTransition{Colors: true}
 	}
 	return ui.ElementTransition{
-		Animation: &motionPack, Colors: true,
-		Enter: &ui.Motion{Opacity: 0, Y: 14 * uiScale(c)},
+		Animation: &motionFast, Colors: true,
+		Enter: &ui.Motion{Opacity: 0},
 	}
 }
 

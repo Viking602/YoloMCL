@@ -17,7 +17,7 @@ func (a *App) heroPackStatus(c *ui.Context, r launcher.Instance) {
 	switch {
 	case packHasUpdate(r, ""):
 		text := a.L("overview_pack.update_to") + u.Latest.Number
-		b := tooltip(c, ui.ButtonBase(c.Key("hero-pack-update")).Label(text), text+"\n"+a.L("overview_pack.review_and_update")).Height(24*s).MinWidth(0).PaddingX(9*s).Gap(5*s).Radius(7*s).Background(warning.Alpha(.14)).Border(1, warning.Alpha(.30)).AlignItems(ui.Center).Shrink(1)
+		b := tooltip(c, ui.ButtonBase(c.Key("hero-pack-update")).Label(text), text+"\n"+a.L("overview_pack.review_and_update")).Height(24*s).MinWidth(0).PaddingX(8*s).Gap(4*s).Radius(radiusChip*s).Background(warning.Alpha(.14)).Border(1, warning.Alpha(.30)).AlignItems(ui.Center).Shrink(1)
 		if b.Children(func() {
 			ui.Icon(c, icons["download"]).Size(12*s, 12*s).TextColor(ui.Hex("#b26a00")).Shrink(0)
 			ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(650).TextColor(ui.Hex("#b26a00")).SingleLine().MinWidth(0).Shrink(1)
@@ -84,7 +84,7 @@ func (a *App) ovPackActions(c *ui.Context, r launcher.Instance) {
 		if len(r.PackBackups) > 0 {
 			b := r.PackBackups[0]
 			if fixedButton(c, "pack-rollback", a.L("overview_pack.roll_back"), "refresh", 0, btnSm*s, false, blocked) && a.overviewActionReady("ov-run") {
-				a.execute("rollbackPack", map[string]string{"rootId": r.ID, "id": b.ID}, a.taskAdded)
+				a.requestPackRollback(r.ID, b.ID, b.FromVersion)
 			}
 		}
 	})

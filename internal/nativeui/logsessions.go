@@ -109,13 +109,13 @@ func (a *App) sessionLabel(g launcher.GameSession, list []launcher.GameSession) 
 }
 
 func statusDot(c *ui.Context, col ui.Color, s float32) {
-	ui.Box(c).Size(7*s, 7*s).Radius(999).Background(col).Shrink(0)
+	ui.Box(c).Size(7*s, 7*s).Radius(radiusPill).Background(col).Shrink(0)
 }
 
 // sessionSwitcher is a compact segmented strip; only drawn for 2+ sessions.
 func (a *App) sessionSwitcher(c *ui.Context, scope string, list []launcher.GameSession, cur *launcher.GameSession) {
 	s := uiScale(c)
-	ui.Row(c.Key("log-sessions")).FillWidth().Shrink(0).Gap(6 * s).Wrap().AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("log-sessions")).FillWidth().Shrink(0).Gap(8 * s).Wrap().AlignItems(ui.Center).Children(func() {
 		for _, g := range list {
 			g := g
 			sel := cur != nil && cur.ID == g.ID
@@ -123,7 +123,7 @@ func (a *App) sessionSwitcher(c *ui.Context, scope string, list []launcher.GameS
 			if scope != "" { // the pack tab already names the pack
 				name = "#" + strconv.Itoa(g.Seq)
 			}
-			b := tooltip(c, ui.ButtonBase(c.Key("log-sess-"+g.ID)).Label(name), name+"  "+a.sessionStateText(g.State)).Height(30*s).Padding(0, 10*s, 0, 12*s).Gap(8 * s).Radius(8 * s).AlignItems(ui.Center).MaxWidth(240 * s).Shrink(0)
+			b := tooltip(c, ui.ButtonBase(c.Key("log-sess-"+g.ID)).Label(name), name+"  "+a.sessionStateText(g.State)).Height(30*s).Padding(0, 12*s, 0, 12*s).Gap(8 * s).Radius(radiusChip * s).AlignItems(ui.Center).MaxWidth(240 * s).Shrink(0)
 			bg, fg := ui.RGBA(120, 130, 160, .10), inkSecondary
 			if sel {
 				bg, fg = panel, ink
@@ -140,7 +140,7 @@ func (a *App) sessionSwitcher(c *ui.Context, scope string, list []launcher.GameS
 					a.sessionAccount(c, g, 16*s, muted)
 				}
 				if g.State != "running" {
-					x := tooltip(c, ui.ButtonBase(c.Key("log-sess-close-"+g.ID)).Label(a.L("logsessions.close")), a.L("logsessions.close")).Size(18*s, 18*s).Radius(5 * s).Center()
+					x := tooltip(c, ui.ButtonBase(c.Key("log-sess-close-"+g.ID)).Label(a.L("logsessions.close")), a.L("logsessions.close")).Size(18*s, 18*s).Radius(radiusChip * s).Center()
 					if x.Hovered() {
 						x.Background(ui.RGBA(120, 130, 160, .18))
 					}
@@ -204,9 +204,9 @@ func (a *App) sessionAccount(c *ui.Context, g launcher.GameSession, size float32
 			ac = x
 		}
 	}
-	ui.Row(c).Gap(5 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+	ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 		a.headAvatar(c, &ac, size, func() {
-			ui.Box(c).Size(size, size).Radius(size * .22).Background(ui.RGBA(120, 130, 160, .16)).Shrink(0)
+			ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Background(ui.RGBA(120, 130, 160, .16)).Shrink(0)
 		})
 		ui.Text(c, g.AccountName).FontSize(typeCaption * s).TextColor(col).SingleLine().MaxWidth(110 * s).Ellipsis("…")
 	})

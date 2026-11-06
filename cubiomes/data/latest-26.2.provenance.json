@@ -1,0 +1,41 @@
+{
+  "version": "26.2",
+  "version_manifest_url": "https://piston-meta.mojang.com/v1/packages/bdfd9856166b7171857c491f15479762f3abda99/26.2.json",
+  "server_url": "https://piston-data.mojang.com/v1/objects/823e2250d24b3ddac457a60c92a6a941943fcd6a/server.jar",
+  "server_sha1": "823e2250d24b3ddac457a60c92a6a941943fcd6a",
+  "inner_server_sha256": "183c0499c5f855570ee487dd38e141a53f0121f83a0b07a3bac2d8b6698823e8",
+  "bundle_uncompressed_sha256": "6b6302b632df0e0ffa78112483c9c0a48a4c6ab6781540d3f30cb13fc0531425",
+  "version_info": {
+    "id": "26.2",
+    "name": "26.2",
+    "world_version": 4903,
+    "series_id": "main",
+    "protocol_version": 776,
+    "pack_version": {
+      "resource_major": 88,
+      "resource_minor": 0,
+      "data_major": 107,
+      "data_minor": 1
+    },
+    "build_time": "2026-06-16T12:01:27+00:00",
+    "java_component": "java-runtime-epsilon",
+    "java_version": 25,
+    "stable": true,
+    "use_editor": false
+  },
+  "counts": {
+    "biome_tag": 68,
+    "biome": 66,
+    "density_function": 35,
+    "multi_noise_biome_source_parameter_list": 2,
+    "noise": 63,
+    "noise_settings": 7,
+    "structure": 34,
+    "structure_set": 20,
+    "world_preset": 7
+  },
+  "biome_parameter_counts": {
+    "overworld": 7594,
+    "nether": 5
+  }
+}

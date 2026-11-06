@@ -124,13 +124,15 @@ func TestLauncherUpdateCancelOnlyDefersThisLaunch(t *testing.T) {
 			}}}, nil
 		}
 		a.startLauncherUpdates()
-		waitUI(t, tt, func() bool { return a.dialogOpen && a.dialog == "launcherUpdate" })
+		waitUI(t, tt, func() bool { return a.launcherUpdate.phase == "available" && !a.launcherUpdate.prompt })
 		tt.Advance(300 * time.Millisecond)
 		if installs.Load() != 0 {
 			t.Fatal("startup installed without confirmation")
 		}
 		snapshotUI(t, tt, "launcher-optional-update")
-		clickUI(t, tt, a.L("install_dialog.cancel"))
+		if a.dialogOpen {
+			t.Fatal("optional discovery interrupted the page")
+		}
 		tt.Advance(500 * time.Millisecond)
 		a.startLauncherUpdates()
 		tt.Frame()
@@ -163,8 +165,8 @@ func TestLauncherUpdatePromptWaitsForActiveDialog(t *testing.T) {
 	a.closeDialog()
 	tt.Advance(500 * time.Millisecond)
 	tt.Frame()
-	if !a.dialogOpen || a.dialog != "launcherUpdate" {
-		t.Fatal("queued update was not shown after the form closed")
+	if a.dialogOpen || a.launcherUpdate.prompt || a.launcherUpdate.phase != "available" {
+		t.Fatal("optional update must remain available without opening a modal")
 	}
 	a.bgWG.Wait()
 }

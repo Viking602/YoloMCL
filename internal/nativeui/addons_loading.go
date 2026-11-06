@@ -27,6 +27,51 @@ func (a *App) loadMods() { a.loadAddons(true) }
 // refreshes and file mutations still call loadMods to bypass this short grace.
 func (a *App) ensureAddons() { a.loadAddons(false) }
 
+// Job results can arrive through polling or a command's snapshot, including
+// jobs that finish before their running state was ever displayed.
+func (a *App) refreshAddonsAfterJobs(old, cur []launcher.Job) {
+	previous := make(map[string]launcher.Job, len(old))
+	for _, j := range old {
+		previous[j.ID] = j
+	}
+	refresh := false
+	for _, j := range cur {
+		if j.TargetRootID == "" || (j.State != "completed" && j.State != "failed" && j.State != "cancelled") {
+			continue
+		}
+		if p, ok := previous[j.ID]; ok && p.State == j.State && p.Attempt == j.Attempt {
+			continue
+		}
+		kind := ""
+		switch j.TitleKey {
+		case "mods.installDeps", "mods.detect":
+			kind = "mods"
+		case "addon.resourcepack":
+			kind = "resourcepack"
+		case "addon.shader":
+			kind = "shader"
+		case "pack.update", "pack.rollback":
+			// All addon kinds may have changed.
+		default:
+			continue
+		}
+		// Versions may share a game folder. Expire every matching list in
+		// this root, retaining its rows during the quiet refresh.
+		for key, entry := range a.addonCache {
+			if strings.HasPrefix(key, j.TargetRootID+"|") && (kind == "" || strings.HasSuffix(key, "|"+kind)) {
+				entry.loaded = time.Time{}
+				a.addonCache[key] = entry
+			}
+		}
+		if r := a.root(); r != nil && r.ID == j.TargetRootID && (kind == "" || kind == a.addonTab) {
+			refresh = true
+		}
+	}
+	if refresh && (a.page == "mods" || a.page == "home" && (a.instTab == "mods" || a.instTab == "resourcepack" || a.instTab == "shader")) {
+		a.loadMods()
+	}
+}
+
 func (a *App) cancelAddonLoad() {
 	a.addonListData = addonListData{}
 	if a.modsRefreshing && a.modsLoadKey == a.modsKey {

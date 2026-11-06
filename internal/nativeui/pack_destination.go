@@ -71,7 +71,7 @@ func (a *App) packDestFields(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
 	labelW := 72 * s
-	ui.Column(c.Key("pack-dest")).FillWidth().Gap(10 * s).Children(func() {
+	ui.Column(c.Key("pack-dest")).FillWidth().Gap(12 * s).Children(func() {
 		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, t.ImportParentLabel).FontSize(typeFootnote * s).FontWeight(600).TextColor(inkSecondary).Width(labelW).Shrink(0)
 			textField(c.Key("pack-parent"), &a.form.Parent).Label(t.ImportParentLabel).Placeholder(t.DialogChooseFolder).Grow(1).MinWidth(0)
@@ -87,7 +87,7 @@ func (a *App) packDestFields(c *ui.Context) {
 				fld.Border(1, danger.Alpha(.6))
 			}
 		})
-		ui.Row(c).FillWidth().Height(18*s).Gap(6*s).Padding(0, 0, 0, labelW+12*s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Height(18*s).Gap(8*s).Padding(0, 0, 0, labelW+12*s).AlignItems(ui.Center).Children(func() {
 			col, icon := muted, "folder"
 			if bad {
 				col, icon = danger, "info"

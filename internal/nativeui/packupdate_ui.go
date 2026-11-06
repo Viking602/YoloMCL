@@ -30,9 +30,9 @@ func (a *App) packSection(c *ui.Context, r launcher.Instance) {
 	t := a.tr()
 	p := r.Pack
 	ui.Box(c).FillWidth().Height(1).Background(line)
-	ui.Column(c.Key("pack-section")).Label("整合包设置").FillWidth().Gap(10*s).Padding(16*s).Radius(12*s).Background(raised).Border(1, line).Children(func() {
+	ui.Column(c.Key("pack-section")).Label("整合包设置").FillWidth().Gap(12*s).Padding(16*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
 		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(36*s, 36*s).Radius(10*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
+			ui.Box(c).Size(36*s, 36*s).Radius(radiusControl*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
 				if p.Source == "modrinth" {
 					ui.Image(c, modrinthLogo).Size(22*s, 22*s).Fit(ui.Contain)
 				} else if p.Source == "curseforge" {
@@ -41,7 +41,7 @@ func (a *App) packSection(c *ui.Context, r launcher.Instance) {
 					ui.Icon(c, icons["layers"]).Size(20*s, 20*s).TextColor(accent)
 				}
 			})
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				ui.Text(c, t.PackSecTitle+"   "+p.Name).FontSize(typeSubhead * s).Bold().TextColor(ink).SingleLine().FillWidth().MinWidth(0)
 				label(c, t.PackSecCurrent+" "+p.Version+"   "+p.Minecraft).FontSize(typeFootnote * s).SingleLine()
 			})
@@ -81,7 +81,7 @@ func (a *App) packSection(c *ui.Context, r launcher.Instance) {
 			if len(r.PackBackups) > 0 {
 				b := r.PackBackups[0]
 				if button(c, "pack-rollback", t.PackRollbackPrefix+b.FromVersion, "refresh", false, blocked) {
-					a.execute("rollbackPack", map[string]string{"rootId": r.ID, "id": b.ID}, a.taskAdded)
+					a.requestPackRollback(r.ID, b.ID, b.FromVersion)
 				}
 			}
 		})
@@ -132,7 +132,7 @@ func (a *App) packDropDialog(c *ui.Context) {
 	}
 	label(c, fmt.Sprintf(t.PackDropDesc, r.Name, r.Pack.Version))
 	if p := a.packPreview; p != nil {
-		ui.Row(c).FillWidth().Padding(12*s, 14*s).Radius(12*s).Background(accentSoft).Border(1, blue).Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Padding(12*s, 16*s).Radius(radiusControl*s).Background(accentSoft).Border(1, blue).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			ui.Image(c, packLogo(p.Source)).Size(22*s, 22*s).Fit(ui.Contain)
 			ui.Text(c, p.Name).FontSize(typeBody * s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
 			badge(c, r.Pack.Version, muted)
@@ -143,7 +143,7 @@ func (a *App) packDropDialog(c *ui.Context) {
 	if r.Running {
 		label(c, t.PackSecRunning).TextColor(danger)
 	}
-	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		if buttonWhy(c, "pack-drop-update", t.PackDropUpdateBtn, "download", true, whyOf(a.instancePending("planPackUpdate"), t.WhyBusy, r.Running, t.WhyRunning), true) {
 			a.planPackUpdate(r.ID, a.packDropPath, "")
 		}
@@ -187,8 +187,8 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 	if p == nil {
 		return
 	}
-	ui.Row(c).FillWidth().Padding(14*s, 16*s).Radius(12*s).Background(accentSoft).Border(1, blue).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(40*s, 40*s).Radius(10*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
+	ui.Row(c).FillWidth().Padding(16*s, 16*s).Radius(radiusControl*s).Background(accentSoft).Border(1, blue).Gap(12 * s).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Size(40*s, 40*s).Radius(radiusControl*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
 			ui.Image(c, packLogo(a.packPlanSource())).Size(24*s, 24*s).Fit(ui.Contain)
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
@@ -204,7 +204,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 		badge(c, p.NewVersion, accent)
 	})
 	if p.GameChanged && !a.packPlanReport {
-		ui.Row(c.Key("pack-game-warn")).Label("游戏版本变更提示").FillWidth().Padding(12*s, 14*s).Gap(12*s).Radius(12*s).Background(amberSoft).Border(1, amberLine).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key("pack-game-warn")).Label("游戏版本变更提示").FillWidth().Padding(12*s, 16*s).Gap(12*s).Radius(radiusControl*s).Background(amberSoft).Border(1, amberLine).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(18*s, 18*s).TextColor(warningInk).Shrink(0)
 			ui.Text(c, fmt.Sprintf(t.PackGameWarn, prettyGame(p.NewGame), prettyGame(p.OldGame))).Grow(1).Basis(0).MinWidth(0).FontSize(typeFootnote * s).TextColor(warningInk)
 			if button(c, "pack-open-dir", t.PackOpenDirBtn, "folder", false, false) {
@@ -224,7 +224,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 		}
 	})
 	if !a.packPlanReport {
-		ui.Column(c).FillWidth().Gap(6*s).Padding(12*s, 14*s).Radius(12*s).Background(raised).Border(1, line).Children(func() {
+		ui.Column(c).FillWidth().Gap(8*s).Padding(12*s, 16*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
 			label(c, t.PackChangelog).FontWeight(600)
 			text := plainChangelog(p.Changelog)
 			if text == "" {
@@ -240,7 +240,7 @@ func (a *App) packUpdateDialog(c *ui.Context) {
 	if a.packPlanReport {
 		return
 	}
-	ui.Row(c).FillWidth().Padding(10*s, 14*s).Radius(12 * s).Background(fieldColor).Children(func() {
+	ui.Row(c).FillWidth().Padding(12*s, 16*s).Radius(radiusControl * s).Background(fieldColor).Children(func() {
 		ui.Text(c, t.PackBackupNote).FillWidth().FontSize(typeFootnote * s).TextColor(inkSecondary)
 	})
 }
@@ -258,7 +258,7 @@ func (a *App) packJobButtons(c *ui.Context, j launcher.Job) {
 	for _, b := range r.PackBackups {
 		if b.ID == j.ResultRef {
 			if button(c, "job-rollback-"+j.ID, t.TaskRollbackBtn, "refresh", false, a.pendingAt("rollbackPack", "rootId", r.ID) || r.Running) {
-				a.execute("rollbackPack", map[string]string{"rootId": j.ResultRoot, "id": j.ResultRef}, a.taskAdded)
+				a.requestPackRollback(j.ResultRoot, j.ResultRef, b.FromVersion)
 			}
 		}
 	}
@@ -282,7 +282,7 @@ func (a *App) packUpdateFooter(c *ui.Context) {
 	if running {
 		label(c, t.PackSecRunning).TextColor(danger)
 	}
-	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		ui.Icon(c, icons["refresh"]).Size(12*s, 12*s).TextColor(muted).Shrink(0)
 		ui.Text(c, a.L("packupdate_ui.backed_up_first_you_can_roll_back")).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Grow(1).Shrink(1).MinWidth(0)
 		if button(c, "pack-cancel", t.PackCancelBtn, "", false, a.pendingOp("applyPackUpdate")) {

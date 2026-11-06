@@ -373,7 +373,7 @@ func TestOfflineLaunchWithRealJVM(t *testing.T) {
 	r := newTestRoot(t, s, "Offline Path With Spaces")
 	work := t.TempDir()
 	source := filepath.Join(work, "Fixture.java")
-	writeTestFile(t, source, []byte(`public class Fixture { public static void main(String[] args) { for (String arg : args) System.out.println("ARG=" + arg); System.out.println("DIR=" + System.getProperty("user.dir")); } }`))
+	writeTestFile(t, source, []byte(`public class Fixture { public static void main(String[] args) throws Exception { for (String arg : args) System.out.println("ARG=" + arg); System.out.println("DIR=" + System.getProperty("user.dir")); System.out.println("OPTIONS=" + new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("options.txt")), java.nio.charset.StandardCharsets.UTF_8)); } }`))
 	if b, e := exec.Command(javac, source).CombinedOutput(); e != nil {
 		t.Fatalf("javac: %v %s", e, b)
 	}
@@ -405,6 +405,13 @@ func TestOfflineLaunchWithRealJVM(t *testing.T) {
 		t.Fatal(e)
 	}
 	fakeHTTP(t, s, map[string][]byte{})
+	selected, err := s.getRoot(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gameDir := selected.VersionDir()
+	writeTestFile(t, filepath.Join(gameDir, "options.txt"), []byte("key_key.forward:key.keyboard.w\n"))
+	saveBindings(t, s, "", map[string]string{"key_key.forward": "key.keyboard.i"})
 	id, e := s.Launch(r.ID, a.ID)
 	if e != nil {
 		t.Fatal(e)
@@ -417,7 +424,7 @@ func TestOfflineLaunchWithRealJVM(t *testing.T) {
 		lines, e := s.Logs(r.ID)
 		if e == nil && strings.Contains(strings.Join(lines, "\n"), "游戏已退出") {
 			joined := strings.Join(lines, "\n")
-			for _, expected := range []string{"ARG=MCL_Tester", "ARG=" + a.UUID, "ARG=0", "ARG=legacy", "ARG=" + r.Path, "DIR=" + r.Path} {
+			for _, expected := range []string{"ARG=MCL_Tester", "ARG=" + a.UUID, "ARG=0", "ARG=legacy", "ARG=" + gameDir, "DIR=" + gameDir, "OPTIONS=key_key.forward:key.keyboard.i"} {
 				if !strings.Contains(joined, expected) {
 					t.Errorf("missing JVM argument %q in %s", expected, joined)
 				}

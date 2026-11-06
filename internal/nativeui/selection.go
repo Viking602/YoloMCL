@@ -39,11 +39,30 @@ func (a *App) selectRoot(id string) {
 	a.selectVersion(id, "")
 }
 
+func (a *App) selectAccount(id string) {
+	if a.guardDiscard(a.wardrobeDraftDirty(), func() { a.selectAccount(id) }) {
+		return
+	}
+	if a.page == "wardrobe" && a.wardrobeSt != nil {
+		a.wardrobeSt.pendingSkin, a.wardrobeSt.pendingName = nil, ""
+	}
+	a.execute("select", map[string]string{"accountId": id}, func(json.RawMessage) {
+		if a.page == "wardrobe" {
+			a.loadAppearance()
+		}
+	})
+}
+
 // selectVersion switches the current version in place: the local snapshot
 // changes at once (no busy state, so no button turns disabled, and no
 // rescan of the version folders), the choice is saved in the background,
 // and only a failure rolls the selection back.
 func (a *App) selectVersion(rootID, versionID string) {
+	if rootID != a.snapshot.ActiveRoot || versionID != "" && a.root() != nil && versionID != a.root().SelectedVersion {
+		if a.guardDiscard(a.hasUnsavedDraft(), func() { a.selectVersion(rootID, versionID) }) {
+			return
+		}
+	}
 	prevRoot, prevVersion, ok := a.applySelection(rootID, versionID)
 	if !ok {
 		a.execute("select", map[string]string{"rootId": rootID, "version": versionID}, func(json.RawMessage) { a.loadSelectedInstance() })
@@ -125,7 +144,9 @@ func (a *App) applySnapshot(snap launcher.Snapshot, epoch uint64) {
 			}
 		}
 	}
+	oldJobs := a.snapshot.Jobs
 	a.snapshot = snap
+	a.refreshAddonsAfterJobs(oldJobs, snap.Jobs)
 }
 
 // applySelection updates the in-memory snapshot and returns what was

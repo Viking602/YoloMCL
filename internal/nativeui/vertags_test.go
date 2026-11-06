@@ -3,6 +3,8 @@ package nativeui
 import (
 	"testing"
 	"time"
+
+	"github.com/egoist/mygo/ui"
 )
 
 func TestVersionTagsAreSuperscripts(t *testing.T) {
@@ -17,7 +19,11 @@ func TestVersionTagsAreSuperscripts(t *testing.T) {
 		if !ok || !ok2 {
 			t.Fatal("featured card / tag missing")
 		}
-		if tag.Y > card.Y+card.H/2 || tag.H > 20 { // top in the title line (taller mono title line)
+		// Font line metrics differ across platforms, including fractional DIPs.
+		// Keep the badge at its caption size rather than assuming a 20-DIP box.
+		s := uiScaleFor(1280, 800) * uiDensity
+		_, captionH := ui.ShapeText("Java 21", ui.Font{Family: theme.Font, Size: typeCaption2 * s, Weight: 600}, 0).Size()
+		if tag.Y > card.Y+card.H/2 || tag.H > captionH+2*(space1+1)*s+.5 {
 			t.Errorf("%.0fx: tag should be small and in the title line: tag %+v card %+v", sc, tag, card)
 		}
 	}

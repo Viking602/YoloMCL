@@ -69,10 +69,10 @@ func emptyState(c *ui.Context, key, icon, title, description string, actions fun
 	s := uiScale(c)
 	ui.Column(c.Key(key)).Font(uiSansFamily()).FillWidth().Padding(28*s, 24*s).Gap(12*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
 		emptyArtwork(c, key, icon, 1.15*s)
-		ui.Column(c).FillWidth().MaxWidth(520 * s).Gap(7 * s).AlignItems(ui.Center).Children(func() {
+		ui.Column(c).FillWidth().MaxWidth(520 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, title).FillWidth().FontSize(typeTitle * s).FontWeight(600).TextColor(inkSecondary).TextAlign(ui.Center)
 			if description != "" {
-				ui.Text(c, description).FillWidth().FontSize(typeFootnote * s).TextColor(muted).TextAlign(ui.Center)
+				bodyText(c, description).FillWidth().FontSize(typeFootnote * s).TextColor(muted).TextAlign(ui.Center)
 			}
 		})
 		if actions != nil {
@@ -83,22 +83,24 @@ func emptyState(c *ui.Context, key, icon, title, description string, actions fun
 
 func emptyPanel(c *ui.Context, key, icon, title, description string) {
 	s := uiScale(c)
-	ui.Column(c.Key(key)).Font(uiSansFamily()).FillWidth().Grow(1).Basis(0).MinHeight(0).Gap(9 * s).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+	ui.Column(c.Key(key)).Font(uiSansFamily()).FillWidth().Grow(1).Basis(0).MinHeight(0).Gap(8 * s).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 		emptyArtwork(c, key, icon, s)
-		tooltip(c, ui.Text(c, title).FillWidth().FontSize(typeHeadline*s).FontWeight(600).TextColor(inkSecondary).TextAlign(ui.Center).SingleLine(), title)
-		tooltip(c, ui.Text(c, description).FillWidth().MaxWidth(290*s).Height(38*s).Shrink(0).FontSize(typeFootnote*s).TextColor(muted).TextAlign(ui.Center).MaxLines(2), description)
+		titleLabel := ui.Text(c, title).FillWidth().MinWidth(0).FontSize(typeHeadline * s).FontWeight(600).TextColor(inkSecondary).TextAlign(ui.Center).SingleLine()
+		textTooltip(c, titleLabel, title, "", ui.Font{Family: uiSansFamily(), Size: typeHeadline * s, Weight: 600}, 1)
+		descLabel := bodyText(c, description).FillWidth().MaxWidth(290 * s).Height(38 * s).Shrink(0).FontSize(typeFootnote * s).TextColor(muted).TextAlign(ui.Center).MaxLines(2)
+		textTooltip(c, descLabel, description, "", ui.Font{Family: uiSansFamily(), Size: typeFootnote * s}, 2)
 	})
 }
 
 // Small lists (recent logs and backups) use the same typography in a quiet row.
 func emptyNote(c *ui.Context, key, icon, title, description string) {
 	s := uiScale(c)
-	ui.Row(c.Key(key)).Font(uiSansFamily()).FillWidth().Padding(14*s, 16*s).Gap(12 * s).Radius(radiusControl * s).Background(raised).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key(key)).Font(uiSansFamily()).FillWidth().Padding(16*s, 16*s).Gap(12 * s).Radius(radiusControl * s).Background(raised).AlignItems(ui.Center).Children(func() {
 		ui.Image(c, emptyArt[icon]).Size(56*s, 35*s).Shrink(0).Fit(ui.Contain)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, title).FillWidth().FontSize(typeFootnote * s).FontWeight(550).TextColor(inkSecondary)
 			if description != "" {
-				ui.Text(c, description).FillWidth().FontSize(typeCaption * s).TextColor(muted)
+				bodyText(c, description).FillWidth().FontSize(typeCaption * s).TextColor(muted)
 			}
 		})
 	})
