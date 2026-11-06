@@ -56,16 +56,22 @@ func ParseJVMArgs(raw string) ([]string, error) {
 	return out, nil
 }
 
-// ResolveRuntime applies version overrides, optional root defaults and global settings.
-func (r Root) ResolveRuntime(versionID string, settings Settings) (string, int, []string, error) {
-	vc := r.VersionConfigs[versionID]
-	javaPath := strings.TrimSpace(vc.JavaPath)
+// JavaPathFor resolves the explicitly selected runtime, or returns empty for automatic selection.
+func (r Root) JavaPathFor(versionID string, settings Settings) string {
+	javaPath := strings.TrimSpace(r.VersionConfigs[versionID].JavaPath)
 	if javaPath == "" && settings.UseRootSettings {
 		javaPath = strings.TrimSpace(r.JavaPath)
 	}
 	if javaPath == "" {
 		javaPath = strings.TrimSpace(settings.JavaPath)
 	}
+	return javaPath
+}
+
+// ResolveRuntime applies version overrides, optional root defaults and global settings.
+func (r Root) ResolveRuntime(versionID string, settings Settings) (string, int, []string, error) {
+	vc := r.VersionConfigs[versionID]
+	javaPath := r.JavaPathFor(versionID, settings)
 	// memoryMB 0 means automatic (see MemoryPlan / AutoMemoryFor).
 	_, memoryMB := r.MemoryPlan(versionID, settings)
 	rawJVM := strings.TrimSpace(vc.JVMArgs)

@@ -6,23 +6,49 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
-func (a *App) instTabs(_ launcher.Instance) []underlineTab {
-	return []underlineTab{
-		{"overview", a.L("instance.overview")},
-		{"seedmap", a.L("seedmap.open")},
+func seedMapAvailable(r launcher.Instance) bool {
+	for _, v := range r.Versions {
+		if v.ID == r.SelectedVersion {
+			return !v.SeedMapDisabled
+		}
+	}
+	return false
+}
+
+func (a *App) ensureSeedMapAvailability(r launcher.Instance) {
+	if a.service == nil || !r.Available {
+		return
+	}
+	for _, v := range r.Versions {
+		if v.ID == r.SelectedVersion && v.SeedMapCheckPending {
+			a.execute("checkSeedMapMods", map[string]string{"rootId": r.ID, "version": v.ID}, nil)
+			return
+		}
+	}
+}
+
+func (a *App) instTabs(r launcher.Instance) []underlineTab {
+	tabs := []underlineTab{{"overview", a.L("instance.overview")}}
+	if seedMapAvailable(r) {
+		tabs = append(tabs, underlineTab{"seedmap", a.L("seedmap.open")})
+	}
+	return append(tabs, []underlineTab{
 		{"mods", a.L("storage.label.mods")},
 		{"resourcepack", a.L("storage.label.resourcepacks")},
 		{"shader", a.L("storage.label.shaderpacks")},
 		{"worlds", a.L("storage.label.saves")},
 		{"logs", a.L("instance.logs")},
 		{"settings", a.L("instance.settings")},
-	}
+	}...)
 }
 
 // setInstTab switches the right-side tab and loads what it shows.
 func (a *App) setInstTab(tab string) {
 	if a.launcherUpdateRequired() {
 		return
+	}
+	if r := a.root(); tab == "seedmap" && r != nil && !seedMapAvailable(*r) {
+		tab = "overview"
 	}
 	if tab != a.instTab && a.guardDiscard(a.hasUnsavedDraft(), func() { a.setInstTab(tab) }) {
 		return
@@ -68,6 +94,9 @@ func (a *App) setInstTab(tab string) {
 func (a *App) instanceView(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
+	if r := a.root(); r != nil {
+		a.ensureSeedMapAvailability(*r)
+	}
 	if a.instTab == "" {
 		a.instTab = "overview"
 	}
@@ -75,6 +104,10 @@ func (a *App) instanceView(c *ui.Context) {
 		a.instLoaded = r.ID
 		a.instScrollPending = true
 		a.setInstTab(a.instTab)
+	}
+	if r := a.root(); r != nil && a.instTab == "seedmap" && !seedMapAvailable(*r) {
+		a.closeSeedMap()
+		a.setInstTab("overview")
 	}
 	ui.Row(c.Key("instance-split")).Label("实例视图").Fill().Gap(0).AlignItems(ui.Stretch).Children(func() {
 		a.instanceList(c)

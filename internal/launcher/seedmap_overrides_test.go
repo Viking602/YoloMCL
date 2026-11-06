@@ -223,6 +223,8 @@ func writeSeedMapTestNBT(t *testing.T, b *bytes.Buffer, name string, value any) 
 		kind = 3
 	case float64:
 		kind = 6
+	case []int32:
+		kind = 11
 	default:
 		t.Fatalf("unexpected NBT test value %T", value)
 	}
@@ -247,5 +249,10 @@ func writeSeedMapTestNBT(t *testing.T, b *bytes.Buffer, name string, value any) 
 		b.Write(binary.BigEndian.AppendUint32(nil, uint32(v)))
 	case float64:
 		b.Write(binary.BigEndian.AppendUint64(nil, math.Float64bits(v)))
+	case []int32:
+		b.Write(binary.BigEndian.AppendUint32(nil, uint32(len(v))))
+		for _, n := range v {
+			b.Write(binary.BigEndian.AppendUint32(nil, uint32(n)))
+		}
 	}
 }

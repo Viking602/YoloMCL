@@ -136,11 +136,14 @@ func loadBuiltinDocuments(name, profile string) ([]Document, error) {
 	return out, nil
 }
 
-var vanillaTrees sync.Map // at most six Overworld trees and two Nether orders
+var vanillaTrees sync.Map // finite version/preset trees
 
 func vanillaClimateTree(ctx context.Context, version, preset string) (*climateTree, []string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
+	}
+	if latestRelease(version) {
+		return latestVanillaClimateTree(ctx, version, preset)
 	}
 	minor, patch, ok := seedMapRelease(version)
 	if !ok {

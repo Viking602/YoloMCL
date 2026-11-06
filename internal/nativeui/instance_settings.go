@@ -110,7 +110,9 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 						for _, j := range a.java {
 							has = has || j.Major == javaFor(r, v)
 						}
-						if need := javaFor(r, v); need > 0 && !has && fixedButton(c, "ver-java-get", fmt.Sprintf(a.L("instance_settings.download_java"), need), "download", 0, btnMd*s, true, false) {
+						selected := v
+						selected.JavaPath = a.form.VerJava
+						if need := javaFor(r, v); need > 0 && !has && a.versionJavaPath(r, selected) == "" && fixedButton(c, "ver-java-get", fmt.Sprintf(a.L("instance_settings.download_java"), need), "download", 0, btnMd*s, true, false) {
 							a.openJavaGet(need, "", false)
 						}
 						if iconOnlyButton(c, "ver-java-browse", "folder", t.DialogBrowseBtn, btnMd*s, false) {

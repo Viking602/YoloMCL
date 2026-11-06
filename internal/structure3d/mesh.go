@@ -3,19 +3,22 @@ package structure3d
 import (
 	"image"
 	"math"
+	"slices"
 	"sync"
 )
 
 // texel is a decoded, pre-tinted texture with direct pixel access.
 type texel struct {
-	w, h   int
-	pix    []uint8 // RGBA, straight alpha
-	opaque bool    // every pixel alpha >= 128
+	w, h            int
+	pix             []uint8 // RGBA, straight alpha
+	opaque          bool    // every pixel alpha >= 128
+	blend, emissive bool
 }
 
 type texKey struct {
-	img  image.Image
-	tint int
+	img             image.Image
+	tint            int
+	blend, emissive bool
 }
 
 type meshQuad struct {
@@ -204,11 +207,11 @@ func newMeshBuilder(store *Store) *meshBuilder {
 	return &meshBuilder{store: store, cache: newModelCache(), tex: map[texKey]*texel{}}
 }
 
-func (mb *meshBuilder) texel(img image.Image, tint int) *texel {
+func (mb *meshBuilder) texel(img image.Image, tint int, blend, emissive bool) *texel {
 	if img == nil {
 		return nil
 	}
-	k := texKey{img, tint}
+	k := texKey{img, tint, blend, emissive}
 	if t, ok := mb.tex[k]; ok {
 		return t
 	}
@@ -217,6 +220,10 @@ func (mb *meshBuilder) texel(img image.Image, tint int) *texel {
 		src = tinted(img, BiomeTint(tint))
 	}
 	t := toTexel(src)
+	t.blend, t.emissive = blend, emissive
+	if blend {
+		t.opaque = false
+	}
 	if t.w < 1 || t.h < 1 {
 		t = nil
 	}
@@ -231,7 +238,7 @@ func (mb *meshBuilder) fullCube(m *ResolvedModel) bool {
 		}
 		ok := true
 		for _, f := range el.Faces {
-			t := mb.texel(f.Texture, f.TintIndex)
+			t := mb.texel(f.Texture, f.TintIndex, f.Blend, f.Emissive)
 			if t == nil || !t.opaque {
 				ok = false
 				break
@@ -285,8 +292,12 @@ func (mb *meshBuilder) build(scene *Scene) *Mesh {
 	}
 	models := make([]*ResolvedModel, len(scene.Blocks))
 	full := make(map[[3]int]bool, len(scene.Blocks))
+	fluids := make(map[[3]int]string)
 	for i, b := range scene.Blocks {
 		models[i] = mb.cache.resolve(mb.store, b.State)
+		if models[i] != nil && models[i].Fluid != "" {
+			fluids[[3]int{b.X, b.Y, b.Z}] = models[i].Fluid
+		}
 		if models[i] != nil && mb.fullCube(models[i]) {
 			full[[3]int{b.X, b.Y, b.Z}] = true
 		}
@@ -302,6 +313,13 @@ func (mb *meshBuilder) build(scene *Scene) *Mesh {
 		}
 		for _, el := range model.Elements {
 			for _, face := range el.Faces {
+				if model.Fluid != "" {
+					o := dirOffset[face.Dir]
+					if fluids[[3]int{b.X + o[0], b.Y + o[1], b.Z + o[2]}] == model.Fluid {
+						m.Culled++
+						continue
+					}
+				}
 				if onBoundary(el, face.Dir) {
 					o := dirOffset[face.Dir]
 					if full[[3]int{b.X + o[0], b.Y + o[1], b.Z + o[2]}] {
@@ -309,7 +327,7 @@ func (mb *meshBuilder) build(scene *Scene) *Mesh {
 						continue
 					}
 				}
-				t := mb.texel(face.Texture, face.TintIndex)
+				t := mb.texel(face.Texture, face.TintIndex, face.Blend, face.Emissive)
 				if t == nil {
 					continue
 				}
@@ -341,14 +359,22 @@ func (m *Mesh) Faces() int { return len(m.quads) }
 
 // Frame owns reusable buffers so steady-state rendering does not allocate.
 type Frame struct {
-	Image *image.RGBA
-	depth []float32
-	ids   []int32 // block under each pixel, for picking
-	ghost []int   // scratch reused across orbit frames
+	Image       *image.RGBA
+	depth       []float32
+	ids         []int32 // block under each pixel, for picking
+	ghost       []int   // scratch reused across orbit frames
+	translucent []translucentQuad
 	// Cross-section material depends on the cut height, not the camera.
 	sectionMesh *Mesh
 	sectionY    int
 	sectionTex  []*texel
+}
+
+type translucentQuad struct {
+	index        int
+	tex          *texel
+	shade, depth float32
+	hi           bool
 }
 
 func (f *Frame) ensure(w, h int) {
@@ -396,6 +422,7 @@ func (m *Mesh) Render(f *Frame, w, h int, cam Camera) *image.RGBA {
 	type pt struct{ x, y, z, u, v float32 }
 	var p [4]pt
 	f.ghost = f.ghost[:0] // terrain the cut took away, drawn faintly last
+	f.translucent = f.translucent[:0]
 	sectionY := int(math.Floor(cam.CutY)) - 1
 	if cam.Cut && m.section != nil {
 		if f.sectionMesh != m || f.sectionY != sectionY || len(f.sectionTex) != len(m.quads) {
@@ -489,8 +516,31 @@ quads:
 			}
 		}
 		hi := cam.Select != 0 && q.block == cam.Select
+		if t.blend {
+			f.translucent = append(f.translucent, translucentQuad{qi, t, shade, (p[0].z + p[1].z + p[2].z + p[3].z) / 4, hi})
+			continue
+		}
 		rasterTri(f, w, h, p[0], p[1], p[2], t, shade, q.block, hi, 1)
 		rasterTri(f, w, h, p[0], p[2], p[3], t, shade, q.block, hi, 1)
+	}
+	// Opaque geometry must be complete before water is blended. Re-sort only
+	// the visible translucent quads as the camera moves; reuse Frame storage.
+	slices.SortStableFunc(f.translucent, func(a, b translucentQuad) int {
+		if a.depth > b.depth {
+			return -1
+		}
+		if a.depth < b.depth {
+			return 1
+		}
+		return 0
+	})
+	for _, tq := range f.translucent {
+		q := &m.quads[tq.index]
+		if !project(q, cam.Cut && q.terrain) {
+			continue
+		}
+		rasterTri(f, w, h, p[0], p[1], p[2], tq.tex, tq.shade, q.block, tq.hi, 1)
+		rasterTri(f, w, h, p[0], p[2], p[3], tq.tex, tq.shade, q.block, tq.hi, 1)
 	}
 	for _, qi := range f.ghost {
 		q := &m.quads[qi]
@@ -512,6 +562,9 @@ quads:
 var backfaceSign float32 = 1
 
 func rasterTri(f *Frame, w, h int, a, b, c struct{ x, y, z, u, v float32 }, t *texel, shade float32, id int32, hi bool, alpha float32) {
+	if t.emissive {
+		shade = 1
+	}
 	minX := int(floor32(min(a.x, b.x, c.x)))
 	maxX := int(ceil32(max(a.x, b.x, c.x)))
 	minY := int(floor32(min(a.y, b.y, c.y)))
@@ -572,22 +625,32 @@ func rasterTri(f *Frame, w, h int, a, b, c struct{ x, y, z, u, v float32 }, t *t
 				ty = t.h - 1
 			}
 			ti := (ty*t.w + tx) * 4
-			if t.pix[ti+3] < 128 {
+			if t.pix[ti+3] == 0 || !t.blend && t.pix[ti+3] < 128 {
 				continue
 			}
 			o := di * 4
 			r, g, b := float32(t.pix[ti])*shade, float32(t.pix[ti+1])*shade, float32(t.pix[ti+2])*shade
-			if alpha < 1 { // ghost: blend over what is drawn, keep its depth
-				pix[o] = uint8(float32(pix[o])*(1-alpha) + r*alpha)
-				pix[o+1] = uint8(float32(pix[o+1])*(1-alpha) + g*alpha)
-				pix[o+2] = uint8(float32(pix[o+2])*(1-alpha) + b*alpha)
+			if hi { // selected block: pulled toward a warm highlight
+				r, g, b = r*0.45+255*0.55, g*0.45+196*0.55, b*0.45+40*0.55
+			}
+			opacity := alpha
+			if t.blend {
+				opacity *= float32(t.pix[ti+3]) / 255
+			}
+			if opacity < 1 {
+				pix[o] = uint8(float32(pix[o])*(1-opacity) + r*opacity)
+				pix[o+1] = uint8(float32(pix[o+1])*(1-opacity) + g*opacity)
+				pix[o+2] = uint8(float32(pix[o+2])*(1-opacity) + b*opacity)
+				if alpha == 1 {
+					depth[di] = z
+					if id != 0 {
+						f.ids[di] = id
+					} // keep a visible structure pickable through terrain water
+				}
 				continue
 			}
 			depth[di] = z
 			f.ids[di] = id
-			if hi { // selected block: pulled toward a warm highlight
-				r, g, b = r*0.45+255*0.55, g*0.45+196*0.55, b*0.45+40*0.55
-			}
 			pix[o], pix[o+1], pix[o+2] = uint8(r), uint8(g), uint8(b)
 			pix[o+3] = 255
 		}

@@ -1,0 +1,92 @@
+{
+  "version": "26.2",
+  "thresholds": [
+    -0.75,
+    -0.5,
+    0.5,
+    0.75
+  ],
+  "functions": [
+    17,
+    23,
+    41,
+    59,
+    83
+  ],
+  "samples": [
+    {
+      "input": -10000000.0,
+      "value": 17.0
+    },
+    {
+      "input": -1.0,
+      "value": 17.0
+    },
+    {
+      "input": -0.7500000000000001,
+      "value": 17.0
+    },
+    {
+      "input": -0.75,
+      "value": 23.0
+    },
+    {
+      "input": -0.7499999999999999,
+      "value": 23.0
+    },
+    {
+      "input": -0.5000000000000001,
+      "value": 23.0
+    },
+    {
+      "input": -0.5,
+      "value": 41.0
+    },
+    {
+      "input": -0.49999999999999994,
+      "value": 41.0
+    },
+    {
+      "input": -0.0,
+      "value": 41.0
+    },
+    {
+      "input": 0.0,
+      "value": 41.0
+    },
+    {
+      "input": 0.49999999999999994,
+      "value": 41.0
+    },
+    {
+      "input": 0.5,
+      "value": 59.0
+    },
+    {
+      "input": 0.5000000000000001,
+      "value": 59.0
+    },
+    {
+      "input": 0.7499999999999999,
+      "value": 59.0
+    },
+    {
+      "input": 0.75,
+      "value": 83.0
+    },
+    {
+      "input": 0.7500000000000001,
+      "value": 83.0
+    },
+    {
+      "input": 1.0,
+      "value": 83.0
+    },
+    {
+      "input": 10000000.0,
+      "value": 83.0
+    }
+  ],
+  "oracle": "Official Minecraft 26.2 DensityFunctions.intervalSelect; exact, nextDown and nextUp thresholds",
+  "client_sha1": "2dc72797acbc1b63fc16a11c4ac393605f453754"
+}

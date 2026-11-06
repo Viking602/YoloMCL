@@ -134,13 +134,16 @@ func (a *App) seedMapHitLabel(hit launcher.FeatureHit) string {
 
 func (a *App) seedMapCanvas(c *ui.Context, v *seedMapView) {
 	s := uiScale(c)
+	var coverage launcher.SeedMapCoverage
+	if v.sampler != nil && !v.viewport.Surface {
+		coverage = v.sampler.Coverage(v.viewport.Dimension)
+	}
 	ui.Row(c).FillWidth().Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, a.seedMapName("dimension", v.viewport.Dimension, a.isEN())).FontSize(typeCallout * s).Bold().TextColor(ink)
 		ui.Spacer(c).Grow(1).MinWidth(0)
 		if v.loading {
 			ui.Text(c, a.L("seedmap.loading")).FontSize(typeCaption * s).TextColor(muted)
 		} else if v.sampler != nil && !v.viewport.Surface {
-			coverage := v.sampler.Coverage(v.viewport.Dimension)
 			badge := "seedmap.coverage." + coverage.Terrain
 			if coverage.Opaque {
 				badge = "seedmap.coverage.opaque"
@@ -206,6 +209,14 @@ func (a *App) seedMapCanvas(c *ui.Context, v *seedMapView) {
 			v.markerGroup, v.selected = nil, nil
 		}
 	})
+	if !v.loading && !v.completing && coverage.Terrain == "candidates" {
+		ui.Row(c.Key("seedmap-unavailable")).FillWidth().Shrink(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, a.L("seedmap.unavailable")).FontSize(typeCaption * s).TextColor(warningInk).Grow(1).MinWidth(0)
+			if variantButton(c, "seedmap-unavailable-details", a.L("seedmap.unavailable_details"), "", buttonGhost, false) {
+				v.details, v.legend = true, false
+			}
+		})
+	}
 	stage := ui.ButtonBase(c.Key("seedmap-canvas")).Label(a.L("seedmap.canvas")).FillWidth().Grow(1).MinHeight(0).Clip().Radius(nestedRadius(radiusCard, 8) * s).Background(ui.Hex("#e1e7e8"))
 	stage.Bind(&v.canvasFocus)
 	bounds := stage.LayoutBounds()
@@ -714,6 +725,7 @@ func (a *App) seedMapResult(c *ui.Context, v *seedMapView, index int, hit launch
 		v.pointOpen = true
 		selected := hit
 		v.selected = &selected
+		v.inspected = nil
 		v.selectedSpawn = nil
 	}
 }
@@ -747,9 +759,10 @@ func (a *App) seedMapStructureCard(c *ui.Context, v *seedMapView) {
 		ui.Text(c, a.seedMapName("biome", hit.Biome, a.isEN())).FontSize(typeCaption * s).TextColor(muted).SingleLine()
 	}
 	tooltip(c, ui.Text(c, hit.ID).FontSize(typeCaption*s).TextColor(muted).SingleLine().FillWidth(), hit.Source)
+	command, canCopy := a.seedMapTeleportHeight(c, v, hit.X, hit.Z, false, 0)
 	ui.Row(c.Key("seedmap-selected-actions")).Gap(8 * s).FillWidth().Wrap().Children(func() {
-		if button(c, "seedmap-copy-structure", a.L("seedmap.copy_tp"), "", false, false) {
-			c.WriteClipboard(fmt.Sprintf("/tp %d ~ %d", hit.X, hit.Z))
+		if button(c, "seedmap-copy-structure", a.L("seedmap.copy_tp"), "", false, !canCopy) {
+			c.WriteClipboard(command)
 		}
 		preview, clicked := fixedButtonElement(c, "seedmap-structure-preview", a.L("seedmap.structure_preview"), "", 0, btnMd*s, buttonPrimary, false)
 		preview.Bind(&v.previewFocus)

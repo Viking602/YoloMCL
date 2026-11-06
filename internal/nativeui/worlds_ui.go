@@ -243,7 +243,7 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 			if iconOnlyButton(c, "world-open-"+w.Dir, "folder", a.L("worlds_ui.open_folder"), btnSm*s, false) {
 				a.openWorldDir(w.Dir)
 			}
-			if iconOnlyButton(c, "world-seed-map-"+w.Dir, "cube", fmt.Sprintf(a.L("seedmap.open_world"), w.Name), btnSm*s, false) {
+			if seedMapAvailable(r) && iconOnlyButton(c, "world-seed-map-"+w.Dir, "cube", fmt.Sprintf(a.L("seedmap.open_world"), w.Name), btnSm*s, false) {
 				a.openSeedMap(w.Dir)
 			}
 			if fixedButton(c, "world-backup-"+w.Dir, a.L("worlds_ui.back_up"), "download", 0, btnSm*s, false, busy) {

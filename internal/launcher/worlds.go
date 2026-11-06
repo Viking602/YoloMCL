@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -99,23 +100,20 @@ func (s *Service) ListWorlds(rootID, versionID string) ([]World, error) {
 func readWorldSummary(saves string, en os.DirEntry) World {
 	p := filepath.Join(saves, en.Name())
 	w := World{Dir: en.Name(), Name: en.Name(), Mode: "survival"}
-	level, levelErr := safeJoin(p, "level.dat")
+	dir, levelErr := safeJoin(saves, en.Name())
 	if levelErr == nil {
-		if f, e := os.Open(level); e == nil {
-			if li, e := ParseLevelDat(f); e == nil {
-				w.RandomSeed, w.HasRandomSeed = li.RandomSeed, li.HasRandomSeed
-				if li.Name != "" {
-					w.Name = li.Name
-				}
-				w.Mode = [...]string{"survival", "creative", "adventure", "spectator"}[min(max(li.GameType, 0), 3)]
-				if li.Hardcore {
-					w.Mode = "hardcore"
-				}
-				if li.LastPlayed > 0 {
-					w.LastPlayed = time.UnixMilli(li.LastPlayed)
-				}
+		if li, e := readWorldLevel(context.Background(), dir); e == nil {
+			w.RandomSeed, w.HasRandomSeed = li.RandomSeed, li.HasRandomSeed
+			if li.Name != "" {
+				w.Name = li.Name
 			}
-			f.Close()
+			w.Mode = [...]string{"survival", "creative", "adventure", "spectator"}[min(max(li.GameType, 0), 3)]
+			if li.Hardcore {
+				w.Mode = "hardcore"
+			}
+			if li.LastPlayed > 0 {
+				w.LastPlayed = time.UnixMilli(li.LastPlayed)
+			}
 		}
 	}
 	if w.LastPlayed.IsZero() {

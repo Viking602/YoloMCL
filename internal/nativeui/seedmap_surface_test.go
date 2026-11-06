@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/ui"
+
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
@@ -46,11 +48,22 @@ func TestSeedMapSurfaceInteraction(t *testing.T) {
 		t.Fatal("surface point was not selected")
 	}
 	p := *v.inspected
+	waitUI(t, tt, func() bool { return v.teleport.y != "" })
 	clickUI(t, tt, a.L("seedmap.copy_tp"))
-	if got, want := tt.Clipboard(), fmt.Sprintf("/tp %d ~ %d", p.X, p.Z); got != want {
+	if got, want := tt.Clipboard(), fmt.Sprintf("/tp %d %s %d", p.X, v.teleport.y, p.Z); got != want {
 		t.Fatalf("clipboard: %q want %q", got, want)
 	}
 	snapshotUI(t, tt, "seedmap-surface-detail")
+	clickUI(t, tt, a.L("seedmap.teleport_y_input"))
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Type("-31")
+	if v.teleport.y != "-31" {
+		t.Fatalf("height input was not editable: %q", v.teleport.y)
+	}
+	clickUI(t, tt, a.L("seedmap.copy_tp"))
+	if got, want := tt.Clipboard(), fmt.Sprintf("/tp %d -31 %d", p.X, p.Z); got != want {
+		t.Fatalf("edited teleport height was ignored: %q", got)
+	}
 	// Larger material controls must fit translated point cards at narrow sizes.
 	for _, lang := range []string{LangEN, LangZH} {
 		a.OverrideLanguage(lang)
@@ -89,6 +102,16 @@ func TestSeedMapSurfaceInteraction(t *testing.T) {
 	if v.viewport.Surface || !v.sliceMode {
 		t.Fatal("Y slice still samples surface")
 	}
+	clickUI(t, tt, a.L("seedmap.canvas"))
+	if v.inspected == nil || v.inspected.Surface {
+		t.Fatal("slice point was not selected")
+	}
+	slice := *v.inspected
+	clickUI(t, tt, a.L("seedmap.copy_tp"))
+	if got, want := tt.Clipboard(), fmt.Sprintf("/tp %d %d %d", slice.X, slice.Y, slice.Z); got != want {
+		t.Fatalf("slice teleport ignored the selected Y: %q", got)
+	}
+	clickUI(t, tt, a.L("seedmap.point_close"))
 	clickUI(t, tt, a.L("seedmap.surface_show"))
 	waitUI(t, tt, func() bool { return !v.pending && v.frame.Viewport.Surface })
 	a.seedMapDimension(v, "minecraft:the_nether")

@@ -58,6 +58,7 @@ type seedMapView struct {
 	pointPopup                                               bool
 	pointOpen                                                bool
 	pointTarget                                              string
+	teleport                                                 seedMapTeleport
 	canvasFocus, previewFocus                                ui.Handle
 	previewPanelFocus, previewExpandFocus                    ui.Handle
 	structurePreview                                         *seedMapStructurePreview
@@ -81,6 +82,7 @@ type seedMapView struct {
 
 func (a *App) closeSeedMap() {
 	if v := a.seedMap; v != nil {
+		v.discardTeleport()
 		v.discardStructurePreview()
 		if v.cancel != nil {
 			v.cancel()
@@ -98,14 +100,14 @@ func (a *App) reconcileSeedMap() {
 		return
 	}
 	r := a.root()
-	if a.page != "home" || a.instTab != "seedmap" || r == nil || v.key != r.ID+"|"+r.SelectedVersion {
+	if a.page != "home" || a.instTab != "seedmap" || r == nil || !seedMapAvailable(*r) || v.key != r.ID+"|"+r.SelectedVersion {
 		a.closeSeedMap()
 	}
 }
 
 func (a *App) openSeedMap(world string) {
 	r := a.root()
-	if r == nil || a.service == nil || a.launcherUpdateRequired() {
+	if r == nil || !seedMapAvailable(*r) || a.service == nil || a.launcherUpdateRequired() {
 		return
 	}
 	a.setInstTab("seedmap")
@@ -123,6 +125,7 @@ func (a *App) loadSeedMap(v *seedMapView, readSaveSeed bool) {
 		v.err = a.L("seedmap.invalid_seed")
 		return
 	}
+	v.discardTeleport()
 	v.discardStructurePreview()
 	if v.cancel != nil {
 		v.cancel()
@@ -480,6 +483,7 @@ func (a *App) startSeedMapSearch(v *seedMapView) {
 				if hit, ok := nearestHit(result.Hits, q.X, q.Z); ok && err == nil {
 					v.center(hit.X, hit.Z)
 					v.selected, v.selectedSpawn, v.markerGroup = &hit, nil, nil
+					v.inspected = nil
 				}
 			}
 		})

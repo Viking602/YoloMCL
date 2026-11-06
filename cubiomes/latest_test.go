@@ -151,11 +151,57 @@ func TestLatestClimateTreeBoundaryParity(t *testing.T) {
 
 func TestLatestJavaParity(t *testing.T) {
 	for _, version := range []string{"26.1", "26.1.1", "26.1.2", "26.2", "26.3"} {
-		t.Run(version, func(t *testing.T) { testLatestJavaParity(t, version) })
+		t.Run(version, func(t *testing.T) { testLatestJavaParity(t, version, false) })
 	}
 }
 
-func testLatestJavaParity(t *testing.T, version string) {
+// Actual client JARs replace bundled explicit lists with Java preset references.
+// Exercise that resource shape against the same independent Java oracle, not
+// just the builtin-only registry used by TestLatestJavaParity.
+func TestLatestInstalledPresetJavaParity(t *testing.T) {
+	for _, version := range []string{"26.1", "26.1.1", "26.1.2", "26.2", "26.3"} {
+		t.Run(version, func(t *testing.T) { testLatestJavaParity(t, version, true) })
+	}
+}
+
+func TestLatestPresetOverrides(t *testing.T) {
+	ctx := context.Background()
+	const kind = "multi_noise_biome_source_parameter_list"
+	for _, tc := range []struct {
+		name, data, want string
+	}{
+		{"builtin", `{"preset":"minecraft:nether"}`, "minecraft:nether_wastes"},
+		{"explicit", `{"biomes":[{"biome":"test:custom","parameters":{"temperature":0,"humidity":0,"continentalness":0,"erosion":0,"depth":0,"weirdness":0,"offset":0}}]}`, "test:custom"},
+		{"unknown", `{"preset":"test:unknown"}`, ""},
+		{"recursive", `{"preset":"test:alias"}`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Registry holders and Java builtin names are separate lookups. A
+			// builtin must not read a registry override of its own name again.
+			registry := map[string]Document{
+				kind + "/test:alias":       {Kind: kind, ID: "test:alias", Data: json.RawMessage(tc.data)},
+				kind + "/minecraft:nether": {Kind: kind, ID: "minecraft:nether", Data: json.RawMessage(`{"preset":"test:unknown"}`)},
+			}
+			tree, _, err := resolveClimateSource(ctx, registry, json.RawMessage(`{"preset":"test:alias"}`), "26.2")
+			if tc.want == "" {
+				if err == nil {
+					t.Fatal("invalid preset silently replaced by vanilla")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := climatePoint{}
+			leaf := tree.search(&target, -1)
+			if got := tree.biomes[tree.nodes[leaf].biome]; got != tc.want {
+				t.Fatalf("registry override: got %s want %s", got, tc.want)
+			}
+		})
+	}
+}
+
+func testLatestJavaParity(t *testing.T, version string, installedPresets bool) {
 	path := "testdata/latest-" + version + ".json"
 	if dense := os.Getenv("MCL_LATEST_DENSE_ORACLE"); dense != "" && version == "26.3" {
 		path = dense
@@ -175,6 +221,15 @@ func testLatestJavaParity(t *testing.T, version string) {
 	registry := make(map[string]Document, len(docs))
 	for _, d := range docs {
 		registry[d.Kind+"/"+d.ID] = d
+	}
+	if installedPresets {
+		for _, id := range []string{"minecraft:overworld", "minecraft:nether"} {
+			key := "multi_noise_biome_source_parameter_list/" + id
+			doc := registry[key]
+			doc.Source = "vanilla:" + version
+			doc.Data = json.RawMessage(`{"preset":"` + id + `"}`)
+			registry[key] = doc
+		}
 	}
 	for _, example := range fixture.Cases {
 		t.Run(example.Profile+"/"+example.Seed, func(t *testing.T) {

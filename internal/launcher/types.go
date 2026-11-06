@@ -105,6 +105,9 @@ type VersionSummary struct {
 	MemoryAutoSet bool `json:"memoryAutoSet,omitempty"`
 	MemoryAuto    bool `json:"memoryAuto,omitempty"`
 	AutoMemoryMB  int  `json:"autoMemoryMB,omitempty"`
+	// SeedMapDisabled hides prediction for enabled terrain/biome generation mods.
+	SeedMapDisabled     bool `json:"seedMapDisabled,omitempty"`
+	SeedMapCheckPending bool `json:"seedMapCheckPending,omitempty"`
 }
 type Instance struct {
 	Root

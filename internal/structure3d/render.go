@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 )
 
 // Camera is an orbit camera around the structure centroid.
@@ -119,6 +120,19 @@ func (r *Renderer) Render(scene *Scene, cam Camera) *image.RGBA {
 	}
 
 	shade := map[string]float64{"up": 1, "down": 0.55, "north": 0.8, "south": 0.75, "west": 0.65, "east": 0.7}
+	type transparentFace struct {
+		quad                  [4][3]float64
+		tex                   image.Image
+		face                  Face
+		shade, x, y, z, depth float64
+	}
+	var transparent []transparentFace
+	fluids := map[[3]int]string{}
+	for _, b := range scene.Blocks {
+		if kind := fluidKind(b.State.Name); kind != "" {
+			fluids[[3]int{b.X, b.Y, b.Z}] = kind
+		}
+	}
 	for _, b := range scene.Blocks {
 		model := r.cache.resolve(r.Store, b.State)
 		if model == nil {
@@ -126,6 +140,18 @@ func (r *Renderer) Render(scene *Scene, cam Camera) *image.RGBA {
 		}
 		for _, el := range model.Elements {
 			for _, face := range el.Faces {
+				if model.Fluid != "" {
+					o := dirOffset[face.Dir]
+					if fluids[[3]int{b.X + o[0], b.Y + o[1], b.Z + o[2]}] == model.Fluid {
+						continue
+					}
+				}
+				if face.Blend {
+					n := dirNormal[face.Dir]
+					if float64(n[1])*sp+(-float64(n[0])*sy+float64(n[2])*cyaw)*cp > 0 {
+						continue
+					}
+				}
 				quad := faceQuad(el, face.Dir)
 				tex := face.Texture
 				if face.TintIndex >= 0 {
@@ -135,9 +161,33 @@ func (r *Renderer) Render(scene *Scene, cam Camera) *image.RGBA {
 				if sh == 0 {
 					sh = 0.8
 				}
+				if face.Emissive {
+					sh = 1
+				}
+				if face.Blend {
+					var d float64
+					for _, p := range quad {
+						_, _, z := project(float64(b.X)+p[0], float64(b.Y)+p[1], float64(b.Z)+p[2])
+						d += z / 4
+					}
+					transparent = append(transparent, transparentFace{quad, tex, face, sh, float64(b.X), float64(b.Y), float64(b.Z), d})
+					continue
+				}
 				drawTexturedQuad(img, depth, project, quad, tex, face, sh, float64(b.X), float64(b.Y), float64(b.Z))
 			}
 		}
+	}
+	slices.SortStableFunc(transparent, func(a, b transparentFace) int {
+		if a.depth > b.depth {
+			return -1
+		}
+		if a.depth < b.depth {
+			return 1
+		}
+		return 0
+	})
+	for _, f := range transparent {
+		drawTexturedQuad(img, depth, project, f.quad, f.tex, f.face, f.shade, f.x, f.y, f.z)
 	}
 	return img
 }
@@ -222,10 +272,20 @@ func drawTexturedQuad(img *image.RGBA, depth []float32, project func(x, y, z flo
 				tx := tb.Min.X + int(math.Floor(fract(u)*float64(tw)))
 				ty := tb.Min.Y + int(math.Floor(fract(v)*float64(th)))
 				cr, cg, cb, ca := tex.At(tx, ty).RGBA()
-				if ca < 0x8000 {
+				if ca == 0 || !face.Blend && ca < 0x8000 {
 					continue
 				}
 				depth[di] = float32(z)
+				if face.Blend {
+					alpha := float64(ca) / 65535
+					cr, cg, cb = cr*65535/ca, cg*65535/ca, cb*65535/ca
+					old := img.RGBAAt(x, y)
+					img.SetRGBA(x, y, color.RGBA{
+						uint8(float64(old.R)*(1-alpha) + float64(cr>>8)*shade*alpha),
+						uint8(float64(old.G)*(1-alpha) + float64(cg>>8)*shade*alpha),
+						uint8(float64(old.B)*(1-alpha) + float64(cb>>8)*shade*alpha), 255})
+					continue
+				}
 				img.SetRGBA(x, y, color.RGBA{
 					uint8(float64(cr>>8) * shade),
 					uint8(float64(cg>>8) * shade),

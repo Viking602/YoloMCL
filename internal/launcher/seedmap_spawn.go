@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -53,10 +52,10 @@ func (s *Service) SeedMapSaves(ctx context.Context, rootID, versionID string) ([
 			continue
 		}
 		world := World{Dir: en.Name(), Name: en.Name()}
-		f, err := r.Open(filepath.Join(en.Name(), "level.dat"))
+		worldRoot, err := r.OpenRoot(en.Name())
 		if err == nil {
-			level, e := parseLevelDat(ctx, f)
-			f.Close()
+			level, e := readWorldLevelRoot(ctx, worldRoot)
+			worldRoot.Close()
 			if e == nil {
 				world.RandomSeed, world.HasRandomSeed = level.RandomSeed, level.HasRandomSeed
 				if level.Name != "" {

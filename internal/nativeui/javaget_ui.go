@@ -452,9 +452,7 @@ func midPath(p string, n int) string {
 	return string(r[:head]) + "…" + string(r[len(r)-(n-head-1):])
 }
 
-// javaUse counts instances that launch with each Java (by path): a
-// version's own Java, else the first detected Java of its major, which is
-// what ensureJava auto-picks.
+// javaUse counts instances using each Java, including inherited selections.
 func (a *App) javaUse() (map[string]int, map[int]string) {
 	auto := map[int]string{}
 	for _, j := range a.java {
@@ -466,7 +464,7 @@ func (a *App) javaUse() (map[string]int, map[int]string) {
 	for _, r := range a.snapshot.Instances {
 		seen := map[string]bool{}
 		for _, v := range r.Versions {
-			p := strings.ToLower(v.JavaPath)
+			p := strings.ToLower(a.versionJavaPath(r, v))
 			if p == "" {
 				p = auto[javaFor(r, v)]
 			}

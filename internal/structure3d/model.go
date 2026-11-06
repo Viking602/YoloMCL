@@ -14,10 +14,11 @@ import (
 
 // Face is one textured quad of a block model element.
 type Face struct {
-	Dir            string // down up north south west east
-	Texture        image.Image
-	TintIndex      int // -1 none, 0 grass, 1 foliage, ...
-	U0, V0, U1, V1 float64
+	Dir             string // down up north south west east
+	Texture         image.Image
+	TintIndex       int // -1 none, 0 grass, 1 foliage, ...
+	U0, V0, U1, V1  float64
+	Blend, Emissive bool // fluid alpha and unshaded lava
 }
 
 // Element is a cuboid from a block model, in 0..16 model space.
@@ -30,6 +31,7 @@ type Element struct {
 type ResolvedModel struct {
 	Elements []Element
 	Ambient  bool
+	Fluid    string // water/lava use sprites, not the particle-only JSON model
 }
 
 type modelCache struct {
@@ -99,6 +101,13 @@ func (c *modelCache) resolve(store *Store, state BlockState) *ResolvedModel {
 		return m
 	}
 	c.mu.Unlock()
+	if kind := fluidKind(state.Name); kind != "" {
+		m := c.fluidModel(store, kind)
+		c.mu.Lock()
+		c.model[key] = m
+		c.mu.Unlock()
+		return m
+	}
 	paths := c.blockstateModels(store, state)
 	if len(paths) == 0 {
 		paths = []string{"block/" + stripNS(state.Name)}

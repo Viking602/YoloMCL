@@ -64,7 +64,28 @@ func parseLevelDat(ctx context.Context, r io.Reader) (LevelInfo, error) {
 	modernSeed := false
 	spawns := [2]SeedMapSpawn{{Dimension: "minecraft:overworld", Kind: "world"}, {Dimension: "minecraft:overworld", Kind: "player"}}
 	spawnAxes := [2]uint8{}
+	newSpawn := SeedMapSpawn{Dimension: "minecraft:overworld", Kind: "world"}
+	newSpawnAxes := false
 	p.compound(func(path, name string, tag byte) bool {
+		if path == "/Data/spawn" {
+			if name == "dimension" && tag == 8 {
+				newSpawn.Dimension = seedMapID(p.str())
+				return true
+			}
+			if name == "pos" && (tag == 11 || tag == 9) {
+				if tag == 9 && p.u8() != 3 {
+					p.err = errors.New("invalid saved spawn position type")
+					return true
+				}
+				if p.u32() != 3 {
+					p.err = errors.New("invalid saved spawn position length")
+					return true
+				}
+				newSpawn.X, newSpawn.Y, newSpawn.Z = int(int32(p.u32())), int(int32(p.u32())), int(int32(p.u32()))
+				newSpawnAxes = true
+				return true
+			}
+		}
 		if path == "/Data" || path == "/Data/Player" {
 			index := 0
 			if path == "/Data/Player" {
@@ -109,29 +130,7 @@ func parseLevelDat(ctx context.Context, r io.Reader) (LevelInfo, error) {
 			return true
 		}
 		if path == "/Data/WorldGenSettings" && name == "dimensions" && tag == 10 {
-			budget := 262144
-			value := p.worldgenValue(tag, 0, p.consumed(), &budget)
-			dimensions, ok := value.(map[string]any)
-			if !ok || len(dimensions) > 256 {
-				p.err = errors.New("invalid saved dimensions")
-				return true
-			}
-			li.Dimensions, li.Generators = map[string]json.RawMessage{}, map[string]string{}
-			for id, dimension := range dimensions {
-				b, err := json.Marshal(dimension)
-				if err != nil {
-					p.err = fmt.Errorf("saved dimension: %w", err)
-					return true
-				}
-				li.Dimensions[id] = b
-				if d, ok := dimension.(map[string]any); ok {
-					if g, ok := d["generator"].(map[string]any); ok {
-						if idType, ok := g["type"].(string); ok {
-							li.Generators[id] = idType
-						}
-					}
-				}
-			}
+			p.readWorldgenDimensions(&li)
 			return true
 		}
 		if path != "/Data" {
@@ -169,13 +168,41 @@ func parseLevelDat(ctx context.Context, r io.Reader) (LevelInfo, error) {
 	if p.err != nil {
 		return li, p.err
 	}
-	if spawnAxes[0] == 7 {
+	if newSpawnAxes {
+		li.WorldSpawn = &newSpawn
+	} else if spawnAxes[0] == 7 {
 		li.WorldSpawn = &spawns[0]
 	}
 	if spawnAxes[1] == 7 {
 		li.PlayerSpawn = &spawns[1]
 	}
 	return li, nil
+}
+
+func (p *nbtReader) readWorldgenDimensions(li *LevelInfo) {
+	budget := 262144
+	value := p.worldgenValue(10, 0, p.consumed(), &budget)
+	dimensions, ok := value.(map[string]any)
+	if !ok || len(dimensions) > 256 {
+		p.err = errors.New("invalid saved dimensions")
+		return
+	}
+	li.Dimensions, li.Generators = map[string]json.RawMessage{}, map[string]string{}
+	for id, dimension := range dimensions {
+		b, err := json.Marshal(dimension)
+		if err != nil {
+			p.err = fmt.Errorf("saved dimension: %w", err)
+			return
+		}
+		li.Dimensions[id] = b
+		if d, ok := dimension.(map[string]any); ok {
+			if g, ok := d["generator"].(map[string]any); ok {
+				if idType, ok := g["type"].(string); ok {
+					li.Generators[id] = idType
+				}
+			}
+		}
+	}
 }
 
 // worldgenValue materializes only the bounded WorldGenSettings dimension map.

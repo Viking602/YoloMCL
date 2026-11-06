@@ -79,9 +79,10 @@ func (a *App) seedMapPointCard(c *ui.Context, v *seedMapView) {
 	}
 	ui.Text(c, height).FontSize(typeCaption * s).TextColor(muted).SingleLine()
 	ui.Text(c, p.Biome.ID).FontSize(typeCaption * s).TextColor(muted).SingleLine().FillWidth()
+	command, canCopy := a.seedMapTeleportHeight(c, v, p.X, p.Z, !p.Surface && !p.Void, p.Y)
 	ui.Row(c).Gap(8 * s).FillWidth().Wrap().Children(func() {
-		if button(c, "seedmap-copy-tp", a.L("seedmap.copy_tp"), "", false, false) {
-			c.WriteClipboard(fmt.Sprintf("/tp %d ~ %d", p.X, p.Z))
+		if button(c, "seedmap-copy-tp", a.L("seedmap.copy_tp"), "", false, !canCopy) {
+			c.WriteClipboard(command)
 		}
 		if strings.HasPrefix(p.Biome.ID, "minecraft:") {
 			if iconOnlyButton(c, "seedmap-biome-wiki", "external", a.L("seedmap.biome_wiki"), btnMd*s, false) {

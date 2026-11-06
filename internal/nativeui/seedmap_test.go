@@ -79,6 +79,13 @@ func TestSeedMapNativeFlowAndLifecycle(t *testing.T) {
 	if v.selected == nil || *v.selected != hit {
 		t.Fatal("marker did not expose its candidate provenance")
 	}
+	clickUI(t, tt, a.L("seedmap.teleport_y_input"))
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Type("80")
+	clickUI(t, tt, a.L("seedmap.copy_tp"))
+	if got, want := tt.Clipboard(), fmt.Sprintf("/tp %d 80 %d", hit.X, hit.Z); got != want {
+		t.Fatalf("structure teleport has no explicit height: %q", got)
+	}
 	stage, ok := tt.Find(a.L("seedmap.canvas"))
 	if !ok {
 		t.Fatal("missing map canvas")
@@ -382,9 +389,10 @@ func TestSeedMapSearchDimensionsAndFullCanvas(t *testing.T) {
 		hit := v.results[0]
 		resultLabel := a.L("seedmap.jump") + " " + fmt.Sprintf("X %d  Z %d", hit.X, hit.Z)
 		waitUI(t, tt, func() bool { _, ok := tt.Find(resultLabel); return ok })
+		v.inspected = &launcher.SeedMapPoint{X: hit.X + 1, Y: 64, Z: hit.Z + 1}
 		clickUI(t, tt, resultLabel)
 		waitUI(t, tt, func() bool { return !v.pending && v.frame.Viewport.X == hit.X && v.frame.Viewport.Z == hit.Z })
-		if v.selected == nil || *v.selected != hit {
+		if v.selected == nil || *v.selected != hit || v.inspected != nil {
 			t.Fatal("search result did not select the map marker")
 		}
 		snapshotUI(t, tt, "seedmap-search-"+language)
@@ -452,6 +460,9 @@ func TestSeedMapJSONPreviewAndOpaqueBadge(t *testing.T) {
 	if !tt.HasText(a.L("seedmap.coverage.checkerboard")) {
 		t.Fatalf("JSON not connected to UI: %v", tt.Texts())
 	}
+	if tt.HasText(a.L("seedmap.unavailable")) {
+		t.Fatal("supported biome map shows an unavailable warning")
+	}
 	snapshotUI(t, tt, "seedmap-json")
 	clickUI(t, tt, a.L("instance.tab_prefix")+" "+a.L("instance.overview"))
 	if err := os.WriteFile(file, []byte(`{"generator":{"type":"pack:opaque"}}`), 0600); err != nil {
@@ -462,7 +473,25 @@ func TestSeedMapJSONPreviewAndOpaqueBadge(t *testing.T) {
 	if !tt.HasText(a.L("seedmap.coverage.opaque")) {
 		t.Fatal("opaque generator has no visible badge")
 	}
+	if !tt.HasText(a.L("seedmap.unavailable")) {
+		t.Fatal("blank map has no visible explanation")
+	}
+	tt.Advance(400 * time.Millisecond)
 	snapshotUI(t, tt, "seedmap-opaque")
+	clickUI(t, tt, a.L("seedmap.unavailable_details"))
+	if !a.seedMap.details || !tt.HasText(a.L("seedmap.issue.opaque_generator")) {
+		t.Fatal("map explanation did not open the failure reason")
+	}
+	// A known generator can also fail compilation; it needs the same visible
+	// explanation even when its codec itself is not opaque.
+	if err := os.WriteFile(file, []byte(`{"generator":{"type":"minecraft:noise","settings":"pack:missing","biome_source":{"type":"minecraft:multi_noise","preset":"minecraft:overworld"}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	clickUI(t, tt, a.L("seedmap.refresh"))
+	waitUI(t, tt, func() bool { return !a.seedMap.loading && !a.seedMap.pending && a.seedMap.mapReady() })
+	if !tt.HasText(a.L("seedmap.unavailable")) || !tt.HasText(a.L("seedmap.issue.climate_invalid")) {
+		t.Fatal("invalid climate settings left an unexplained blank map")
+	}
 }
 
 func TestSeedMapCoordsParse(t *testing.T) {

@@ -69,7 +69,11 @@ type inventoryStamp struct {
 	Mode           fs.FileMode
 }
 
-type inventoryMods struct{ Total, Enabled int }
+type inventoryMods struct {
+	Total, Enabled  int
+	SeedMapDisabled bool
+	SeedMapChecked  bool
+}
 
 type inventoryData struct {
 	Schema      int
@@ -78,6 +82,7 @@ type inventoryData struct {
 	Versions    []VersionSummary
 	Directories map[string]string
 	Mods        map[string]inventoryMods
+	TerrainMods map[string]bool
 	Pack        *PackLock
 	PackUpdate  *PackUpdateInfo
 	PackBackups []PackBackup
@@ -113,7 +118,7 @@ func (s *Service) inventoryEntry(path string) *inventoryEntry {
 	// This cache lives in the launcher's independent data directory. Paths in
 	// Watched are relative and are checked through os.Root, even for stale or
 	// edited cache files; links cannot turn validation into an outside scan.
-	if b, err := os.ReadFile(s.inventoryPath(path)); err == nil && len(b) <= 16<<20 && json.Unmarshal(b, &data) == nil && data.Schema == 1 && data.Path == path && data.Watched != nil {
+	if b, err := os.ReadFile(s.inventoryPath(path)); err == nil && len(b) <= 16<<20 && json.Unmarshal(b, &data) == nil && data.Schema == 4 && data.Path == path && data.Watched != nil {
 		entry.data = &data
 	}
 	s.inventories[path] = entry
@@ -268,7 +273,7 @@ func (s *Service) checkInventory(r Root, entry *inventoryEntry) (*inventoryData,
 	entry.mu.Unlock()
 	data := old
 	if old == nil || dirty || !inventoryUnchanged(r.Path, old) {
-		data = scanInventory(r)
+		data = scanInventoryFrom(r, old)
 	}
 	entry.mu.Lock()
 	entry.data, entry.checked = data, time.Now()
@@ -292,7 +297,11 @@ func (s *Service) persistInventory(entry *inventoryEntry, data *inventoryData) {
 }
 
 func scanInventory(r Root) *inventoryData {
-	d := &inventoryData{Schema: 1, Path: r.Path, Directories: map[string]string{}, Mods: map[string]inventoryMods{}, Watched: map[string]inventoryStamp{}}
+	return scanInventoryFrom(r, nil)
+}
+
+func scanInventoryFrom(r Root, previous *inventoryData) *inventoryData {
+	d := &inventoryData{Schema: 4, Path: r.Path, Directories: map[string]string{}, Mods: map[string]inventoryMods{}, TerrainMods: map[string]bool{}, Watched: map[string]inventoryStamp{}}
 	root, err := openScanRoot(r.Path)
 	if err != nil {
 		return d
@@ -315,6 +324,7 @@ func scanInventory(r Root) *inventoryData {
 		name := filepath.Join(dir, "mods")
 		watch(name)
 		var count inventoryMods
+		unknown := false
 		if entries, err := fs.ReadDir(root.FS(), filepath.ToSlash(name)); err == nil {
 			if dir == "." {
 				sharedModsPresent = len(entries) > 0
@@ -325,12 +335,26 @@ func scanInventory(r Root) *inventoryData {
 					if strings.HasSuffix(name, ".jar") {
 						count.Enabled++
 						count.Total++
+						file := filepath.Join(dir, "mods", en.Name())
+						watch(file)
+						blocked, cached := false, false
+						if previous != nil && previous.Watched[file] == d.Watched[file] {
+							blocked, cached = previous.TerrainMods[file]
+						}
+						if cached {
+							d.TerrainMods[file] = blocked
+						} else {
+							unknown = true
+						}
+						count.SeedMapDisabled = count.SeedMapDisabled || blocked
 					} else if strings.HasSuffix(name, ".jar.disabled") {
 						count.Total++
 					}
 				}
 			}
 		}
+		count.SeedMapChecked = !unknown || count.SeedMapDisabled
+		count.SeedMapDisabled = count.SeedMapDisabled || unknown
 		d.Mods[dir] = count
 	}
 	count(".")
@@ -370,4 +394,11 @@ func (d *inventoryData) modCount(version string) inventoryMods {
 	return d.Mods[dir]
 }
 
-func (d *inventoryData) versions() []VersionSummary { return slices.Clone(d.Versions) }
+func (d *inventoryData) versions() []VersionSummary {
+	versions := slices.Clone(d.Versions)
+	for i := range versions {
+		versions[i].SeedMapDisabled = d.modCount(versions[i].ID).SeedMapDisabled
+		versions[i].SeedMapCheckPending = !d.modCount(versions[i].ID).SeedMapChecked
+	}
+	return versions
+}

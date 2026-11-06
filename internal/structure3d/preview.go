@@ -104,8 +104,7 @@ func Preview(store *Store, req PreviewRequest) (*PreviewResult, error) {
 	mesh := BuildMesh(store, scene)
 	img := mesh.Render(&Frame{}, req.Width, req.Height, req.Camera)
 	if !hasDrawnPixel(img) {
-		// Every block is a fluid, light or invisible block without an
-		// opaque model: report it rather than show a blank stage.
+		// No resolved faces were visible: report it rather than show a blank stage.
 		return &PreviewResult{Unsupported: fmt.Sprintf("%d blocks, none with an opaque model", len(scene.Blocks)), UnsupportedKind: KindEmpty, Title: title, BlockCount: len(scene.Blocks)}, nil
 	}
 	return &PreviewResult{Image: img, BlockCount: len(scene.Blocks), Title: title, Mesh: mesh, Seeded: scene.Seeded, LayoutSeeded: scene.LayoutSeeded}, nil
