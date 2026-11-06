@@ -17,7 +17,7 @@ func uiSansFamily() string {
 	case "windows":
 		return "Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, Microsoft YaHei, system-ui"
 	case "darwin":
-		return "SF Pro Text, PingFang SC, Hiragino Sans GB, system-ui"
+		return "system-ui, PingFang SC, Hiragino Sans GB"
 	}
 	return "Noto Sans, Noto Sans CJK SC, system-ui"
 }

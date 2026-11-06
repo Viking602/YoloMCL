@@ -23,14 +23,16 @@ func seedMapReliefFixture(t testing.TB) *seedMapView {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v := &seedMapView{viewport: launcher.SeedMapViewport{X: -100, Z: 240, Width: 192, Height: 128, BlocksPerPixel: 1, Y: 64, Dimension: "minecraft:overworld", Surface: true, ContourOverlay: true}}
+	// These tests paint terrain and reuse textures; the village filter avoids
+	// unrelated full-world stronghold-ring searches when preparing each raster.
+	v := &seedMapView{viewport: launcher.SeedMapViewport{X: -100, Z: 240, Width: 192, Height: 128, BlocksPerPixel: 1, Y: 64, Dimension: "minecraft:overworld", Structure: "minecraft:villages", Surface: true, ContourOverlay: true}}
 	v.requested = v.viewport
 	v.syncCamera()
 	v.raster.textures = make(map[launcher.SeedMapTileKey]*seedMapTexture)
 	x, z := v.viewport.Origin()
 	for tz := z >> 7; tz <= (z+v.viewport.Height-1)>>7; tz++ {
 		for tx := x >> 7; tx <= (x+v.viewport.Width-1)>>7; tx++ {
-			key := launcher.SeedMapTileKey{X: tx, Z: tz, Y: 64, BlocksPerPixel: 1, Dimension: v.viewport.Dimension, Surface: true, ContourOverlay: true}
+			key := launcher.SeedMapTileKey{X: tx, Z: tz, Y: 64, BlocksPerPixel: 1, Dimension: v.viewport.Dimension, Structure: v.viewport.Structure, Surface: true, ContourOverlay: true}
 			tile, err := sampler.Sample(ctx, key)
 			if err != nil {
 				t.Fatal(err)

@@ -50,14 +50,18 @@ func TestLoadAndRenderIglooTemplate(t *testing.T) {
 
 func TestJigsawVillageAssembles(t *testing.T) {
 	s := testStore(t)
-	// Full village pools may miss street pieces in the trimmed fixture; open the
-	// live game jar when present so assembly can expand.
-	if jar := os.Getenv("MCL_GAME_JAR"); jar != "" {
-		if err := s.OpenJar("game", jar); err != nil {
-			t.Fatal(err)
-		}
-	} else if _, err := os.Stat(`D:\MC\.minecraft\versions\1.21.1\1.21.1.jar`); err == nil {
-		_ = s.OpenJar("game", `D:\MC\.minecraft\versions\1.21.1\1.21.1.jar`)
+	// The trimmed fixture contains one town center. Restrict this test's start
+	// pool to that template so every seed can assemble without a local game jar.
+	if err := s.OpenBytes("complete start pool", zipWith(
+		"data/minecraft/worldgen/template_pool/village/plains/town_centers.json", []byte(`{
+			"fallback":"minecraft:empty",
+			"elements":[{"weight":1,"element":{
+				"element_type":"minecraft:legacy_single_pool_element",
+				"location":"minecraft:village/plains/town_centers/plains_fountain_01",
+				"processors":{"processors":[]},"projection":"rigid"
+			}}]
+		}`))); err != nil {
+		t.Fatal(err)
 	}
 	res, err := Preview(s, PreviewRequest{
 		StructureID: "minecraft:village_plains",

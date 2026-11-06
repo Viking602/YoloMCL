@@ -26,7 +26,6 @@ func TestSeedMapOreOverlay(t *testing.T) {
 	setY := func(y string) {
 		clickUI(t, tt, a.L("seedmap.y"))
 		tt.Key(ui.Cmd, ui.KeyA)
-		tt.Key(ui.Ctrl, ui.KeyA)
 		tt.Type(y)
 		clickUI(t, tt, a.L("seedmap.y_apply"))
 		settle()

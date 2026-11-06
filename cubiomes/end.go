@@ -84,7 +84,7 @@ func (n *endIslands) height(x, z int, p *densitySample) float32 {
 			mask &= mask - 1
 			factor := row.values[(hx+dx)&63]
 			a, b := float32(ox-dx*2), float32(oz-dz*2)
-			v := 100 - float32(math.Sqrt(float64(a*a+b*b)))*factor
+			v := 100 - float32(float32(math.Sqrt(float64(a*a+b*b)))*factor)
 			height = max(height, max(float32(-100), min(float32(80), v)))
 		}
 	}

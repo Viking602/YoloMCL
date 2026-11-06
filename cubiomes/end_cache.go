@@ -18,7 +18,9 @@ func (n *endIslands) factor(x, z int, legacy bool) float32 {
 	if int64(x)*int64(x)+int64(z)*int64(z) <= 4096 || n.simplex(float64(x), float64(z)) >= float64(float32(-.9)) {
 		return 0
 	}
-	v := float32(math.Abs(float64(float32(x))))*3439 + float32(math.Abs(float64(float32(z))))*147
+	// Java rounds each float multiplication before adding. Explicit casts
+	// prevent ARM64 from fusing a multiply with the addition at far coordinates.
+	v := float32(float32(math.Abs(float64(float32(x))))*3439) + float32(float32(math.Abs(float64(float32(z))))*147)
 	if legacy {
 		return float32(uint32(uint64(v))%13 + 9)
 	}

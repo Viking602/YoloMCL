@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/Viking602/YoloMCL/internal/mcworld"
@@ -9,9 +10,13 @@ import (
 )
 
 func TestPortalProbe(t *testing.T) {
+	gameRoot := os.Getenv("MCL_PORTAL_PROBE_ROOT")
+	if gameRoot == "" {
+		t.Skip("set MCL_PORTAL_PROBE_ROOT to inspect a local project01 save")
+	}
 	world := "Codex_Compat_Regression_REI_20260925"
 	s := testService(t)
-	root := Root{ID: "se", Path: `D:\MC\.minecraft`, SelectedVersion: "project01"}
+	root := Root{ID: "se", Path: gameRoot, SelectedVersion: "project01"}
 	s.cfg.Roots = []Root{root}
 	m, err := s.DetectEras(context.Background(), root.ID, root.SelectedVersion, world)
 	if err != nil {

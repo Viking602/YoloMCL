@@ -107,7 +107,7 @@ func (a *App) seedMapStructurePreviewPanel(c *ui.Context, v *seedMapView, p *see
 				default:
 					// Ignore the bitmap's intrinsic height when allocating spare
 					// space, so it cannot push the instructions out of the panel.
-					ui.Row(c.Key("seedmap-structure3d-body")).FillWidth().Grow(1).Basis(0).MinHeight(200 * s).Gap(8 * s).AlignItems(ui.Stretch).Children(func() {
+					ui.Row(c.Key("seedmap-structure3d-body")).FillWidth().Grow(1).Basis(0).MinHeight(160 * s).Gap(8 * s).AlignItems(ui.Stretch).Children(func() {
 						a.seedMapStructureStage(c, v, p, s)
 						if p.terrain {
 							a.seedMapHeightGauge(c, p, s)

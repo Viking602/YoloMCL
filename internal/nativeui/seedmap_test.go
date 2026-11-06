@@ -562,8 +562,7 @@ func TestSeedMapNavigationAndUnifiedSearch(t *testing.T) {
 	tt.Frame()
 	snapshotUI(t, tt, "seedmap-ux-coords")
 
-	tt.Key(ui.Super, ui.KeyA)
-	tt.Key(ui.Ctrl, ui.KeyA)
+	tt.Key(ui.Cmd, ui.KeyA)
 	tt.Type("desert")
 	tt.Frame()
 	biome := a.L("seedmap.biome_nearest") + " " + a.seedMapName("biome", "minecraft:desert", true)

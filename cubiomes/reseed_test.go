@@ -186,10 +186,10 @@ func exhaustiveEndHeight(n *endIslands, x, z int) float32 {
 			if int64(cx)*int64(cx)+int64(cz)*int64(cz) <= 4096 || n.simplex(float64(cx), float64(cz)) >= float64(float32(-.9)) {
 				continue
 			}
-			v := float32(math.Abs(float64(float32(cx))))*3439 + float32(math.Abs(float64(float32(cz))))*147
+			v := float32(float32(math.Abs(float64(float32(cx))))*3439) + float32(float32(math.Abs(float64(float32(cz))))*147)
 			factor := float32(math.Mod(float64(v), 13)) + 9
 			a, b := float32(x%2-dx*2), float32(z%2-dz*2)
-			island := 100 - float32(math.Sqrt(float64(a*a+b*b)))*factor
+			island := 100 - float32(float32(math.Sqrt(float64(a*a+b*b)))*factor)
 			height = max(height, max(float32(-100), min(float32(80), island)))
 		}
 	}

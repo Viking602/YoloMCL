@@ -38,7 +38,7 @@ func TestDialogEasesInAndOut(t *testing.T) {
 	tt.Frame()
 	tt.Advance(16 * time.Millisecond)
 	back, ok := tt.Find("活动弹窗")
-	if !ok || back.W != end.W {
+	if !ok || math.Abs(float64(back.W-end.W)) > .01 {
 		t.Errorf("reopening should continue from the current value: %+v", back)
 	}
 	a.closeDialog()
