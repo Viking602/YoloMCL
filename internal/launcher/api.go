@@ -180,6 +180,8 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		value, err = s.InstallGame(c.RootID, c.Parent, c.Name, c.Minecraft, c.Loader, c.LoaderVersion)
 	case "javaList":
 		value = s.JavaList(ctx)
+	case "checkSeedMapMods":
+		err = s.CheckSeedMapMods(ctx, c.RootID, c.Version)
 	case "systemMemory":
 		value, err = SystemMemory()
 	case "launch":

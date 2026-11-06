@@ -222,6 +222,7 @@ type Terrain struct {
 	Aquifers               bool
 	DefaultFluid           Substance
 	final, prelim          *densityNode
+	prelimIsHeight         bool
 	barrier, flood, spread *densityNode
 	lava, erosion, depth   *densityNode
 	nodes                  int
@@ -241,7 +242,8 @@ const (
 )
 
 // CompileTerrain compiles noise_router.final_density and the aquifer router
-// of def.Settings. Supported for 1.18 through 1.21.x JSON graphs.
+// of def.Settings. Supports pre-26.3 JSON graphs; 26.3's float terrain pipeline
+// remains unsupported.
 func CompileTerrain(ctx context.Context, docs map[string]Document, def Definition) (*Terrain, error) {
 	if latestFloatRelease(def.Version) {
 		return nil, &CompileError{"terrain_unsupported", "terrain for " + def.Version}
@@ -296,8 +298,14 @@ func CompileTerrain(ctx context.Context, docs map[string]Document, def Definitio
 		return n
 	}
 	t.final = get("final_density")
-	if t.Aquifers {
+	if _, ok := data.Router["preliminary_surface_level"]; ok {
+		t.prelim, t.prelimIsHeight = get("preliminary_surface_level"), true
+	} else if _, ok := data.Router["initial_density_without_jaggedness"]; ok {
 		t.prelim = get("initial_density_without_jaggedness")
+	} else if t.Aquifers && err == nil {
+		err = errors.New("missing preliminary surface router")
+	}
+	if t.Aquifers {
 		t.barrier, t.flood, t.spread = get("barrier"), get("fluid_level_floodedness"), get("fluid_level_spread")
 		t.lava, t.erosion, t.depth = get("lava"), get("erosion"), get("depth")
 		t.aquiferRandom = c.factory.fromHash("minecraft:aquifer").forkPositional()
@@ -416,10 +424,16 @@ func (s *TerrainSampler) preliminary(x, z int) int {
 		s.prelim = map[[2]int]int{}
 	}
 	v := math.MaxInt32
-	for y := s.t.MinY + s.t.Height; y >= s.t.MinY; y -= s.t.cellH {
-		if s.eval(s.t.prelim, k[0], y, k[1]) > 0.390625 {
-			v = y
-			break
+	if s.t.prelim != nil {
+		if s.t.prelimIsHeight {
+			v = int(math.Floor(s.eval(s.t.prelim, k[0], 0, k[1])))
+		} else {
+			for y := s.t.MinY + s.t.Height; y >= s.t.MinY; y -= s.t.cellH {
+				if s.eval(s.t.prelim, k[0], y, k[1]) > 0.390625 {
+					v = y
+					break
+				}
+			}
 		}
 	}
 	s.prelim[k] = v

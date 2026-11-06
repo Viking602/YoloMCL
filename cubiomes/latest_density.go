@@ -38,6 +38,8 @@ func (n *densityNode) evalLatest(p *densitySample) float64 {
 		v = max(arg(n.a), arg(n.b))
 	case "abs":
 		v = float32(math.Abs(float64(arg(n.a))))
+	case "invert":
+		v = 1 / arg(n.a)
 	case "square":
 		v = arg(n.a)
 		v *= v
@@ -66,6 +68,8 @@ func (n *densityNode) evalLatest(p *densitySample) float64 {
 		} else {
 			v = arg(n.c)
 		}
+	case "find_top_surface":
+		v = float32(n.findTopSurface(p))
 	case "squeeze":
 		v = max(float32(-1), min(float32(1), arg(n.a)))
 		v = v/2 - float32(float32(v*v)*v)/24
@@ -177,7 +181,7 @@ func latestTranslateValue(value any) (any, error) {
 			return binary("add", out["left"], binary("mul", float64(-1), out["right"])), nil
 		case "lerp":
 			return binary("add", out["first"], binary("mul", out["alpha"], binary("add", out["second"], binary("mul", float64(-1), out["first"])))), nil
-		case "abs", "square", "cube", "half_negative", "quarter_negative", "squeeze", "blend_density", "interpolated":
+		case "abs", "invert", "square", "cube", "half_negative", "quarter_negative", "squeeze", "blend_density", "interpolated":
 			out["argument"] = out["input"]
 		case "cache":
 			out["type"], out["argument"] = "minecraft:cache_once", out["input"]

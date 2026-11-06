@@ -29,6 +29,9 @@ func (a *App) inUseAccounts(r launcher.Instance) map[string]bool {
 
 // openLaunchAgain preselects an account that is not already in the game.
 func (a *App) openLaunchAgain(r launcher.Instance) {
+	if a.saveLaunchDraft(r, func() { a.openLaunchAgain(r) }) {
+		return
+	}
 	used := a.inUseAccounts(r)
 	pick := ""
 	for _, ac := range a.snapshot.Accounts {

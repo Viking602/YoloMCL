@@ -236,6 +236,10 @@ func (a *App) saveRootConfig(rootID string) {
 // Save the overrides and name in one background request, so leaving the view
 // cannot interrupt a second write previously chained through a UI callback.
 func (a *App) saveVersionConfig(rootID string) {
+	a.saveVersionConfigThen(rootID, nil)
+}
+
+func (a *App) saveVersionConfigThen(rootID string, done func()) {
 	t := a.tr()
 	verMemStr := strings.TrimSpace(a.form.VerMemory)
 	if verMemStr == "" {
@@ -258,9 +262,13 @@ func (a *App) saveVersionConfig(rootID string) {
 		return
 	}
 	ver, name := strings.TrimSpace(a.form.ConfigVersion), strings.TrimSpace(a.form.VerName)
+	saved := a.form
 	a.execute("updateVersion", map[string]any{"rootId": rootID, "version": ver, "javaPath": strings.TrimSpace(a.form.VerJava), "memoryMB": vn, "jvmArgs": strings.TrimSpace(a.form.VerJVM), "displayName": name}, func(b json.RawMessage) {
-		a.versionInitial = a.form
+		a.versionInitial = saved
 		a.finished(t.RootCfgSaved)(b)
+		if done != nil {
+			done()
+		}
 	})
 }
 

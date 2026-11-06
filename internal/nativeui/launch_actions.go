@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/egoist/mygo"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
 func (a *App) openFolder(id string) {
@@ -35,7 +37,27 @@ func (a *App) launch() {
 		a.openDialog("install")
 		return
 	}
-	a.execute("launch", map[string]string{"rootId": r.ID, "accountId": a.snapshot.ActiveAccount}, func(json.RawMessage) { a.notice(a.tr().InstallLaunchPreparing) })
+	rootID, accountID := r.ID, a.snapshot.ActiveAccount
+	start := func() {
+		a.execute("launch", map[string]string{"rootId": rootID, "accountId": accountID}, func(json.RawMessage) { a.notice(a.tr().InstallLaunchPreparing) })
+	}
+	if a.saveLaunchDraft(*r, start) {
+		return
+	}
+	start()
+}
+
+// Launching from settings applies the visible runtime first. This also covers
+// opening the account chooser for another copy of an already running game.
+func (a *App) saveLaunchDraft(r launcher.Instance, start func()) bool {
+	if a.instancePending("updateVersion") {
+		return true
+	}
+	if a.versionDraftRoot == r.ID && a.form.ConfigVersion == r.SelectedVersion && a.versionDraftDirty() {
+		a.saveVersionConfigThen(r.ID, start)
+		return true
+	}
+	return false
 }
 
 // launchRoot makes a directory current (keeping its selected version) and

@@ -122,6 +122,8 @@ func (n *densityNode) eval(p *densitySample) float64 {
 		v = math.Max(n.a.eval(p), n.b.eval(p))
 	case "abs":
 		v = math.Abs(n.a.eval(p))
+	case "invert":
+		v = 1 / n.a.eval(p)
 	case "square":
 		v = n.a.eval(p)
 		v *= v
@@ -152,6 +154,8 @@ func (n *densityNode) eval(p *densitySample) float64 {
 		} else {
 			v = n.c.eval(p)
 		}
+	case "find_top_surface":
+		v = n.findTopSurface(p)
 	case "spline":
 		v = float64(n.spline.eval(p))
 	case "terrain_shaper_spline":
@@ -178,15 +182,18 @@ func (s *densitySpline) eval(p *densitySample) float32 {
 		if point.derivative == 0 {
 			return v
 		}
-		return v + point.derivative*(x-point.location)
+		return v + float32(point.derivative*(x-point.location))
 	}
 	a, b := s.points[i], s.points[i+1]
 	span := b.location - a.location
 	t := (x - a.location) / span
 	v0, v1 := a.value.eval(p), b.value.eval(p)
-	p0, p1 := a.derivative*span-(v1-v0), -b.derivative*span+(v1-v0)
-	// All spline operations use Java float precision, including nested results.
-	return float32(v0+t*(v1-v0)) + float32(t*(1-t))*float32(p0+t*(p1-p0))
+	p0, p1 := float32(a.derivative*span)-(v1-v0), float32(-b.derivative*span)+(v1-v0)
+	// Java rounds every float operation. Explicit conversions on products
+	// prevent ARM64 from fusing their subsequent additions/subtractions.
+	base := v0 + float32(t*(v1-v0))
+	curve := p0 + float32(t*(p1-p0))
+	return base + float32(float32(t*(1-t))*curve)
 }
 
 type densityCompiler struct {
@@ -363,7 +370,7 @@ func (c *densityCompiler) compile(raw json.RawMessage, depth int) (*densityNode,
 			n.p = 0
 		case "add", "mul", "min", "max":
 			n.a, n.b = arg("argument1"), arg("argument2")
-		case "abs", "square", "cube", "half_negative", "quarter_negative", "squeeze":
+		case "abs", "invert", "square", "cube", "half_negative", "quarter_negative", "squeeze":
 			n.a = arg("argument")
 		case "clamp":
 			n.a, n.p, n.q = arg("input"), num("min"), num("max")
@@ -378,6 +385,14 @@ func (c *densityCompiler) compile(raw json.RawMessage, depth int) (*densityNode,
 		case "range_choice":
 			n.a, n.b, n.c = arg("input"), arg("when_in_range"), arg("when_out_of_range")
 			n.p, n.q = num("min_inclusive"), num("max_exclusive")
+		case "interval_select":
+			return c.compileIntervalSelect(raw, fields, depth)
+		case "find_top_surface":
+			n.a, n.b = arg("density"), arg("upper_bound")
+			n.p, n.q = num("lower_bound"), num("cell_height")
+			if e == nil && (n.p != math.Trunc(n.p) || n.q != math.Trunc(n.q) || n.q <= 0) {
+				e = errors.New("invalid find_top_surface bounds or cell height")
+			}
 		case "noise", "shifted_noise", "shift", "shift_a", "shift_b":
 			field := "noise"
 			if n.kind == "shift" || n.kind == "shift_a" || n.kind == "shift_b" {

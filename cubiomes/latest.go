@@ -1,7 +1,9 @@
 package cubiomes
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"sync"
 )
@@ -30,6 +32,40 @@ func latestLegacyNoiseAlias(version, id string) string {
 }
 
 var latestBuiltinRecords sync.Map
+
+// Installed parameter-list records name Java builtins with {"preset": ...}.
+// Resolve those builtins from the exact release's verified parameter lists,
+// independently of registry overrides (which may themselves name a builtin).
+func latestVanillaClimateTree(ctx context.Context, version, preset string) (*climateTree, []string, error) {
+	key := version + "/" + preset
+	if value, ok := vanillaTrees.Load(key); ok {
+		tree := value.(*climateTree)
+		return tree, tree.biomes, nil
+	}
+	docs, _, err := latestBuiltinDocuments(version)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, doc := range docs {
+		if doc.Kind != "multi_noise_biome_source_parameter_list" || doc.ID != preset {
+			continue
+		}
+		var data struct {
+			Biomes json.RawMessage `json:"biomes"`
+		}
+		if err := json.Unmarshal(doc.Data, &data); err != nil {
+			return nil, nil, err
+		}
+		tree, _, err := parseClimateList(ctx, data.Biomes, climateTreeOrder(version))
+		if err != nil {
+			return nil, nil, err
+		}
+		value, _ := vanillaTrees.LoadOrStore(key, tree)
+		tree = value.(*climateTree)
+		return tree, tree.biomes, nil
+	}
+	return nil, nil, fmt.Errorf("unknown biome preset %s", preset)
+}
 
 func latestBuiltinDocuments(version string) ([]Document, bool, error) {
 	if !latestRelease(version) {

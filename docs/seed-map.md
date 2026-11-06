@@ -1,9 +1,18 @@
 # Seed map
 
+The desktop hides both the instance tab and save-list map buttons when enabled
+mods alter terrain, biome placement or dimensions. Classification reads loader
+metadata, terrain registry paths and nested mod archives, without executing mod
+code. Unreadable enabled archives also keep the map hidden. Only the selected
+instance is checked in the background; snapshots do not open JARs. Results are
+cached with file stamps, and enabling, disabling, removing or replacing mods
+invalidates them. Vanilla and verified non-terrain mod sets keep the map entry.
+
 Open an instance's **Seed map** tab beside **Overview**. The page is a map search
 workspace: a large map fills the preview frame, with structure search on the
 right. The **Save / seed** picker loads a save's seed and dimension settings
-from `level.dat`, or selects manual input (initial seed `0`). The cube button in
+from `level.dat` and, for split saves, `data/minecraft/world_gen_settings.dat`,
+or selects manual input (initial seed `0`). The cube button in
 **Worlds** also opens the same tab. Enter a signed 64-bit integer and choose
 **Preview seed**. Drag to pan, scroll or use +/− to zoom, enter center X/Z to jump,
 and choose **Origin** to return to X=0, Z=0. The dimension selector lists the
@@ -55,7 +64,15 @@ blocks per pixel still use quart noise biomes. Coordinate ticks remain anchored
 to world coordinates while dragging. Hover displays the sampled biome and
 position; click opens its biome ID, chunk coordinates and estimated elevation,
 with **Copy /tp** and a vanilla biome wiki link. Inspection uses immutable tile
-data, not new synchronous generation. No terrain photographs or textures are bundled.
+data, not new synchronous generation. The editable **Teleport Y** field is used
+in the copied `/tp X Y Z` command. Surface points and structure markers default
+above the noise-stage ground or water surface, sampled once in a background
+worker. Roofed dimensions choose a floor with two air blocks below the current
+slice; an explicit biome slice retains its chosen Y. No height is invented over
+the void: enter Y manually to copy there. A depth estimate is used only when
+final-density terrain is unavailable; features and later player edits are not
+part of the height query. If neither source provides a height, enter Y manually.
+No terrain photographs or textures are bundled.
 Structure markers use distinct building, ship, temple, city and fortress icons.
 Each category has a consistent color. Nearby markers share a numbered badge;
 click it to list and select every member, including structures at identical
@@ -63,6 +80,8 @@ coordinates, or zoom into the group. Individual markers show their set ID,
 coordinates, source and confidence. **Hide structures** leaves the biome raster
 visible without marker overlays.
 **Map information** explains unavailable predictions and unverified behavior.
+When a dimension has no biome prediction, the canvas also shows an unavailable
+notice with **View reason** to open that information directly.
 
 **Structure preview** opens a resizable 3D panel. Its model, height gauge,
 mouse controls, Y range, block count and fidelity notes occupy separate areas.
@@ -77,9 +96,17 @@ panning, fly-to and wheel zoom use adaptive lower-resolution frames, returning
 to full resolution when interaction ends. Closing or replacing the preview
 cancels its outstanding terrain work.
 
+Water and lava in structures and terrain use the active resource packs' fluid
+sprites: still textures on horizontal faces and flow textures on sides. The
+first scheduled `.png.mcmeta` animation frame is baked into the static preview,
+with water tint and alpha blending; lava retains its unshaded texture colour.
+Transparent terrain water keeps visible structure blocks selectable. This does
+not simulate fluid flow or animate the sprite frames.
+
 Green flags show saved **world spawn** and the local player's recorded **respawn
 point** (bed/anchor), including its dimension. These come from `Data.SpawnX/Y/Z`
 and `Data.Player.SpawnX/Y/Z/SpawnDimension`, not the player's current position.
+Newer saves also use `Data.spawn.dimension` and `Data.spawn.pos` for world spawn.
 All three coordinate fields must exist; zero is a valid coordinate. Click a flag
 to see/copy its coordinates or use the spawn buttons to jump across dimensions.
 The save is read only; server saves without embedded player respawn data have
@@ -148,6 +175,7 @@ steps, not features of the current elevation build.
 | Named parameter lists / presets | Registry references, vanilla `overworld`/`nether` presets, and custom lists encoded with `biomes` |
 | Installed mods and file datapacks | Noise settings, named density functions, noise parameters, dimension definitions, biome effects/tags and map-related English/Chinese asset labels override lower-priority data |
 | Saved worlds | Modern `WorldGenSettings.seed`, complete supported dimension/generator/biome-source settings, inline noise settings and references; modern seed wins over legacy `RandomSeed` |
+| Split saved worlds | `data/minecraft/world_gen_settings.dat` supplies the seed and saved dimensions; it takes precedence over embedded generation metadata. Existing flat and custom presets are preserved |
 | Legacy saved worlds | `RandomSeed`, `generatorName`, `generatorVersion`, and empty `generatorOptions`; normal, large-biome and amplified biome maps. `default_1_1`, customized and legacy flat option strings stay unsupported |
 | `minecraft:fixed`, flat-world biome settings, `minecraft:checkerboard` | Existing categorical previews, including saved settings and negative coordinates |
 | `minecraft:random_spread` | Java LCG placement with linear/triangular spread, spacing, separation and salt; biome-tag filtering when the selected slice can be sampled |

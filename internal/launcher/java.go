@@ -57,13 +57,12 @@ func (s *Service) ensureJava(ctx context.Context, r Root, major int, p progress)
 		return "", err
 	}
 	if explicit != "" {
-		v, e := inspectJava(ctx, explicit)
+		_, e := inspectJava(ctx, explicit)
 		if e != nil {
 			return "", fmt.Errorf("所选 Java 路径无效: %w", e)
 		}
-		if v.Major < major {
-			return "", fmt.Errorf("此游戏需要 Java %d，所选版本为 Java %d", major, v.Major)
-		}
+		// An explicit runtime is the user's choice. The game's declared major
+		// guides automatic selection; it must not override a manual selection.
 		return explicit, nil
 	}
 	for _, v := range s.JavaList(ctx) {

@@ -389,12 +389,14 @@ func TestOfflineLaunchWithRealJVM(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	v.JavaVersion.MajorVersion = j.Major
+	// A manual Java selection also wins when metadata recommends a newer
+	// major. The fixture itself is compiled for the selected JVM.
+	v.JavaVersion.MajorVersion = j.Major + 1
 	for _, arg := range []string{"--username", "${auth_player_name}", "--uuid", "${auth_uuid}", "--accessToken", "${auth_access_token}", "--userType", "${user_type}", "--gameDir", "${game_directory}"} {
 		v.Arguments.Game = append(v.Arguments.Game, jsonBytes(t, arg))
 	}
 	writeTestFile(t, filepath.Join(r.Path, "versions", "fixture", "fixture.json"), jsonBytes(t, v))
-	if e = s.UpdateRoot(r.ID, r.Name, java, 512); e != nil {
+	if e = s.UpdateVersionConfig(r.ID, "fixture", java, 512, ""); e != nil {
 		t.Fatal(e)
 	}
 	if e = s.Select(r.ID, "", "fixture"); e != nil {

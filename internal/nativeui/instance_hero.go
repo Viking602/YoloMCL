@@ -110,7 +110,7 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 			if verRunning(&r) {
 				launchText, icon = a.L("i18n.run_another"), "plus"
 			}
-			why := whyOf(a.instancePending("launch", "launchAgain"), t.WhyBusy, v == nil, t.WhyNoVersion)
+			why := whyOf(a.instancePending("launch", "launchAgain", "updateVersion"), t.WhyBusy, v == nil, t.WhyNoVersion)
 			pendingWhy = why
 			if fixedButton(c, "launch", launchText, icon, 136*s, btnLg*s, !verRunning(&r), why != "") {
 				if verRunning(&r) {

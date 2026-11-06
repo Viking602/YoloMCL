@@ -4,15 +4,17 @@ package structure3d
 // the asset store can supply them. A nil field falls back to the solid
 // colour AddTerrain already uses.
 type TerrainTextures struct {
-	GrassTop, GrassSide  *texel
-	Dirt, Stone          *texel
-	Deepslate, Bedrock   *texel
-	Sand, Gravel, Snow   *texel
-	Terracotta           *texel
-	Netherrack, SoulSand *texel
-	Basalt, Blackstone   *texel
-	EndStone             *texel
-	ok                   bool // at least one texture loaded
+	GrassTop, GrassSide   *texel
+	Dirt, Stone           *texel
+	Deepslate, Bedrock    *texel
+	Sand, Gravel, Snow    *texel
+	Terracotta            *texel
+	Netherrack, SoulSand  *texel
+	Basalt, Blackstone    *texel
+	EndStone              *texel
+	WaterStill, WaterFlow *texel
+	LavaStill, LavaFlow   *texel
+	ok                    bool // at least one texture loaded
 	// grassMask is the untinted grass_block_top; grass maps a registered
 	// biome grass colour to the mask tinted with it.
 	grassMask *texel
@@ -48,6 +50,10 @@ func (t *TerrainTextures) RegisterBlock(c [3]uint8, id string) bool {
 			for _, f := range e.Faces {
 				if f.Dir == "up" && f.Texture != nil {
 					tx = toTexel(f.Texture)
+					tx.blend, tx.emissive = f.Blend, f.Emissive
+					if tx.blend {
+						tx.opaque = false
+					}
 					if f.TintIndex >= 0 {
 						tintTexel(tx, c[0], c[1], c[2])
 					}
@@ -123,8 +129,34 @@ func LoadTerrainTextures(store *Store) TerrainTextures {
 		EndStone:   load("minecraft:block/end_stone"),
 	}
 	t.grassMask = load("minecraft:block/grass_block_top")
+	loadFluid := func(kind string, flow bool) *texel {
+		img := c.fluidSprite(store, kind, flow)
+		if img == nil {
+			return nil
+		}
+		tx := toTexel(img)
+		tx.blend, tx.emissive = kind == "water", kind == "lava"
+		if tx.blend {
+			tx.opaque = false
+		}
+		return tx
+	}
+	t.WaterStill, t.WaterFlow = loadFluid("water", false), loadFluid("water", true)
+	t.LavaStill, t.LavaFlow = loadFluid("lava", false), loadFluid("lava", true)
+	if t.WaterStill == nil {
+		t.WaterStill = t.WaterFlow
+	}
+	if t.WaterFlow == nil {
+		t.WaterFlow = t.WaterStill
+	}
+	if t.LavaStill == nil {
+		t.LavaStill = t.LavaFlow
+	}
+	if t.LavaFlow == nil {
+		t.LavaFlow = t.LavaStill
+	}
 	t.store, t.cache = store, c
-	t.ok = t.GrassTop != nil || t.Stone != nil || t.Dirt != nil || t.Netherrack != nil || t.EndStone != nil
+	t.ok = t.GrassTop != nil || t.Stone != nil || t.Dirt != nil || t.Netherrack != nil || t.EndStone != nil || t.WaterStill != nil || t.LavaStill != nil
 	return t
 }
 
@@ -147,6 +179,16 @@ func pickTerrainTex(t TerrainTextures, c [3]uint8, top bool) *texel {
 		return t.Dirt
 	}
 	switch c {
+	case [3]uint8{0x3f, 0x76, 0xe4}:
+		if top {
+			return t.WaterStill
+		}
+		return t.WaterFlow
+	case [3]uint8{0xe3, 0x6b, 0x1c}:
+		if top {
+			return t.LavaStill
+		}
+		return t.LavaFlow
 	case [3]uint8{0x5d, 0x9c, 0x49}:
 		if top && t.GrassTop != nil {
 			return t.GrassTop

@@ -24,20 +24,30 @@ func jvmPresetName(a *App, args string) string {
 	return a.L("overview_runtime.custom")
 }
 
-// ovJava picks the runtime this version will use: its own path, else a
-// detected Java of the required major.
+// versionJavaPath also accepts a version summary with an edited Java path.
+func (a *App) versionJavaPath(r launcher.Instance, v launcher.VersionSummary) string {
+	if path := strings.TrimSpace(v.JavaPath); path != "" {
+		return path
+	}
+	root := r.Root
+	root.VersionConfigs = nil // the summary above supplies the version override
+	return root.JavaPathFor(v.ID, a.settings)
+}
+
+// ovJava follows the same version/directory/global precedence as launch.
 func (a *App) ovJava(r launcher.Instance, v launcher.VersionSummary) (launcher.JavaInfo, int) {
 	need := javaFor(r, v)
-	for _, j := range a.java {
-		if v.JavaPath != "" && strings.EqualFold(j.Path, v.JavaPath) {
-			return j, need
-		}
-	}
-	if v.JavaPath == "" {
+	if path := a.versionJavaPath(r, v); path != "" {
 		for _, j := range a.java {
-			if j.Major == need {
+			if strings.EqualFold(j.Path, path) {
 				return j, need
 			}
+		}
+		return launcher.JavaInfo{Path: path}, need
+	}
+	for _, j := range a.java {
+		if j.Major == need {
+			return j, need
 		}
 	}
 	return launcher.JavaInfo{}, need
@@ -60,6 +70,8 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 			if j.Vendor != "" {
 				text += "  " + j.Vendor
 			}
+		} else if j.Path != "" {
+			text = midPath(j.Path, 64)
 		}
 		shown := swappedContent(a, c, "runtime-java", text, text)
 		a.contentBody(c, "runtime-java").Grow(1).Basis(0).MinWidth(0).Children(func() {
@@ -70,7 +82,7 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 			quietTag(c, a.L("overview_runtime.recommended"), success)
 		case j.Major > 0 && need > 0:
 			quietTag(c, fmt.Sprintf(a.L("overview_runtime.java_advised"), need), warning)
-		case j.Version == "" && need > 0:
+		case j.Path == "" && need > 0:
 			quietTag(c, a.L("overview_runtime.downloads_on_launch"), muted)
 		}
 	})

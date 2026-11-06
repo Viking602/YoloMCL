@@ -19,7 +19,7 @@ import (
 	"github.com/Viking602/YoloMCL/cubiomes/modjar"
 )
 
-const worldgenSchema = 20
+const worldgenSchema = 21
 
 // WorldgenDocument is a winning registry entry, with its pack provenance.
 type WorldgenDocument = cubiomes.Document
@@ -173,16 +173,11 @@ func (s *Service) seedMapWorldgenEra(ctx context.Context, rootID, versionID, wor
 		if err := validWorldDir(world); err != nil {
 			return nil, level, err
 		}
-		p, e := safeJoin(gameDir, "saves/"+world+"/level.dat")
+		p, e := safeJoin(gameDir, "saves/"+world)
 		if e != nil {
 			return nil, level, e
 		}
-		f, e := os.Open(p)
-		if e != nil {
-			return nil, level, e
-		}
-		level, err = parseLevelDat(ctx, f)
-		f.Close()
+		level, err = readWorldLevel(ctx, p)
 		if err != nil {
 			return nil, level, err
 		}

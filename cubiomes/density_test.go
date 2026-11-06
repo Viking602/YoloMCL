@@ -134,6 +134,28 @@ func TestDensityOperatorsAndSpline(t *testing.T) {
 	}
 }
 
+func TestDensitySplineJavaFloatRounding(t *testing.T) {
+	// Expected raw float bits come from a standalone Java float Hermite spline.
+	// Cover interpolation and both extrapolation branches with non-binary knots.
+	for _, tc := range []struct {
+		x    float32
+		bits uint32
+	}{{-1.111, 0x3f8fb0ee}, {-.8, 0x3f36872b}, {-.733, 0x3f1d1a2e}, {-.3, 0xbe464902}, {.1, 0xbe3020c5}, {.787, 0x3fa39dec}} {
+		s := densitySpline{
+			coordinate: &densityNode{id: 0, kind: "constant", p: float64(tc.x)},
+			points: []densitySplinePoint{
+				{location: -.8, derivative: -1.317, value: &densitySpline{constant: .713}},
+				{location: .1, derivative: 2.111, value: &densitySpline{constant: -.172}},
+			},
+		}
+		p := densitySample{seen: make([]uint32, 1), values: make([]float64, 1)}
+		p.at(0, 0, 0)
+		if got := math.Float32bits(s.eval(&p)); got != tc.bits {
+			t.Fatalf("spline at %g: bits %#08x, want %#08x", tc.x, got, tc.bits)
+		}
+	}
+}
+
 func TestDensityRejectsUnsupportedCyclesAndExcessiveWork(t *testing.T) {
 	docs := map[string]Document{"density_function/pack:a": {Data: json.RawMessage(`"pack:b"`)}, "density_function/pack:b": {Data: json.RawMessage(`"pack:a"`)}}
 	for _, raw := range []string{`"pack:a"`, `"pack:missing"`, `{"type":"pack:java_density"}`, `{"type":"minecraft:weird_scaled_sampler"}`, `{"type":"noise","noise":"missing","xz_scale":1,"y_scale":1}`, `{"type":"spline","spline":{"coordinate":0,"points":[]}}`, strings.Repeat(`{"type":"abs","argument":`, 130) + `1` + strings.Repeat(`}`, 130)} {

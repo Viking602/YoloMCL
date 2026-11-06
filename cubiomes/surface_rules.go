@@ -87,6 +87,7 @@ func CompileSurfaceRules(ctx context.Context, docs map[string]Document, def Defi
 		return nil, errors.New("invalid noise settings")
 	}
 	c := newDensityCompiler(ctx, docs, def.Seed, data.Legacy)
+	c.version = def.Version
 	r := &SurfaceRules{MinY: t.MinY, Height: t.Height, sources: map[string]surfaceRule{}, random: c.factory, blocks: map[string]bool{}}
 	var err error
 	if r.surface, err = c.compileNoise(json.RawMessage(`"minecraft:surface"`)); err != nil {
@@ -95,7 +96,7 @@ func CompileSurfaceRules(ctx context.Context, docs map[string]Document, def Defi
 	if r.secondary, err = c.compileNoise(json.RawMessage(`"minecraft:surface_secondary"`)); err != nil {
 		return nil, err
 	}
-	sc := &surfaceCompiler{c: c, r: r}
+	sc := &surfaceCompiler{c: c, r: r, terrain: t}
 	for _, src := range sources {
 		if src.Namespace == SurfaceBaseNamespace {
 			if len(data.Rule) == 0 {
@@ -133,8 +134,9 @@ func (r *SurfaceRules) Blocks() []string {
 }
 
 type surfaceCompiler struct {
-	c *densityCompiler
-	r *SurfaceRules
+	c       *densityCompiler
+	r       *SurfaceRules
+	terrain *Terrain
 }
 
 func (sc *surfaceCompiler) anchor(raw json.RawMessage) (func() int, error) {
@@ -165,8 +167,9 @@ func (sc *surfaceCompiler) cond(raw json.RawMessage, depth int) (surfaceCond, er
 	}
 	var d struct {
 		Type         string          `json:"type"`
-		Biomes       []string        `json:"biome_is"`
+		Biomes       json.RawMessage `json:"biome_is"`
 		Noise        string          `json:"noise"`
+		Is3D         bool            `json:"is_3d"`
 		Min          *float64        `json:"min_threshold"`
 		Max          *float64        `json:"max_threshold"`
 		RandomName   string          `json:"random_name"`
@@ -186,9 +189,9 @@ func (sc *surfaceCompiler) cond(raw json.RawMessage, depth int) (surfaceCond, er
 	}
 	switch seedMapID(d.Type) {
 	case "minecraft:biome":
-		set := map[string]bool{}
-		for _, b := range d.Biomes {
-			set[seedMapID(b)] = true
+		set, err := sc.biomes(d.Biomes)
+		if err != nil {
+			return nil, err
 		}
 		return func(c *surfaceCtx) bool { return set[c.biome()] }, nil
 	case "minecraft:noise_threshold":
@@ -201,7 +204,11 @@ func (sc *surfaceCompiler) cond(raw json.RawMessage, depth int) (surfaceCond, er
 		}
 		lo, hi := *d.Min, *d.Max
 		return func(c *surfaceCtx) bool {
-			v := n.sample(float64(c.x), 0, float64(c.z))
+			y := 0
+			if d.Is3D {
+				y = c.y
+			}
+			v := n.sample(float64(c.x), float64(y), float64(c.z))
 			return v >= lo && v <= hi
 		}, nil
 	case "minecraft:vertical_gradient":
@@ -279,6 +286,9 @@ func (sc *surfaceCompiler) cond(raw json.RawMessage, depth int) (surfaceCond, er
 	case "minecraft:hole":
 		return func(c *surfaceCtx) bool { return c.depth <= 0 }, nil
 	case "minecraft:above_preliminary_surface":
+		if sc.terrain == nil || sc.terrain.prelim == nil {
+			return nil, errors.New("missing preliminary surface router")
+		}
 		return func(c *surfaceCtx) bool { return c.y >= c.minSurfaceLevel() }, nil
 	case "minecraft:steep":
 		return func(c *surfaceCtx) bool { return c.steep() }, nil
