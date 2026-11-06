@@ -29,10 +29,10 @@ func (a *App) heroLoaderBadge(c *ui.Context, v launcher.VersionSummary) {
 	tip := strings.TrimSpace(name + " " + version)
 	motion := ui.ElementTransition{}
 	if !c.Preferences().ReduceMotion {
-		motion = ui.ElementTransition{Animation: &motionFast, Enter: &ui.Motion{Opacity: .3, Y: 3 * s}}
+		motion = ui.ElementTransition{Animation: &motionFast, Enter: &ui.Motion{Opacity: .3}}
 	}
 	tooltip(c, ui.Row(c.Key("hero-loader-badge")).Label(a.L("hero_badges.instance_loader")), tip).
-		Height(24*s).MinWidth(28*s).Shrink(0).Padding(0, 7*s, 0, 4*s).Gap(5*s).Radius(8*s).
+		Height(24*s).MinWidth(28*s).Shrink(0).Padding(0, 8*s, 0, 4*s).Gap(4*s).Radius(radiusChip*s).
 		Background(ui.RGBA(255, 255, 255, .82)).Border(1, ui.RGBA(60, 72, 110, .08)).
 		Font(uiSansFamily()).AlignItems(ui.Center).Children(func() {
 		ui.Box(c.Key("hero-loader-content-"+loaderKey(v.Loader))).Size(18*s, 18*s).Shrink(0).Center().Transition(motion).Children(func() {
@@ -79,7 +79,7 @@ func (a *App) heroHistory(r launcher.Instance) heroHistoryBadge {
 
 // A quiet, fixed-width history readout beside the launch controls. Wide
 // windows give the date its own line; compact windows keep it in the metadata
-// row. Only the contents transition, and changing date digits flip in place.
+// row. Only the contents transition, and changing dates fade in place.
 func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 	s := uiScale(c)
 	record := a.heroHistory(r)
@@ -102,13 +102,13 @@ func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 	}
 	badge.Children(func() {
 		a.contentBody(c, "hero-history").Children(func() {
-			content := ui.Row(c).Label(strings.TrimSpace(shown.label + " " + shown.value)).FillWidth().MinWidth(0).Gap(7 * s).AlignItems(ui.Center).Justify(ui.End)
+			content := ui.Row(c).Label(strings.TrimSpace(shown.label + " " + shown.value)).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Justify(ui.End)
 			if stacked {
-				content.Column().Gap(3 * s).AlignItems(ui.Start).Justify(ui.Center)
+				content.Column().Gap(4 * s).AlignItems(ui.Start).Justify(ui.Center)
 			}
 			content.Children(func() {
 				if stacked || shown.label != "" {
-					ui.Row(c).Gap(5 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+					ui.Row(c).Gap(4 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 						if stacked {
 							ui.Icon(c, icons[shown.icon]).Size(11*s, 11*s).TextColor(iconColor).Shrink(0)
 						}
@@ -126,7 +126,7 @@ func (a *App) heroPlayRecord(c *ui.Context, r launcher.Instance, stacked bool) {
 					if stacked {
 						size = typeBody
 					}
-					a.rollNumber(c, "hero-history-date", shown.value, size*s, 600, fg).Shrink(1)
+					a.fadeNumber(c, "hero-history-date", shown.value, size*s, 600, fg).Shrink(1)
 				}
 			})
 		})

@@ -41,6 +41,20 @@ type numberDigitState struct {
 	anim     ui.Animation
 }
 
+// fadeNumber updates secondary readouts and dates without rolling every digit.
+// It shares the content swap so a replaced panel cannot retain an old readout.
+// Reserve rollNumber for the overview's large statistical counters.
+func (a *App) fadeNumber(c *ui.Context, key, text string, size float32, weight int, color ui.Color, alignEnd ...bool) ui.Element {
+	text = swappedContent(a, c, key, text, text)
+	width, height := c.MeasureText(0, ui.Span{Text: text, Font: uiSansFamily(), Features: "tnum", Size: size, Weight: weight})
+	return a.contentBody(c, key).Label("动态数字 "+key).Size(width, height).Children(func() {
+		value := numText(c, text, size, color).FontWeight(weight).SingleLine().FillWidth()
+		if len(alignEnd) > 0 && alignEnd[0] {
+			value.TextAlign(ui.End)
+		}
+	})
+}
+
 // rollNumber uses independent odometer columns. Only changed places move,
 // starting at the least significant place; units and punctuation stay still.
 // Every wheel travels at most one revolution, regardless of the numeric delta.

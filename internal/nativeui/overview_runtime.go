@@ -86,7 +86,7 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 		mem = a.L("overview_runtime.auto_about") + mem
 	}
 	kvRow(c, a.L("instance_settings.memory"), func() {
-		a.rollNumber(c, "runtime-memory", mem, typeCallout*s, 600, ink).Width(188 * s).Shrink(1)
+		a.fadeNumber(c, "runtime-memory", mem, typeCallout*s, 600, ink).Width(188 * s).Shrink(1)
 		if a.memoryInfo.TotalMB > 0 {
 			numText(c, fmt.Sprintf(a.L("overview_runtime.of_gb"), float64(a.memoryInfo.TotalMB)/1024), typeFootnote*s, muted)
 		}

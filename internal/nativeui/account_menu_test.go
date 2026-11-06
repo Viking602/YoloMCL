@@ -41,6 +41,7 @@ func accountMenuTester(t *testing.T, lang string, width int) (*App, *ui.Tester, 
 			}
 		})
 		a.dialogView(c, root)
+		a.confirmationView(c)
 	}, width, 720)
 	return a, tt, behind
 }
@@ -116,6 +117,10 @@ func TestAccountMenuDistinctDialogs(t *testing.T) {
 				}
 				a.form.Username, a.form.Password = "Draft", "Draft password"
 				clickUI(t, tt, a.tr().AccBackBtn)
+				if a.confirmation == nil || a.form.Username != "Draft" {
+					t.Fatal("Back discarded the login draft without asking")
+				}
+				clickUI(t, tt, "按钮文字 confirmation-accept")
 				assertManage()
 				if a.form.Username != "" || a.form.Password != "" {
 					t.Fatal("returning to Manage retained the abandoned login draft")
@@ -340,6 +345,7 @@ func TestAccountMenuKeepsDiscoverPageStable(t *testing.T) {
 			// Stay below the account menu, its shadow and the title tooltip.
 			region := ui.Rect{X: page.X + 20, Y: 350, W: page.W - 40, H: 500}
 			pixels := overviewRegionPixels(tt.Image(), region)
+			snapshotUI(t, tt, "account-page-before-"+fmt.Sprint(width))
 			assertStable := func(stage string) {
 				t.Helper()
 				if got, ok := tt.Find("发现视图"); !ok || got != page {

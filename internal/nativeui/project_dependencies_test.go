@@ -200,3 +200,43 @@ func TestProjectInstallBlocksIncompatibleAndUnresolvedDependencies(t *testing.T)
 		t.Fatal("different Minecraft/loader became installable")
 	}
 }
+
+func TestPlanSelectionFollowsOptionalDependencyChains(t *testing.T) {
+	a := &App{plan: []launcher.PlanItem{
+		{Key: "target", Role: "target", Status: "install"},
+		{Key: "optional", Role: "optional", Status: "install", Parent: "target", Depth: 1},
+		{Key: "child", Role: "required", Status: "install", Parent: "optional", RequiredBy: []string{"optional"}, Depth: 2},
+		{Key: "leaf", Role: "required", Status: "install", Parent: "child", RequiredBy: []string{"child"}, Depth: 3},
+	}}
+	if items, _, _ := a.planSelection(); len(items) != 1 {
+		t.Fatalf("unchecked optional mod installed its children: %+v", items)
+	}
+	a.planOff = map[string]bool{"optional": false}
+	if items, _, _ := a.planSelection(); len(items) != 4 || items[3].Depth != 3 {
+		t.Fatalf("selecting an optional mod did not select all its required descendants: %+v", items)
+	}
+	a.planOff["optional"] = true
+	if items, _, _ := a.planSelection(); len(items) != 1 {
+		t.Fatalf("deselecting an optional branch left its descendants selected: %+v", items)
+	}
+	// The shared child remains required through the target's other edge.
+	a.plan[2].RequiredBy = append(a.plan[2].RequiredBy, "target")
+	if items, _, _ := a.planSelection(); len(items) != 3 {
+		t.Fatalf("deselecting one parent removed a shared required dependency: %+v", items)
+	}
+}
+
+func TestPlanSelectionDisabledOptionalCycle(t *testing.T) {
+	a := &App{plan: []launcher.PlanItem{
+		{Key: "target", Role: "target", Status: "install"},
+		{Key: "optional", Role: "required", Status: "disabled", File: "optional.jar.disabled", Parent: "target", RequiredBy: []string{"child"}},
+		{Key: "child", Role: "required", Status: "install", Parent: "optional", RequiredBy: []string{"optional"}},
+	}}
+	if items, enable, _ := a.planSelection(); len(items) != 1 || len(enable) != 0 {
+		t.Fatalf("an inactive optional cycle selected itself: %+v, %+v", items, enable)
+	}
+	a.planOff = map[string]bool{"optional": false}
+	if items, enable, _ := a.planSelection(); len(items) != 2 || len(enable) != 1 {
+		t.Fatalf("selecting a disabled optional mod did not select its dependency: %+v, %+v", items, enable)
+	}
+}

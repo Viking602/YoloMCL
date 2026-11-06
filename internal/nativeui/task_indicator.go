@@ -52,6 +52,7 @@ func (a *App) jobPill(c *ui.Context) {
 	}
 	frac = min(1, max(0, frac))
 	name := a.jobTitle(run[0])
+	message := strings.TrimSpace(a.jobMsg(run[0].Message))
 	tip := name
 	if run[0].Total > 0 {
 		tip += fmt.Sprintf("  (%d/%d)", run[0].Done, run[0].Total)
@@ -62,15 +63,17 @@ func (a *App) jobPill(c *ui.Context) {
 		for _, j := range run {
 			tip += a.jobTitle(j) + "\n"
 		}
+	} else if message != "" {
+		tip += "\n" + message
 	}
 	right := fmt.Sprintf("%d%%", int(frac*100))
 	mid := ""
 	if speed >= 1024 {
 		mid = fmtSize(speed) + "/s"
 	} else if len(run) == 1 {
-		mid = jobStep(a.jobMsg(run[0].Message))
+		mid = jobStep(message)
 	}
-	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("task_indicator.view_downloads")), strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(999).Clip().Background(accentSoft)
+	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("task_indicator.view_downloads")), strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(radiusPill).Clip().Background(accentSoft)
 	if b.Hovered() {
 		b.Background(accent.Alpha(.16))
 	}
@@ -79,8 +82,10 @@ func (a *App) jobPill(c *ui.Context) {
 			ui.Row(c).FillWidth().Grow(1).PaddingX(12 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["download"]).Size(12*s, 12*s).TextColor(accent).Shrink(0)
 				ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).SingleLine().Grow(1).Basis(0).MinWidth(0)
-				ui.Box(c).Width(70 * s).Shrink(0).AlignItems(ui.End).Children(func() {
-					numText(c, mid, typeCaption*s, inkSecondary).SingleLine()
+				ui.Box(c).Width(70 * s).Shrink(0).Clip().Children(func() {
+					// Constrain the text itself so long filenames ellipsize instead
+					// of extending left over the task name from an end-aligned box.
+					ui.Text(c, mid).Font(uiSansFamily()).FontFeatures("tnum").FontSize(typeCaption * s).TextColor(inkSecondary).FillWidth().MinWidth(0).TextAlign(ui.End).SingleLine()
 				})
 				ui.Box(c).Width(32 * s).Shrink(0).AlignItems(ui.End).Children(func() {
 					numText(c, right, typeCaption*s, accent).FontWeight(650)

@@ -80,6 +80,11 @@ func (a *App) dialogTitle(dialog string) string {
 		return t.DialogTitleDir
 	case "version":
 		return t.VersionDialogTitle
+	case "keyBindings":
+		if a.keyBindings != nil && a.keyBindings.rootID == "" {
+			return a.L("keybindings.global_title")
+		}
+		return a.L("keybindings.pack_title")
 	case "removeRoot":
 		return t.DialogTitleRemRoot
 	case "removeMod":

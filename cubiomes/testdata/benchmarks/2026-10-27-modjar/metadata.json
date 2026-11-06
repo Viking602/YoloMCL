@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-27",
+  "os": "windows",
+  "arch": "amd64",
+  "cpu": "AMD Ryzen 7 9800X3D",
+  "go": "go1.27.3",
+  "cgo_enabled": false,
+  "benchmark": "BenchmarkInstalledRegistration",
+  "artifact": "YungsCaveBiomes-1.20.1-Forge-2.0.5.jar",
+  "artifact_provenance": "../../../data/terrablender-1.20.1.provenance.json",
+  "rounds": 5,
+  "benchtime": "500ms",
+  "ns_per_op": [9060633, 9614228, 10469282, 10640457, 10689968],
+  "median_ms": 10.469282,
+  "minimum_ms": 9.060633,
+  "maximum_ms": 10.689968,
+  "median_bytes_per_op": 10248187,
+  "median_allocations_per_op": 24573,
+  "parameters_per_op": 7595,
+  "method": "Each operation reads/decompresses the installed JAR's class entries, discovers supported registration roots, executes registration with default configuration, and captures a fresh ordered parameter list. The ZIP reader is opened before timing. The shared ordered vanilla base table is warmed across operations. No concurrent MCL checks/builds ran during this benchmark.",
+  "excludes": "Process startup, opening/verifying the archive, entire modpack resource ingestion, native tree compilation, raster sampling, queues and rendering.",
+  "interpretation": "One registration load, not per pixel or per tile. These five rounds do not estimate p95 or demonstrate a Java/Go speedup. Sampling comparisons are reported separately."
+}

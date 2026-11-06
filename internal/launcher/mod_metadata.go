@@ -11,6 +11,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -435,5 +436,10 @@ func safeTOML(b []byte, v any) (err error) {
 			err = fmt.Errorf("toml: %v", r)
 		}
 	}()
+	// Night-config decodes with replacement characters; a truncated multibyte
+	// sequence in a description must not hide the mod (makit_better).
+	if !utf8.Valid(b) {
+		b = bytes.ToValidUTF8(b, []byte("\uFFFD"))
+	}
 	return toml.Unmarshal(b, v)
 }

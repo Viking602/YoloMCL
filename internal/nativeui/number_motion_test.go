@@ -165,7 +165,7 @@ func TestNumberRollStaggersDigitsAndReversesDirection(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(theme)
 		ui.Column(c).Fill().Background(chromeBg).Padding(24).Children(func() {
-			ui.Column(c).Width(260).Padding(20).Gap(8).Radius(16).Background(panel).Children(func() {
+			ui.Column(c).Width(260).Padding(20).Gap(8).Radius(radiusCard).Background(panel).Children(func() {
 				ui.Text(c, "已安装模组").Font(uiSansFamily()).FontSize(14).TextColor(muted)
 				a.rollNumber(c, "mods", value, 36, 750, ink).FillWidth()
 				a.rollNumber(c, "enabled", value+" 个已启用", 13, 400, muted).FillWidth()

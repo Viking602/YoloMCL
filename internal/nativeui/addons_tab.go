@@ -64,7 +64,7 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 	t := a.tr()
 	kind := a.addonTab
 	ui.Column(c.Key("addon-toolbar")).FillWidth().Gap(12 * s).Children(func() {
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			textField(c, &a.modFilter).Placeholder(a.L("addons_tab.search_name_or_file")).Label(t.ModsSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
 			sortOpts := []string{a.L("addons_tab.by_name"), a.L("addons_tab.by_size")}
 			cur := sortOpts[0]
@@ -77,13 +77,13 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 					a.addonSortKey = "size"
 				}
 			}
-			ui.Row(c.Key("addon-view")).Label(a.L("addons_tab.view")).Padding(2 * s).Gap(2 * s).Radius(9 * s).Background(fieldColor).Shrink(0).Children(func() {
+			ui.Row(c.Key("addon-view")).Label(a.L("addons_tab.view")).Padding(4 * s).Gap(4 * s).Radius(radiusControl * s).Background(fieldColor).Shrink(0).Children(func() {
 				for _, v := range []struct {
 					list       bool
 					icon, text string
 				}{{false, "mods", a.L("addons_tab.cards")}, {true, "list", a.L("addons_tab.list")}} {
 					sel := a.addonListMode == v.list
-					b := tooltip(c, ui.ButtonBase(c.Key("addon-view-"+v.icon)).Label(v.text), v.text).Size(btnSm*s, btnSm*s-4*s).Radius(7 * s).Center()
+					b := tooltip(c, ui.ButtonBase(c.Key("addon-view-"+v.icon)).Label(v.text), v.text).Size(btnSm*s, btnSm*s-4*s).Radius(radiusChip * s).Center()
 					bg, fg := ui.Transparent, muted
 					if sel {
 						bg, fg = panel, ink
@@ -97,28 +97,27 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 					}
 				}
 			})
-			if iconOnlyButton(c, "addon-open-folder", "folder", a.L("addons_tab.open_folder"), btnSm*s+4*s, false) {
+			if iconOnlyButton(c, "addon-open-folder", "folder", a.L("addons_tab.open_folder"), btnMd*s, false) {
 				a.openSub(addonFolder(kind))
 			}
 			if kind == "mods" {
 				if a.modChecking {
-					ui.Row(c).Height(btnSm*s + 4*s).Gap(6 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+					ui.Row(c).Height(btnMd * s).Gap(8 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 						ui.Spinner(c).Size(12*s, 12*s)
 						label(c, a.L("addons_tab.checking_updates")).FontSize(typeFootnote * s).NoWrap()
 					})
 				}
-				if iconOnlyButton(c, "check-mods", "refresh", t.ModsCheckUpdatesBtn, btnSm*s+4*s, a.modChecking || a.pendingOp("checkMods") || a.root() == nil) {
+				if iconOnlyButton(c, "check-mods", "refresh", t.ModsCheckUpdatesBtn, btnMd*s, a.modChecking || a.pendingOp("checkMods") || a.root() == nil) {
 					id := a.root().ID
-					a.execute("checkMods", map[string]string{"rootId": id}, func(b json.RawMessage) {
-						a.mods = decode[[]launcher.Mod](b)
+					a.execute("checkMods", map[string]string{"rootId": id}, func(json.RawMessage) {
 						a.notice(a.tr().ModsCheckedNotice)
 					})
 				}
 			}
-			if fixedButton(c, "addon-import", a.L("addons_tab.import"), "plus", 0, btnSm*s+4*s, false, a.instancePending("addLocalMods", "addLocalAssetPacks") || a.root() == nil) {
+			if fixedButton(c, "addon-import", a.L("addons_tab.import"), "plus", 0, btnMd*s, false, a.instancePending("addLocalMods", "addLocalAssetPacks") || a.root() == nil) {
 				a.importAddons(kind)
 			}
-			if fixedButton(c, "find-mods", a.L("addons_tab.discover"), "search", 0, btnSm*s+4*s, true, false) {
+			if fixedButton(c, "find-mods", a.L("addons_tab.discover"), "search", 0, btnMd*s, true, false) {
 				a.goDiscover(kind, "")
 			}
 		})
@@ -126,13 +125,10 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 		if len(all) == 0 || (off == 0 && upd == 0 && a.addonFilterKind == "") {
 			return // nothing to tell apart: every item is on and current
 		}
-		ui.Row(c).FillWidth().Gap(6 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			a.addonFilterPills(c, len(all), on, off, upd)
 			ui.Spacer(c).Grow(1)
 			hint := a.L("addons_tab.click_to_enable_or_disable")
-			if a.addonTab == "mods" {
-				hint = a.L("addons_tab.click_to_toggle_disabling_asks_for_confirmation")
-			}
 			label(c, hint).FontSize(typeCaption * s).NoWrap().Shrink(1).MinWidth(0)
 		})
 	})
@@ -172,10 +168,10 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 		inst = v.Loader
 	}
 	need, query := shaderNeed(inst)
-	glass(ui.Row(c.Key("shader-status")).Label("光影状态").FillWidth().Wrap().Gap(18*s).Padding(16*s, 20*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
-		ui.Row(c).Grow(1).Basis(260 * s).MinWidth(0).Gap(14 * s).AlignItems(ui.Center).Children(func() {
+	glass(ui.Row(c.Key("shader-status")).Label("光影状态").FillWidth().Wrap().Gap(20*s).Padding(16*s, 20*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Grow(1).Basis(260 * s).MinWidth(0).Gap(16 * s).AlignItems(ui.Center).Children(func() {
 			appleSoftIconBox(c, 40*s, "sun", ui.Hex("#ff9f0a"), ui.Hex("#ff6b3d"), panel)
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				label(c, a.L("addons_tab.in_use_in_game")).FontSize(typeCaption * s)
 				cur := a.L("addons_tab.no_shader_chosen_in_game_yet")
 				fg := muted
@@ -192,13 +188,13 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 		})
 		ui.Box(c).Width(1).Height(34 * s).Background(line).Shrink(0)
 		ui.Row(c).Grow(1).Basis(260 * s).MinWidth(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				label(c, a.L("addons_tab.shader_loader")).FontSize(typeCaption * s)
 				switch {
 				case !known:
 					ui.Text(c, a.L("addons_tab.checking")).FontSize(typeBody * s).FontWeight(600).TextColor(muted).SingleLine()
 				case name != "":
-					ui.Row(c).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+					ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 						ui.Icon(c, icons["check"]).Size(13*s, 13*s).TextColor(ui.Hex("#34c759"))
 						ui.Text(c, strings.TrimSpace(name+" "+ver)).FontSize(typeBody * s).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0)
 					})
@@ -207,7 +203,7 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 				}
 			})
 			if known && name == "" && query != "" {
-				if fixedButton(c, "shader-get-loader", fmt.Sprintf(a.L("addons_tab.get"), need), "download", 0, btnSm*s+4*s, true, false) {
+				if fixedButton(c, "shader-get-loader", fmt.Sprintf(a.L("addons_tab.get"), need), "download", 0, btnMd*s, true, false) {
 					a.goDiscover("mods", query)
 				}
 			}
@@ -262,7 +258,7 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 	s := uiScale(c)
 	t := a.tr()
 	if len(shown) == 0 {
-		glass(ui.Column(c.Key("addon-nomatch")).FillWidth().Padding(28*s, 24*s).Gap(10*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
+		glass(ui.Column(c.Key("addon-nomatch")).FillWidth().Padding(28*s, 24*s).Gap(12*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
 			label(c, fmt.Sprintf(a.L("addons_tab.no_matching"), a.addonKindWord()))
 			if fixedButton(c, "addon-clear-filter", a.L("addons_tab.clear_filters"), "cross", 0, btnSm*s, false, false) {
 				a.modFilter, a.addonFilterKind = "", ""
@@ -287,18 +283,16 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 						a.notice(a.tr().ModsUpdateQueued)
 					})
 				}
-				if iconOnlyButton(c, "remove-"+m.File, "trash", t.ModsRemoveBtn, btnSm*s, a.pendingAt("removeMod", "rootId", a.root().ID, "name", m.File)) {
-					a.form.Name = m.File
-					a.dialog = "removeMod"
-					a.dialogOpen = true
+				if iconOnlyButton(c, "remove-"+m.File, "trash", t.ModsRemoveBtn, btnSm*s, a.pendingOp("removeMod:"+a.root().ID+":"+m.File)) {
+					a.removeModUndo(a.root().ID, a.root().SelectedVersion, m.File)
 				}
 			})
 			return
 		}
 		pk := *e.pack
 		draw(e.it, a.togglePackFn(pk), func() {
-			if iconOnlyButton(c, "remove-pack-"+pk.File, "trash", t.ModsRemoveBtn, btnSm*s, a.pendingAt("removeAssetPack", "rootId", a.root().ID, "name", pk.File)) {
-				a.execute("removeAssetPack", map[string]string{"rootId": a.root().ID, "kind": pk.Kind, "name": pk.File}, func(json.RawMessage) { a.loadMods() })
+			if iconOnlyButton(c, "remove-pack-"+pk.File, "trash", t.ModsRemoveBtn, btnSm*s, a.pendingOp("removeAssetPack:"+a.root().ID+":"+pk.File)) {
+				a.removeAssetUndo(a.root().ID, a.root().SelectedVersion, pk.Kind, pk.File)
 			}
 		})
 	}
@@ -308,7 +302,7 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 			a.addonGrid(c, key, entries, row)
 			return
 		}
-		glass(ui.Column(c.Key(key)).FillWidth().Padding(6*s), radiusCard*s, s).Children(func() {
+		glass(ui.Column(c.Key(key)).FillWidth().Padding(8*s), radiusCard*s, s).Children(func() {
 			for _, e := range entries {
 				row(e)
 			}
@@ -320,7 +314,7 @@ func (a *App) addonResults(c *ui.Context, shown []addonEntry) {
 	}
 	if a.addonTab == "mods" {
 		first, last := modWindow(len(shown), 60*s, a.modListBounds, a.tabViewBounds)
-		list := glass(ui.Column(c.Key("mod-list")).FillWidth().Padding(6*s), radiusCard*s, s)
+		list := glass(ui.Column(c.Key("mod-list")).FillWidth().Padding(8*s), radiusCard*s, s)
 		a.modListBounds = list.LayoutBounds()
 		list.Children(func() {
 			if first > 0 {

@@ -44,7 +44,7 @@ func (s *Service) startJobForMode(title, rootID, launchVersion string, again boo
 		s.rootLocks[rootID] = true
 	}
 	id := newID()
-	j := &jobState{Job: Job{ID: id, Title: title, State: "running", Message: "正在准备", Started: time.Now()}, fn: fn, rootID: rootID}
+	j := &jobState{Job: Job{ID: id, Title: title, TargetRootID: rootID, State: "running", Message: "正在准备", Started: time.Now()}, fn: fn, rootID: rootID}
 	j.TitleKey, j.TitleArg, _ = JobTitleKey(title)
 	s.jobs[id] = j
 	s.runJobLocked(j)

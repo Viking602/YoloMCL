@@ -42,9 +42,18 @@ type App struct {
 	dialogGen              uint64
 	dialogShown            string
 	form                   formState
-	confirmRemove          string
 	lastScale              float32
 	accountMenuOpen        bool
+	confirmation           *confirmationState
+	popconfirmKey          string
+	dialogInitial          formState
+	versionInitial         formState
+	versionDraftRoot       string
+	discarding             bool
+	noticeUndo             *undoNotice
+	suspendedVersion       *versionDraft
+	projectEdited          bool
+	allowClose             bool
 
 	// Configuration snapshots and ordered background persistence.
 	snapshot         launcher.Snapshot
@@ -67,6 +76,7 @@ type App struct {
 	modCacheRevision uint64
 	modCacheLoading  bool
 	modCacheClearing bool
+	keyBindings      *keyBindingsState
 
 	// Java discovery and installation.
 	java             []launcher.JavaInfo
@@ -140,6 +150,7 @@ type App struct {
 	overviewImageSlots            chan struct{}
 	recentPing                    recentServerPing
 	wv                            worldView
+	seedMap                       *seedMapView
 	worldListGen, worldBackupsGen uint64
 	logView                       logViewState
 	logSess                       logSessions

@@ -9,26 +9,29 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/Viking602/YoloMCL/internal/i18n"
 )
 
 // PlanItem is one row of the install preview: the mod itself or one of its
 // dependencies, with whether the instance already has it.
 type PlanItem struct {
-	Key        string `json:"key"` // source:projectId
-	Source     string `json:"source"`
-	ProjectID  string `json:"projectId"`
-	VersionID  string `json:"versionId,omitempty"`
-	Title      string `json:"title"`
-	Slug       string `json:"slug,omitempty"`
-	Icon       string `json:"icon,omitempty"`
-	Version    string `json:"version,omitempty"`
-	Role       string `json:"role"`             // target | required | optional | incompatible
-	Status     string `json:"status"`           // resolving | install | installed | disabled | none | conflict | absent
-	File       string `json:"file,omitempty"`   // the present file, when installed or disabled
-	Parent     string `json:"parent,omitempty"` // key of the mod that needs it
-	Depth      int    `json:"depth"`
-	Note       string `json:"note,omitempty"`
-	Unverified bool   `json:"unverified,omitempty"` // presence could not be checked
+	Key        string   `json:"key"` // source:projectId
+	Source     string   `json:"source"`
+	ProjectID  string   `json:"projectId"`
+	VersionID  string   `json:"versionId,omitempty"`
+	Title      string   `json:"title"`
+	Slug       string   `json:"slug,omitempty"`
+	Icon       string   `json:"icon,omitempty"`
+	Version    string   `json:"version,omitempty"`
+	Role       string   `json:"role"`                 // target | required | optional | incompatible
+	Status     string   `json:"status"`               // resolving | install | installed | disabled | none | conflict | absent
+	File       string   `json:"file,omitempty"`       // the present file, when installed or disabled
+	Parent     string   `json:"parent,omitempty"`     // key of the mod that needs it
+	RequiredBy []string `json:"requiredBy,omitempty"` // all parents requiring this project
+	Depth      int      `json:"depth"`
+	Note       string   `json:"note,omitempty"`
+	Unverified bool     `json:"unverified,omitempty"` // presence could not be checked
 }
 
 type projectMeta struct{ Title, Slug, Icon string }
@@ -178,6 +181,9 @@ func (s *Service) ResolveInstall(ctx context.Context, rootID, source, project, v
 	if e != nil {
 		return nil, e
 	}
+	if target.ProjectID != project || target.ID == "" {
+		return nil, errors.New(i18n.Text(false, "dependencies.project_mismatch"))
+	}
 	meta := s.projectMetas(ctx, source, []string{project})
 	items := []PlanItem{}
 	pos := map[string]int{}
@@ -209,21 +215,68 @@ func (s *Service) ResolveInstall(ctx context.Context, rootID, source, project, v
 	for _, d := range target.Dependencies {
 		level = append(level, pending{d, t.Key, 1})
 	}
-	for len(level) > 0 && len(items) < 128 {
+	versions := map[string]ProjectVersion{target.ID: target}
+	for len(level) > 0 {
+		if err := ctx.Err(); err != nil {
+			return items, err
+		}
+		// Modrinth dependencies can identify a file without a project. Recover
+		// its project before deduplication, and reuse the fetched metadata.
+		for i := range level {
+			d := &level[i].dep
+			if d.Kind != "required" && d.Kind != "optional" && d.Kind != "incompatible" {
+				continue
+			}
+			if d.ProjectID == "" {
+				if d.VersionID == "" {
+					return items, errors.New(i18n.Text(false, "dependencies.missing_identity"))
+				}
+				v, ok := versions[d.VersionID]
+				if !ok {
+					v, e = s.projectVersion(ctx, source, "", d.VersionID)
+					if e != nil {
+						return items, e
+					}
+					versions[d.VersionID] = v
+				}
+				if v.ProjectID == "" || v.ID != d.VersionID {
+					return items, errors.New(i18n.Text(false, "dependencies.missing_identity"))
+				}
+				d.ProjectID = v.ProjectID
+			}
+		}
 		ids := []string{}
+		batch := map[string]bool{}
 		for _, pd := range level {
 			k := source + ":" + pd.dep.ProjectID
-			if _, seen := pos[k]; !seen && pd.dep.ProjectID != "" {
+			if _, seen := pos[k]; !seen && pd.dep.ProjectID != "" && !batch[k] {
+				batch[k] = true
 				ids = append(ids, pd.dep.ProjectID)
 			}
 		}
 		metas := s.projectMetas(ctx, source, ids)
 		var todo []int
+		existing := map[int]Mod{}
 		for _, pd := range level {
+			if pd.dep.Kind != "required" && pd.dep.Kind != "optional" && pd.dep.Kind != "incompatible" {
+				continue
+			}
 			k := source + ":" + pd.dep.ProjectID
-			if _, seen := pos[k]; seen || pd.dep.ProjectID == "" {
-				if i, ok := pos[k]; ok && items[i].Role == "optional" && pd.dep.Kind == "required" {
-					items[i].Role = "required" // required somewhere wins
+			if i, seen := pos[k]; seen {
+				it := &items[i]
+				if pd.dep.Kind == "required" {
+					if !contains(it.RequiredBy, pd.parent) {
+						// Emitted snapshots may still be displayed by the UI.
+						it.RequiredBy = append(append([]string(nil), it.RequiredBy...), pd.parent)
+					}
+					if it.Role == "optional" {
+						it.Role = "required" // required somewhere wins
+					}
+					if it.VersionID == "" {
+						it.VersionID = pd.dep.VersionID
+					} else if pd.dep.VersionID != "" && it.VersionID != pd.dep.VersionID {
+						it.Status = "conflict"
+					}
 				}
 				continue
 			}
@@ -232,10 +285,14 @@ func (s *Service) ResolveInstall(ctx context.Context, rootID, source, project, v
 			}
 			md := metas[pd.dep.ProjectID]
 			it := PlanItem{Key: k, Source: source, ProjectID: pd.dep.ProjectID, VersionID: pd.dep.VersionID, Title: md.Title, Slug: md.Slug, Icon: md.Icon, Role: pd.dep.Kind, Parent: pd.parent, Depth: pd.depth, Status: "resolving"}
+			if pd.dep.Kind == "required" {
+				it.RequiredBy = []string{pd.parent}
+			}
 			if it.Title == "" {
 				it.Title = pd.dep.ProjectID
 			}
 			if m, ok := idx.find(z, source, pd.dep.ProjectID, md.Slug); ok {
+				existing[len(items)] = m
 				it.File, it.Version = m.File, m.Version
 				it.Status = "installed"
 				if !m.Enabled {
@@ -247,36 +304,55 @@ func (s *Service) ResolveInstall(ctx context.Context, rootID, source, project, v
 			} else if it.Role == "incompatible" {
 				continue // not present: nothing to warn about
 			}
+			if len(items) >= maxDependencyProjects {
+				return items, errDependencyLimit
+			}
 			add(it)
-			if it.Status == "resolving" {
+			if it.Status != "conflict" {
 				todo = append(todo, pos[k])
 			}
 		}
 		emit(markUnverified(append([]PlanItem(nil), items...), idx.degraded))
-		// Pick a compatible file for each missing one, in parallel.
+		// Existing/disabled files also need their own dependency graph checked.
 		var mu sync.Mutex
 		var wg sync.WaitGroup
 		sem := make(chan struct{}, 6)
-		found := map[int]ProjectVersion{}
+		type resolved struct {
+			version ProjectVersion
+			status  string
+		}
+		found := map[int]resolved{}
 		for _, i := range todo {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
-				sem <- struct{}{}
+				select {
+				case sem <- struct{}{}:
+				case <-ctx.Done():
+					return
+				}
 				defer func() { <-sem }()
 				it := items[i]
 				var v ProjectVersion
 				var e error
-				if it.VersionID != "" {
-					v, e = s.projectVersion(ctx, source, it.ProjectID, it.VersionID)
-				} else {
-					var vs []ProjectVersion
-					vs, e = s.Versions(ctx, source, it.ProjectID, mc, loader)
-					e = firstCompatible(vs, mc, loader, &v, e)
+				status := "install"
+				if m, ok := existing[i]; ok {
+					v, e = s.installedDependencyVersion(ctx, r, source, it.ProjectID, m, mc, loader)
+					if e == nil && (it.VersionID == "" || it.VersionID == v.ID) {
+						status = it.Status
+					}
+				}
+				if status == "install" {
+					if cached, ok := versions[it.VersionID]; ok {
+						v = cached
+						e = checkDependencyVersion(v, source, it.ProjectID, mc, loader)
+					} else if _, present := existing[i]; !present || it.VersionID != "" {
+						v, e = s.dependencyVersion(ctx, source, Dependency{ProjectID: it.ProjectID, VersionID: it.VersionID}, mc, loader)
+					}
 				}
 				mu.Lock()
 				if e == nil {
-					found[i] = v
+					found[i] = resolved{v, status}
 				}
 				mu.Unlock()
 			}(i)
@@ -284,12 +360,17 @@ func (s *Service) ResolveInstall(ctx context.Context, rootID, source, project, v
 		wg.Wait()
 		next := []pending{}
 		for _, i := range todo {
-			v, ok := found[i]
+			result, ok := found[i]
 			if !ok {
 				items[i].Status = "none"
 				continue
 			}
-			items[i].Status, items[i].VersionID, items[i].Version = "install", v.ID, v.Number
+			v := result.version
+			versions[v.ID] = v
+			if items[i].Status != "conflict" {
+				items[i].Status = result.status
+			}
+			items[i].VersionID, items[i].Version = v.ID, v.Number
 			for _, d := range v.Dependencies {
 				if d.Kind == "required" {
 					next = append(next, pending{d, items[i].Key, items[i].Depth + 1})
@@ -315,7 +396,7 @@ func firstCompatible(vs []ProjectVersion, mc, loader string, out *ProjectVersion
 			return nil
 		}
 	}
-	return errors.New("没有兼容版本")
+	return errors.New(i18n.Text(false, "dependencies.no_compatible_version"))
 }
 
 // PlanInstall is one checked row to install.

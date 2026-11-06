@@ -39,9 +39,9 @@ func (a *App) addonFilterPills(c *ui.Context, total, on, off, updates int) {
 		if o.key == selected {
 			x, w = o.x, o.width
 		}
-		width += o.width + 6*s
+		width += o.width + space2*s
 	}
-	track := ui.Row(c.Key("addon-filter-track")).Label("资源筛选").Font(uiSansFamily()).FocusGroup(ui.Horizontal).Width(width - 6*s).Height(28 * s).Gap(6 * s).Shrink(0)
+	track := ui.Row(c.Key("addon-filter-track")).Label("资源筛选").Font(uiSansFamily()).FocusGroup(ui.Horizontal).Width(width - space2*s).Height(28 * s).Gap(space2 * s).Shrink(0)
 	x = track.AnimateTo("selection-x", x, motionMove)
 	w = track.AnimateTo("selection-width", w, motionMove)
 	track.Draw(func(p *ui.Painter, r ui.Rect) {
@@ -49,9 +49,9 @@ func (a *App) addonFilterPills(c *ui.Context, total, on, off, updates int) {
 			p.Fill(ui.Rect{X: r.X + o.x, Y: r.Y, W: o.width, H: r.H}, ui.RGBA(120, 130, 160, .08), r.H/2)
 		}
 	}).Children(func() {
-		ui.Box(c.Key("addon-filter-selection")).Label("筛选选中背景").Absolute().Left(x).Top(0).Width(w).Height(28 * s).Radius(999).Background(accentSoft)
+		ui.Box(c.Key("addon-filter-selection")).Label("筛选选中背景").Absolute().Left(x).Top(0).Width(w).Height(28 * s).Radius(radiusPill).Background(accentSoft)
 		for _, o := range options {
-			b := ui.ButtonBase(c.Key("addon-filter-" + o.key)).Label(o.text).Width(o.width).Height(28 * s).Gap(6 * s).Radius(999).AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
+			b := ui.ButtonBase(c.Key("addon-filter-" + o.key)).Label(o.text).Width(o.width).Height(28 * s).Gap(8 * s).Radius(radiusPill).AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
 			fg, hover := inkSecondary, ui.RGBA(120, 130, 160, 0)
 			if selected == o.key {
 				fg = accent

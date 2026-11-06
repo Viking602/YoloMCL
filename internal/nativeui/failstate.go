@@ -20,7 +20,7 @@ func (a *App) loadFailed(c *ui.Context, key string, size int, busy bool) bool {
 	clicked := false
 	btn := func() {
 		if busy {
-			ui.Row(c).Height(btnSm * s).Gap(6 * s).PaddingX(10 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Height(btnSm * s).Gap(8 * s).PaddingX(12 * s).AlignItems(ui.Center).Children(func() {
 				statusSpinner(c, 12*s)
 				ui.Text(c, retry).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
 			})
@@ -30,13 +30,13 @@ func (a *App) loadFailed(c *ui.Context, key string, size int, busy bool) bool {
 	}
 	switch size {
 	case failPanel:
-		ui.Column(c.Key(key)).FillWidth().Height(220 * s).Gap(10 * s).Center().Children(func() {
+		ui.Column(c.Key(key)).FillWidth().Height(220 * s).Gap(12 * s).Center().Children(func() {
 			ui.Icon(c, icons["info"]).Size(22*s, 22*s).TextColor(muted)
 			ui.Text(c, label).FontSize(typeCallout * s).FontWeight(600).TextColor(inkSecondary)
 			btn()
 		})
 	case failCard:
-		ui.Row(c.Key(key)).FillWidth().Height(52*s).Padding(0, 14*s).Gap(10 * s).Radius(10 * s).Background(ui.RGBA(120, 130, 160, .08)).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key(key)).FillWidth().Height(52*s).Padding(0, 16*s).Gap(12 * s).Radius(radiusControl * s).Background(ui.RGBA(120, 130, 160, .08)).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(muted).Shrink(0)
 			ui.Text(c, label).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).MinWidth(0)
 			btn()

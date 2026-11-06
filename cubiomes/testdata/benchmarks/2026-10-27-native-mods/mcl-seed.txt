@@ -1,0 +1,11 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/internal/launcher
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkSeedMapModSessionWithSeed-16    	     235	   2549430 ns/op	  393133 B/op	    4239 allocs/op
+BenchmarkSeedMapModSessionWithSeed-16    	     231	   2564520 ns/op	  392995 B/op	    4238 allocs/op
+BenchmarkSeedMapModSessionWithSeed-16    	     234	   2601931 ns/op	  392930 B/op	    4237 allocs/op
+BenchmarkSeedMapModSessionWithSeed-16    	     230	   2541933 ns/op	  392994 B/op	    4238 allocs/op
+BenchmarkSeedMapModSessionWithSeed-16    	     237	   2515472 ns/op	  393037 B/op	    4238 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/internal/launcher	4.174s

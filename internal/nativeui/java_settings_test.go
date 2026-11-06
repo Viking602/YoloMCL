@@ -90,6 +90,7 @@ func TestJavaPickerOpeningAndDismissal(t *testing.T) {
 	tt.Advance(time.Second)
 	label := a.tr().SettingsJavaAria
 	option := label + " " + a.tr().SettingsJavaAuto
+	snapshotUI(t, tt, "java-picker-global-auto")
 	for _, reduced := range []bool{false, true} {
 		tt.SetPreferences(ui.Preferences{ReduceMotion: reduced})
 		for _, dismissal := range []string{"escape", "outside"} {

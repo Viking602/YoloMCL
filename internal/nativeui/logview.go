@@ -161,7 +161,7 @@ func (a *App) logFrame(c *ui.Context, sk string) {
 		}
 		body := ui.Column(c.Key("log-body-" + lv.key)).Fill().MinHeight(0)
 		if !c.Preferences().ReduceMotion {
-			body.Transition(ui.ElementTransition{Animation: &motionFast, Colors: true, Enter: &ui.Motion{Opacity: .82, Y: 4 * s}})
+			body.Transition(ui.ElementTransition{Animation: &motionFast, Colors: true, Enter: &ui.Motion{Opacity: .82}})
 		}
 		body.Children(func() {
 			area := scrollArea(c, sk).Fill().Padding(8*s, 0)
@@ -310,7 +310,7 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 	}
 	fg, chip := levelTone(head.Level)
 	q := strings.TrimSpace(lv.query)
-	row := ui.Row(c.Key(fmt.Sprint("log-", i))).Label("日志行 "+fmt.Sprint(i)).FillWidth().Height(rowH).Padding(4*s, 14*s).Gap(10 * s).AlignItems(ui.Center)
+	row := ui.Row(c.Key(fmt.Sprint("log-", i))).Label("日志行 "+fmt.Sprint(i)).FillWidth().Height(rowH).Padding(4*s, 16*s).Gap(12 * s).AlignItems(ui.Center)
 	switch {
 	case mark == 2:
 		row.Background(ui.Hex("#ff9f0a").Alpha(.16))
@@ -339,7 +339,7 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 			}
 			tooltip(c, ui.Text(c, l.Time).Width(84*s).Shrink(0).FontSize(typeCaption*s).FontFeatures("tnum").TextColor(muted).SingleLine(), full)
 			if l.Level != "" {
-				ui.Row(c).Width(52 * s).Height(16 * s).Shrink(0).Radius(4 * s).Background(chip).Center().Unselectable().Children(func() {
+				ui.Row(c).Width(52 * s).Height(16 * s).Shrink(0).Radius(radiusMin * s).Background(chip).Center().Unselectable().Children(func() {
 					ui.Text(c, l.Level).FontSize(typeCaption2 * s).FontWeight(700).TextColor(fg).NoWrap()
 				})
 			} else {
@@ -356,14 +356,14 @@ func (a *App) logRow(c *ui.Context, i int, rowH float32, mark int) {
 			text.SingleLine()
 		}
 		if l.Repeat > 1 {
-			ui.Row(c).Height(18 * s).PaddingX(7 * s).Radius(999).Background(ui.RGBA(120, 130, 160, .12)).AlignItems(ui.Center).Shrink(0).Unselectable().Children(func() {
+			ui.Row(c).Height(18 * s).PaddingX(8 * s).Radius(radiusPill).Background(ui.RGBA(120, 130, 160, .12)).AlignItems(ui.Center).Shrink(0).Unselectable().Children(func() {
 				ui.Text(c, fmt.Sprintf("×%d", l.Repeat)).FontSize(typeCaption2 * s).FontWeight(700).FontFeatures("tnum").TextColor(inkSecondary).NoWrap()
 			})
 		}
 		if l.Stack && l.Kids > 0 {
 			open := lv.open[l.Raw]
 			text := a.logStackLabel(l)
-			b := ui.ButtonBase(c.Key(fmt.Sprint("log-stack-", i))).Label(text).Height(18 * s).PaddingX(8 * s).Gap(4 * s).Radius(999).AlignItems(ui.Center).Shrink(0).Background(chip).Unselectable()
+			b := ui.ButtonBase(c.Key(fmt.Sprint("log-stack-", i))).Label(text).Height(18 * s).PaddingX(8 * s).Gap(4 * s).Radius(radiusPill).AlignItems(ui.Center).Shrink(0).Background(chip).Unselectable()
 			if b.Children(func() {
 				ic := "chevron"
 				if open {

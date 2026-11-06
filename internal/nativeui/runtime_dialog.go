@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -22,7 +23,7 @@ func (a *App) versionDialog(c *ui.Context) {
 
 	// Section 1: Per-Version Dedicated Java, Memory & JVM Arguments
 	if len(r.Versions) > 0 {
-		ui.Column(c).FillWidth().Gap(13 * s).Children(func() {
+		ui.Column(c).FillWidth().Gap(12 * s).Children(func() {
 			if a.form.ConfigVersion == "" {
 				a.loadVersionConfigForm(r.SelectedVersion)
 			}
@@ -37,14 +38,14 @@ func (a *App) versionDialog(c *ui.Context) {
 						if !loaderLogo(c, vv.Loader, 36*s) {
 							appleSoftIconBox(c, 36*s, "gamepad", ui.Hex("#eaf3ff"), ui.Hex("#dbeafe"), accent)
 						}
-						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
+						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 							title, sub := a.cardText(*r, vv)
 							titleWithTags(c, title, vv.ID, 17*s, 700, a.versionTags(*r, vv, false), 3)
 							label(c, joinDistinct(sub, r.Name)).FillWidth().MinWidth(0).FontSize(typeFootnote * s).SingleLine()
 						})
 					})
 				}
-				ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+				ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 					ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 						label(c, t.VersionNameLabel).FontWeight(600).NoWrap().Shrink(0)
 						label(c, t.VersionNameHint).FontSize(typeCaption * s).SingleLine().MinWidth(0)
@@ -66,7 +67,7 @@ func (a *App) versionDialog(c *ui.Context) {
 					}
 				}
 			})
-			ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				javaNames := []string{t.RootCfgVerJavaFollow}
 				javaPaths := map[string]string{t.RootCfgVerJavaFollow: ""}
 				selectedJava := t.RootCfgVerJavaFollow
@@ -114,7 +115,7 @@ func (a *App) versionDialog(c *ui.Context) {
 					} {
 						p := preset
 						active := strings.TrimSpace(a.form.VerMemory) == p.mb
-						chip := ui.ButtonBase(c.Key("mem-preset-"+p.mb)).Label(p.label).Height(btnSm*s).PaddingX(11*s).Radius(6*s).Border(1, line).AlignItems(ui.Center)
+						chip := ui.ButtonBase(c.Key("mem-preset-"+p.mb)).Label(p.label).Height(btnSm*s).PaddingX(12*s).Radius(radiusChip*s).Border(1, line).AlignItems(ui.Center)
 						if active {
 							chip.Background(chip.AnimateColor("bg", accent, motionFast)).TextColor(panel)
 						} else {
@@ -147,19 +148,22 @@ func (a *App) rootDialog(c *ui.Context) {
 		return
 	}
 	// Section 2: Instance Directory & Default Settings
-	ui.Column(c).FillWidth().Gap(12*s).Padding(18*s).Radius(12*s).Background(raised).Border(1, line).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(10 * s).Children(func() {
+	ui.Column(c).FillWidth().Gap(12*s).Padding(20*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(12 * s).Children(func() {
 			ui.Icon(c, icons["folder"]).Size(18*s, 18*s).TextColor(accent).Shrink(0)
 			pathLabel(c, r.Path, 13*s)
 			if button(c, "root-folder", t.HomeOpenFolderBtn, "folder", false, false) {
 				a.openFolder(r.ID)
 			}
 			if button(c, "root-logs", t.HomeLogsBtn, "terminal", false, false) {
-				a.openDialog("logs")
+				open := func() { a.openDialog("logs") }
+				if !a.guardDiscard(a.dialogDirty(), open) {
+					open()
+				}
 			}
 		})
 		field(c, t.AddRootNameLabel, &a.form.Name, "")
-		ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+		ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 			label(c, a.L("runtime_dialog.default_directory_java")).FontWeight(600)
 			ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				follow := a.L("runtime_dialog.use_global_java_setting")
@@ -254,7 +258,10 @@ func (a *App) saveVersionConfig(rootID string) {
 		return
 	}
 	ver, name := strings.TrimSpace(a.form.ConfigVersion), strings.TrimSpace(a.form.VerName)
-	a.execute("updateVersion", map[string]any{"rootId": rootID, "version": ver, "javaPath": strings.TrimSpace(a.form.VerJava), "memoryMB": vn, "jvmArgs": strings.TrimSpace(a.form.VerJVM), "displayName": name}, a.finished(t.RootCfgSaved))
+	a.execute("updateVersion", map[string]any{"rootId": rootID, "version": ver, "javaPath": strings.TrimSpace(a.form.VerJava), "memoryMB": vn, "jvmArgs": strings.TrimSpace(a.form.VerJVM), "displayName": name}, func(b json.RawMessage) {
+		a.versionInitial = a.form
+		a.finished(t.RootCfgSaved)(b)
+	})
 }
 
 // autoMemoryFor is the computed automatic heap (MiB) of a version of the
@@ -292,8 +299,8 @@ func (a *App) versionAutoMemory(r launcher.Instance, v launcher.VersionSummary, 
 func (a *App) memoryModeRow(c *ui.Context, key, title string, auto *bool, autoMB int) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Column(c.Key(key)).FillWidth().Gap(6 * s).Children(func() {
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Column(c.Key(key)).FillWidth().Gap(8 * s).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			label(c, title).FontWeight(600).Grow(1).MinWidth(0).SingleLine()
 			cur := t.MemModeManual
 			if *auto {

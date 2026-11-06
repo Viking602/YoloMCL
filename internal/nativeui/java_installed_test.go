@@ -79,7 +79,7 @@ func TestJavaInstalledResponsiveControls(t *testing.T) {
 					}
 					if managed {
 						clickUI(t, tt, a.L("java_installed.uninstall"))
-						if !tt.HasText(a.L("java_installed.confirm")) || len(a.javaGet.list) != 4 {
+						if a.popconfirmKey == "" && a.confirmation == nil || len(a.javaGet.list) != 4 {
 							t.Fatal("uninstall no longer requires confirmation")
 						}
 					}

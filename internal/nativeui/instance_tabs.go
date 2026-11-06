@@ -9,7 +9,7 @@ import (
 type instanceTabMotion struct {
 	scope, tab string
 	progress   float32
-	x, y       float32
+	x          float32
 	waiting    bool
 }
 
@@ -26,9 +26,9 @@ func (a *App) instanceTabBody(c *ui.Context) ui.Element {
 	if changed {
 		if m.tab != "" && (m.tab != tab || tab != "overview") && m.progress == 1 {
 			body.Jump("reveal", 0)
-			m.x, m.y = 0, 10
+			m.x = 0
 			if m.tab != tab {
-				m.x, m.y = 14, 0
+				m.x = 14
 				if instanceTabIndex(tab) < instanceTabIndex(m.tab) {
 					m.x = -m.x
 				}
@@ -37,10 +37,10 @@ func (a *App) instanceTabBody(c *ui.Context) ui.Element {
 		m.scope, m.tab, m.waiting = scope, tab, waiting
 	} else if m.waiting && !waiting {
 		// A slow disk may finish after navigation settles. Give its first
-		// result a gentle entrance too; subsequent batches remain stationary.
+		// result a fade too; subsequent batches remain stationary.
 		if m.progress == 1 {
 			body.Jump("reveal", .25)
-			m.x, m.y = 0, 10
+			m.x = 0
 		}
 		m.waiting = false
 	}
@@ -48,14 +48,14 @@ func (a *App) instanceTabBody(c *ui.Context) ui.Element {
 		body.Jump("reveal", 1)
 	}
 	m.progress = body.AnimateTo("reveal", 1, motionEnter)
-	x, y := m.x*(1-m.progress)*s, m.y*(1-m.progress)*s
+	x := m.x * (1 - m.progress) * s
 	// Native layout offsets preserve the viewport size and text sharpness.
 	// The outer slot clips movement; the hero and tabs never move with it.
-	return body.Left(x).Right(-x).Top(y).Bottom(-y).Opacity(.45 + .55*m.progress)
+	return body.Left(x).Right(-x).Top(0).Bottom(0).Opacity(.45 + .55*m.progress)
 }
 
 func instanceTabIndex(tab string) int {
-	for i, key := range []string{"overview", "mods", "resourcepack", "shader", "worlds", "logs", "settings"} {
+	for i, key := range []string{"overview", "seedmap", "mods", "resourcepack", "shader", "worlds", "logs", "settings"} {
 		if key == tab {
 			return i
 		}
@@ -72,6 +72,8 @@ func (a *App) instanceTabWaiting() bool {
 	case "worlds":
 		r := a.root()
 		return r != nil && ((a.service != nil && a.wv.key != r.ID+"|"+r.SelectedVersion) || (a.wv.loading && len(a.wv.list) == 0))
+	case "seedmap":
+		return a.seedMap == nil && a.service != nil || a.seedMap != nil && a.seedMap.loading
 	case "logs":
 		return a.logView.loading && len(a.logView.lines) == 0
 	}
@@ -80,55 +82,12 @@ func (a *App) instanceTabWaiting() bool {
 
 func (a *App) instanceTabBar(c *ui.Context, r launcher.Instance) {
 	s := uiScale(c)
-	tabs := a.instTabs(r)
-	widths := make([]float32, len(tabs))
-	for i, tab := range tabs {
-		w, _ := c.MeasureText(0, ui.Span{Text: tab.text, Font: uiSansFamily(), Size: typeCallout * s, Weight: 600})
-		widths[i] = w + 24*s
-	}
-	track := ui.Row(c.Key("inst-tabs")).Label("实例标签").Font(uiSansFamily()).FocusGroup(ui.Horizontal).
-		FillWidth().Padding(16*s, pageGutter*s, 0, pageGutter*s).Gap(4 * s).AlignItems(ui.Center).Shrink(0)
-	track.Draw(func(p *ui.Painter, b ui.Rect) {
-		p.Fill(ui.Rect{X: b.X + pageGutter*s, Y: b.Y + b.H - 1, W: b.W - 2*pageGutter*s, H: 1}, line, 0)
-	}).Children(func() {
-		buttons := make([]ui.Element, len(tabs))
-		// Read the click before styling any tab so label, indicator and body
-		// use the same selection, including when motion is disabled.
-		for i, tab := range tabs {
-			buttons[i] = ui.ButtonBase(c.Key("inst-tab-btn-" + tab.key)).Label("实例标签 " + tab.text).Width(widths[i]).Height(40 * s).
-				AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
-			if buttons[i].Clicked() && a.instTab != tab.key {
-				a.setInstTab(tab.key)
-			}
+	ui.Column(c.Key("inst-tabs-slot")).Label("实例标签").FillWidth().Padding(16*s, pageGutter*s, 0, pageGutter*s).Shrink(0).Children(func() {
+		tab := underlineTabs(c, "inst-tabs", a.instTabs(r), a.instTab, underlineTabStyle{
+			label: a.L("instance.tabs"), prefix: a.L("instance.tab_prefix") + " ", indicator: a.L("instance.tab_indicator"),
+		})
+		if tab != a.instTab {
+			a.setInstTab(tab)
 		}
-		for i, tab := range tabs {
-			b := buttons[i]
-			fg := inkSecondary
-			if a.instTab == tab.key {
-				fg = accent
-			} else if b.Hovered() {
-				fg = ink
-			}
-			if !c.Preferences().ReduceMotion {
-				fg = b.AnimateColor("fg", fg, motionFast)
-			}
-			b.Children(func() {
-				ui.Text(c, tab.text).FontSize(typeCallout * s).FontWeight(600).TextColor(fg).NoWrap()
-			})
-		}
-		// The indicator uses the latest click in this frame. Stable measured
-		// button widths prevent the remaining tabs from shifting on selection.
-		x, w := pageGutter*s, widths[0]
-		for i, tab := range tabs {
-			w = widths[i]
-			if a.instTab == tab.key {
-				break
-			}
-			x += w + 4*s
-		}
-		x = track.AnimateTo("indicator-x", x+10*s, motionMove)
-		w = track.AnimateTo("indicator-width", w-20*s, motionMove)
-		ui.Box(c.Key("inst-tab-indicator")).Label("实例标签选中线").Absolute().Left(x).Bottom(0).
-			Width(w).Height(2 * s).Radius(s).Background(accent)
 	})
 }

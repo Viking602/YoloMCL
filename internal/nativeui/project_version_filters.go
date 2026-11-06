@@ -157,7 +157,7 @@ func (a *App) visibleVersions() []launcher.ProjectVersion {
 
 func (a *App) projectFilterControls(c *ui.Context) {
 	s, f := uiScale(c), &a.verFilter
-	ui.Row(c.Key("project-filters")).Label("项目版本筛选").FillWidth().Gap(10 * s).Children(func() {
+	ui.Row(c.Key("project-filters")).Label("项目版本筛选").FillWidth().Gap(12 * s).Children(func() {
 		ui.Box(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 			if a.projectMinecraftChoice(c, mcVersionsOf(a.projectVersions)) {
 				a.projShowAll = true

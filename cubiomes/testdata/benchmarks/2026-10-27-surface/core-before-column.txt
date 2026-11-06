@@ -1,0 +1,42 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/cubiomes
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkBlockRange/dimension0/step1-16         	     147	   2389274 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step1-16         	     150	   2452662 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step1-16         	     144	   2501974 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step2-16         	      61	   6069089 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step2-16         	      62	   6226963 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step2-16         	      55	   5907811 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step4-16         	      18	  18263206 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step4-16         	      16	  20926756 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension0/step4-16         	      15	  20516927 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step1-16         	     318	   1141246 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step1-16         	     302	   1234967 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step1-16         	     289	   1199800 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step2-16         	     186	   1921416 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step2-16         	     186	   1897052 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step2-16         	     192	   1872447 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step4-16         	      73	   5294600 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step4-16         	      75	   4521396 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension1/step4-16         	      81	   4620219 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step1-16         	     856	    464158 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step1-16         	     684	    506084 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step1-16         	     688	    501402 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step2-16         	     525	    763240 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step2-16         	     537	    669068 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step2-16         	     577	    663563 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step4-16         	     187	   1894475 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step4-16         	     202	   1770597 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBlockRange/dimension2/step4-16         	     201	   1783297 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/1-16                      	      70	   6573850 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/1-16                      	      78	   6955787 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/1-16                      	      66	   6729326 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/2-16                      	      34	  13562026 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/2-16                      	      32	  13485947 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/2-16                      	      30	  13691267 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/4-16                      	      10	  33082140 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/4-16                      	      10	  32588610 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/4-16                      	      10	  33464520 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/cubiomes	14.438s

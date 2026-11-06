@@ -1,0 +1,15 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/cubiomes
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkSurfaceRange/1-16  	      80	   6651922 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/1-16  	      82	   6051376 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/1-16  	      88	   6206594 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/2-16  	      32	  12178072 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/2-16  	      38	  12212884 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/2-16  	      38	  12685245 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/4-16  	      18	  20029133 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/4-16  	      18	  20215944 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSurfaceRange/4-16  	      18	  20570011 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/cubiomes	4.737s

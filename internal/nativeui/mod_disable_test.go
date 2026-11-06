@@ -70,7 +70,8 @@ func TestModDisableArtworkUsesOriginalInstanceAndSharedCache(t *testing.T) {
 			case "late-local":
 				a.imagePending[localKey] = true
 			}
-			a.toggleModFn(m)()
+			a.modDisable = modDisableState{rootID: "r", version: "pack", file: m.File, name: m.Name, sha1: m.SHA1}
+			a.dialog, a.dialogOpen = "disableMod", true
 			a.root().SelectedVersion = "other"
 			a.images["addon:r:other:mod:example.jar"] = ui.NewBitmap(image.NewRGBA(image.Rect(0, 0, 16, 16)))
 			tt := ui.NewTester(func(c *ui.Context) {

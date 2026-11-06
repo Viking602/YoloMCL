@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/buildinfo"
@@ -36,20 +35,21 @@ func (a *App) prepareLauncherUpdateDialog() {
 	state.locked = false
 	if state.prompt && !a.dialogOpen && a.dialogShown == "" {
 		state.prompt = false
-		a.openDialog("launcherUpdate")
+		a.notice(a.launcherUpdateText())
 	}
 }
 
 func (a *App) launcherUpdateGate(c *ui.Context) {
 	s := uiScale(c)
-	root := ui.Column(c.Key("required-update-shell")).Label("启动器更新限制").Fill().Background(bg)
+	root := ui.Column(c.Key("required-update-shell")).Lang(a.lang()).Label("启动器更新限制").Fill().Background(bg)
 	root.Children(func() {
-		ui.Row(c).FillWidth().Height(42).PaddingX(20 * s).Gap(10 * s).AlignItems(ui.Center).DragWindow().Children(func() {
+		ui.Row(c).FillWidth().Height(42).PaddingX(20 * s).Gap(12 * s).AlignItems(ui.Center).DragWindow().Children(func() {
 			brandMark(c, 24*s)
 			ui.Text(c, "YoloMCL").FontSize(typeHeadline * s).Bold().TextColor(ink)
 		})
+		a.taskPage(c)
 	})
-	a.dialogView(c, root)
+	a.confirmationView(c)
 }
 
 func (a *App) launcherUpdateDialog(c *ui.Context) {
@@ -62,9 +62,9 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 	} else if state.policy != nil {
 		version = "v" + state.policy.Version
 	}
-	ui.Row(c).FillWidth().Gap(14 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
 		appleSoftIconBox(c, 44*s, "download", accent, accentIndigo, panel)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
 			if version != "" {
 				ui.Text(c, "YoloMCL "+version).FontSize(typeTitle2 * s).Bold().TextColor(ink)
 			}
@@ -86,7 +86,7 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 	if state.phase == "available" && state.release != nil && state.release.install == nil {
 		label(c, a.L("launcher_update_dialog.this_installation_cannot_update_in_place_download_the")).FontSize(typeCaption * s)
 	}
-	ui.Row(c).FillWidth().Wrap().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Wrap().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		if button(c, "launcher-release-notes", a.L("launcher_update_dialog.release_notes"), "external", false, false) {
 			c.OpenURL(buildinfo.ReleasesURL + "/latest")
 		}
@@ -120,7 +120,7 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 			}
 		case "ready":
 			if button(c, "launcher-update-restart", a.L("about.restart_launcher"), "refresh", true, a.launcherRestartBlocked()) {
-				mygo.App.Relaunch()
+				a.restartLauncher()
 			}
 		case "checking", "installing":
 			button(c, "launcher-update-busy", a.L("launcher_update_dialog.please_wait"), "", true, true)

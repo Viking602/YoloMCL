@@ -107,6 +107,14 @@ func (a *App) Attach(win *mygo.Window) {
 		go a.service.AutoCheckPackUpdates(a.ctx) // 24h throttle, silent on network failure
 	})
 	win.OnClosed(func() { a.cancel() })
+	win.OnClose(func(e *mygo.CloseEvent) {
+		if a.allowClose {
+			return
+		}
+		if a.guardDiscard(a.hasUnsavedDraft(), func() { a.allowClose = true; win.Close() }) {
+			e.PreventDefault()
+		}
+	})
 	systemLanguages := a.systemLanguages
 	a.bgWG.Add(1)
 	go func() {
@@ -230,6 +238,12 @@ func (a *App) goPage(page string) {
 	if a.launcherUpdateRequired() {
 		return
 	}
+	if (page != a.page || a.dialogOpen) && a.guardDiscard(a.hasUnsavedDraft(), func() { a.goPage(page) }) {
+		return
+	}
+	if a.dialogOpen {
+		a.closeDialogNow()
+	}
 	a.wakeSnapshots()
 	if page != a.page {
 		a.addonListData = addonListData{}
@@ -240,6 +254,9 @@ func (a *App) goPage(page string) {
 		}
 	}
 	if a.page == "wardrobe" && page != a.page && a.preview != nil {
+		if a.wardrobeSt != nil {
+			a.wardrobeSt.pendingSkin, a.wardrobeSt.pendingName = nil, ""
+		}
 		a.preview.releaseScratch()
 	}
 	if page == "settings" && a.page != "settings" {

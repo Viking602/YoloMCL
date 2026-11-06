@@ -51,7 +51,12 @@ func projectFilterTester(t *testing.T, source, kind string) (*App, *ui.Tester) {
 			(<-a.events)()
 		}
 		c.SetTheme(theme)
-		a.dialogView(c, ui.Box(c).Fill().Background(bg))
+		root := ui.Box(c).Fill().Background(bg)
+		if a.surfaceKind(a.dialog) == surfacePage {
+			root.Children(func() { a.taskPage(c) })
+		} else {
+			a.dialogView(c, root)
+		}
 	}, 1536, 1024)
 	return a, tt
 }

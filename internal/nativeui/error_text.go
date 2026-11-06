@@ -51,6 +51,10 @@ func looksNetworkError(low string) bool {
 
 // classifyError maps any error text to a friendly message in zh or en.
 func classifyError(en bool, raw string, e error) uiError {
+	var localized interface{ LocalizedMessage(bool) string }
+	if errors.As(e, &localized) {
+		return uiError{"plain", localized.LocalizedMessage(en), "", ""}
+	}
 	L := func(key string) string { return i18n.Text(en, key) }
 	low := strings.ToLower(raw)
 	path := ""

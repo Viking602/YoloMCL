@@ -20,6 +20,7 @@ type packExportState struct {
 	entries                   []launcher.PackExportEntry
 	rows                      ui.ListState
 	saving                    bool
+	initial                   *exportDraft
 }
 
 func (a *App) packExportSection(c *ui.Context, r launcher.Instance) {
@@ -31,7 +32,7 @@ func (a *App) packExportSection(c *ui.Context, r launcher.Instance) {
 		return
 	}
 	s := uiScale(c)
-	ui.Row(c.Key("pack-export-section")).Label("导出整合包设置").FillWidth().Wrap().Gap(12*s).Padding(16*s).Radius(12*s).Background(raised).Border(1, line).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("pack-export-section")).Label("导出整合包设置").FillWidth().Wrap().Gap(12*s).Padding(16*s).Radius(radiusControl*s).Background(raised).Border(1, line).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Basis(240 * s).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, a.L("i18n.export_modpack")).FontSize(typeSubhead * s).Bold().TextColor(ink)
 			label(c, a.L("pack_export.share_this_instance_as_a_modrinth_or_curseforge")).FontSize(typeFootnote * s).FillWidth().MinWidth(0)
@@ -53,6 +54,8 @@ func (a *App) openPackExport(rootID, version string) {
 		preview := decode[launcher.PackExportPreview](b)
 		g.preview, g.entries = &preview, slices.Clone(preview.Entries)
 		g.name, g.packVersion = preview.Name, preview.PackVersion
+		initial := g.draft()
+		g.initial = &initial
 	})
 }
 
@@ -87,13 +90,13 @@ func (a *App) packExportDialog(c *ui.Context) {
 				name, ext, logo = "CurseForge", ".zip", curseforgeLogo
 			}
 			on := g.format == format
-			b := ui.ButtonBase(c.Key("export-format-"+format)).Label(name).Grow(1).Basis(0).MinWidth(0).Height(58*s).Radius(12*s).Padding(12*s).Row().Gap(10*s).AlignItems(ui.Center).Background(raised).Border(1, line).Disabled(g.saving)
+			b := ui.ButtonBase(c.Key("export-format-"+format)).Label(name).Grow(1).Basis(0).MinWidth(0).Height(58*s).Radius(radiusControl*s).Padding(12*s).Row().Gap(12*s).AlignItems(ui.Center).Background(raised).Border(1, line).Disabled(g.saving)
 			if on {
 				b.Background(accentSoft).Border(1.5, accent)
 			}
 			if b.Children(func() {
 				ui.Image(c, logo).Size(24*s, 24*s).Fit(ui.Contain).Shrink(0)
-				ui.Column(c).Grow(1).MinWidth(0).Gap(2 * s).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
 					ui.Text(c, name).FontSize(typeBody * s).FontWeight(650).TextColor(ink).NoWrap()
 					label(c, ext).FontSize(typeCaption * s)
 				})
@@ -125,12 +128,12 @@ func (a *App) packExportDialog(c *ui.Context) {
 		if len(g.entries) == 0 {
 			label(c, a.L("pack_export.no_extra_files_the_export_will_contain_the")).FontSize(typeFootnote * s)
 		} else {
-			ui.List(c.Key("pack-export-contents"), &g.rows, len(g.entries)).ItemKey(func(i int) any { return g.entries[i].Name }).FillWidth().Height(min(160, float32(len(g.entries))*34) * s).Background(raised).Radius(10 * s).Rows(func(row ui.ListRow) {
+			ui.List(c.Key("pack-export-contents"), &g.rows, len(g.entries)).ItemKey(func(i int) any { return g.entries[i].Name }).FillWidth().Height(min(160, float32(len(g.entries))*34) * s).Background(raised).Radius(radiusControl * s).Rows(func(row ui.ListRow) {
 				c, entry := row.Context, &g.entries[row.Index]
 				on := entry.Selected
-				b := ui.ButtonBase(c.Key(entry.Name)).Label("导出内容 " + entry.Name).FillWidth().Height(34 * s).Row().Gap(10 * s).PaddingX(10 * s).AlignItems(ui.Center).Disabled(g.saving)
+				b := ui.ButtonBase(c.Key(entry.Name)).Label("导出内容 " + entry.Name).FillWidth().Height(34 * s).Row().Gap(12 * s).PaddingX(12 * s).AlignItems(ui.Center).Disabled(g.saving)
 				if b.Children(func() {
-					box := ui.Box(c).Size(17*s, 17*s).Radius(5*s).Border(1, line).Background(panel).Shrink(0).Center()
+					box := ui.Box(c).Size(17*s, 17*s).Radius(radiusChip*s).Border(1, line).Background(panel).Shrink(0).Center()
 					if on {
 						box.Background(accent).Border(1, accent)
 					}
@@ -161,7 +164,7 @@ func (a *App) packExportFooter(c *ui.Context) {
 	}
 	s := uiScale(c)
 	ui.Box(c).FillWidth().Height(1).Background(line)
-	ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		n := 0
 		for _, entry := range g.entries {
 			if entry.Selected {

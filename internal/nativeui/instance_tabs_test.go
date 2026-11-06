@@ -60,7 +60,7 @@ func TestInstanceTabsAnimateVersionAndRootSwitches(t *testing.T) {
 			rest := addonFilterBounds(t, tt, "实例标签内容")
 			bar := addonFilterBounds(t, tt, "实例标签")
 			hero := addonFilterBounds(t, tt, "主版本卡")
-			indicator := addonFilterBounds(t, tt, "实例标签选中线")
+			indicator := addonFilterBounds(t, tt, a.L("instance.tab_indicator"))
 			pixels := overviewRegionPixels(tt.Image(), bar)
 			// Both a version change and another root with the same version ID
 			// must animate. The tab itself and all surrounding chrome stay put.
@@ -69,8 +69,8 @@ func TestInstanceTabsAnimateVersionAndRootSwitches(t *testing.T) {
 				tt.Frame()
 				tt.Advance(65 * time.Millisecond)
 				mid := addonFilterBounds(t, tt, "实例标签内容")
-				if mid.Y <= rest.Y || mid.X != rest.X || mid.W != rest.W {
-					t.Fatalf("%s: expected vertical entrance at native width: rest=%+v mid=%+v", root, rest, mid)
+				if mid != rest || a.instTabMotion.progress <= 0 || a.instTabMotion.progress >= 1 {
+					t.Fatalf("%s: expected a fade in the fixed viewport: rest=%+v mid=%+v progress=%g", root, rest, mid, a.instTabMotion.progress)
 				}
 				if now := addonFilterBounds(t, tt, "主版本卡"); now != hero {
 					t.Fatal("tab animation moved the hero")
@@ -78,7 +78,7 @@ func TestInstanceTabsAnimateVersionAndRootSwitches(t *testing.T) {
 				if now := addonFilterBounds(t, tt, "实例标签"); now != bar || !bytes.Equal(pixels, overviewRegionPixels(tt.Image(), bar)) {
 					t.Fatal("version switch moved or repainted the tabs")
 				}
-				if now := addonFilterBounds(t, tt, "实例标签选中线"); now != indicator {
+				if now := addonFilterBounds(t, tt, a.L("instance.tab_indicator")); now != indicator {
 					t.Fatal("version switch moved the selected tab")
 				}
 				snapshotUI(t, tt, "instance-"+tab+"-"+root+"-065ms")
@@ -101,12 +101,12 @@ func TestInstanceTabIndicatorSlidesAndRapidSwitchUsesLatestContent(t *testing.T)
 	a, tt := instanceTabsTester(t, "mods")
 	buttons := map[string]ui.Rect{}
 	for _, tab := range a.instTabs(*a.root()) {
-		buttons[tab.text] = addonFilterBounds(t, tt, "实例标签 "+tab.text)
+		buttons[tab.text] = addonFilterBounds(t, tt, a.L("instance.tab_prefix")+" "+tab.text)
 	}
-	start := addonFilterBounds(t, tt, "实例标签选中线")
+	start := addonFilterBounds(t, tt, a.L("instance.tab_indicator"))
 	clickUI(t, tt, "实例标签 设置")
 	tt.Advance(65 * time.Millisecond)
-	mid := addonFilterBounds(t, tt, "实例标签选中线")
+	mid := addonFilterBounds(t, tt, a.L("instance.tab_indicator"))
 	if mid.X <= start.X || mid.X >= buttons["设置"].X {
 		t.Fatalf("indicator jumped rather than sliding: start=%+v mid=%+v", start, mid)
 	}
@@ -129,7 +129,7 @@ func TestInstanceTabIndicatorSlidesAndRapidSwitchUsesLatestContent(t *testing.T)
 		t.Fatal("outgoing settings remain interactive after switching tabs")
 	}
 	tt.Advance(300 * time.Millisecond)
-	if a.instTab != "mods" || addonFilterBounds(t, tt, "实例标签选中线") != start {
+	if a.instTab != "mods" || addonFilterBounds(t, tt, a.L("instance.tab_indicator")) != start {
 		t.Fatal("rapid switch did not settle on the final tab")
 	}
 	clickUI(t, tt, "实例标签 设置")
@@ -158,8 +158,8 @@ func TestInstanceTabFirstResultsAnimateButStreamingDoesNot(t *testing.T) {
 	a.mods = []launcher.Mod{{File: "test.jar", Name: "First loaded result", Enabled: true}}
 	tt.Frame()
 	tt.Advance(65 * time.Millisecond)
-	if mid := addonFilterBounds(t, tt, "实例标签内容"); mid.Y <= rest.Y || !tt.HasText("First loaded result") {
-		t.Fatal("slow first result appeared without its entrance")
+	if mid := addonFilterBounds(t, tt, "实例标签内容"); mid != rest || !tt.HasText("First loaded result") || a.instTabMotion.progress >= 1 {
+		t.Fatal("slow first result did not fade in at its final position")
 	}
 	tt.Advance(300 * time.Millisecond)
 	a.mods[0].Description = "Metadata arrived later"
@@ -186,14 +186,14 @@ func TestInstanceTabsReducedMotionAndCompactLabels(t *testing.T) {
 			}
 			var right float32
 			for _, tab := range a.instTabs(*a.root()) {
-				button := addonFilterBounds(t, tt, "实例标签 "+tab.text)
+				button := addonFilterBounds(t, tt, a.L("instance.tab_prefix")+" "+tab.text)
 				if button.X < right || button.X+button.W > 900 {
 					t.Fatalf("compact tabs overlap or clip: %s %+v", tab.key, button)
 				}
 				right = button.X + button.W
-				clickUI(t, tt, "实例标签 "+tab.text)
+				clickUI(t, tt, a.L("instance.tab_prefix")+" "+tab.text)
 				tt.Frame()
-				selected := addonFilterBounds(t, tt, "实例标签选中线")
+				selected := addonFilterBounds(t, tt, a.L("instance.tab_indicator"))
 				if selected.X < button.X || selected.X+selected.W > button.X+button.W || a.instTabMotion.progress != 1 {
 					t.Fatal("reduced motion did not snap to the selected tab")
 				}

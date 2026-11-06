@@ -1,0 +1,516 @@
+[
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/plains_engineer",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/plains_machinist",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/plains_electrician",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/plains_gunsmith",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/plains_outfitter",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/snowy_engineer",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/snowy_machinist",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/snowy_electrician",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/snowy_gunsmith",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/snowy_outfitter",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/savanna_engineer",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/savanna_machinist",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/savanna_electrician",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/savanna_gunsmith",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/savanna_outfitter",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/desert_engineer",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/desert_machinist",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/desert_electrician",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/desert_gunsmith",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/desert_outfitter",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/taiga_engineer",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/taiga_machinist",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/taiga_electrician",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/taiga_gunsmith",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  1,
+        "Source":  "immersiveengineering",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "immersiveengineering:village/houses/taiga_outfitter",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  5,
+        "Source":  "farmersdelight",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "farmersdelight:village/houses/plains_compost_pile",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  3,
+        "Source":  "farmersdelight",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "farmersdelight:village/houses/snowy_compost_pile",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  4,
+        "Source":  "farmersdelight",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "farmersdelight:village/houses/savanna_compost_pile",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  3,
+        "Source":  "farmersdelight",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "farmersdelight:village/houses/desert_compost_pile",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  4,
+        "Source":  "farmersdelight",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "farmersdelight:village/houses/taiga_compost_pile",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  4,
+        "Source":  "irons_spellbooks",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:mossify_70_percent",
+                        "location":  "irons_spellbooks:priest_house",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  4,
+        "Source":  "irons_spellbooks",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:mossify_70_percent",
+                        "location":  "irons_spellbooks:priest_house_taiga",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  4,
+        "Source":  "tsuki",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tsuki:village/houses/japanese_house",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  4,
+        "Source":  "tsuki",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tsuki:village/houses/japanese_house",
+                        "element_type":  "minecraft:single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  4,
+        "Source":  "kaleidoscope_cookery",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "kaleidoscope_cookery:crop_replace",
+                        "location":  "kaleidoscope_cookery:village/houses/plains_kitchen",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  4,
+        "Source":  "kaleidoscope_cookery",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "kaleidoscope_cookery:crop_replace",
+                        "location":  "kaleidoscope_cookery:village/houses/snowy_kitchen",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  4,
+        "Source":  "kaleidoscope_cookery",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "kaleidoscope_cookery:crop_replace",
+                        "location":  "kaleidoscope_cookery:village/houses/savanna_kitchen",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  4,
+        "Source":  "kaleidoscope_cookery",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "kaleidoscope_cookery:crop_replace",
+                        "location":  "kaleidoscope_cookery:village/houses/desert_kitchen",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  4,
+        "Source":  "kaleidoscope_cookery",
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "kaleidoscope_cookery:crop_replace",
+                        "location":  "kaleidoscope_cookery:village/houses/taiga_kitchen",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/streets",
+        "MergeFrom":  "touhou_little_maid_spell:enchantress_footsteps/village/desert_streets",
+        "Source":  "touhou_little_maid_spell"
+    },
+    {
+        "Pool":  "minecraft:village/plains/streets",
+        "MergeFrom":  "touhou_little_maid_spell:enchantress_footsteps/village/plains_streets",
+        "Source":  "touhou_little_maid_spell"
+    },
+    {
+        "Pool":  "minecraft:village/savanna/streets",
+        "MergeFrom":  "touhou_little_maid_spell:enchantress_footsteps/village/savanna_streets",
+        "Source":  "touhou_little_maid_spell"
+    },
+    {
+        "Pool":  "minecraft:village/snowy/streets",
+        "MergeFrom":  "touhou_little_maid_spell:enchantress_footsteps/village/snowy_streets",
+        "Source":  "touhou_little_maid_spell"
+    },
+    {
+        "Pool":  "minecraft:village/taiga/streets",
+        "MergeFrom":  "touhou_little_maid_spell:enchantress_footsteps/village/taiga_streets",
+        "Source":  "touhou_little_maid_spell"
+    },
+    {
+        "Pool":  "minecraft:village/plains/houses",
+        "Weight":  10,
+        "Source":  "tofucraft",
+        "SelfAppend":  true,
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tofucraft:village/tofu_craftsman_house_plains_1",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/taiga/houses",
+        "Weight":  10,
+        "Source":  "tofucraft",
+        "SelfAppend":  true,
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tofucraft:village/tofu_craftsman_house_taiga_1",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/savanna/houses",
+        "Weight":  10,
+        "Source":  "tofucraft",
+        "SelfAppend":  true,
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tofucraft:village/tofu_craftsman_house_savanna_1",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/snowy/houses",
+        "Weight":  10,
+        "Source":  "tofucraft",
+        "SelfAppend":  true,
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tofucraft:village/tofu_craftsman_house_snowy_1",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    },
+    {
+        "Pool":  "minecraft:village/desert/houses",
+        "Weight":  10,
+        "Source":  "tofucraft",
+        "SelfAppend":  true,
+        "Element":  {
+                        "projection":  "rigid",
+                        "processors":  "minecraft:empty",
+                        "location":  "tofucraft:village/tofu_craftsman_house_desert_1",
+                        "element_type":  "minecraft:legacy_single_pool_element"
+                    }
+    }
+]

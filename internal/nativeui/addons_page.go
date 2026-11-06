@@ -19,8 +19,7 @@ func (a *App) modPage(c *ui.Context) {
 		if a.addonTab == "mods" {
 			if button(c, "check-mods", t.ModsCheckUpdatesBtn, "refresh", false, a.pendingOp("checkMods") || a.root() == nil) {
 				id := a.root().ID
-				a.execute("checkMods", map[string]string{"rootId": id}, func(b json.RawMessage) {
-					a.mods = decode[[]launcher.Mod](b)
+				a.execute("checkMods", map[string]string{"rootId": id}, func(json.RawMessage) {
 					a.notice(a.tr().ModsCheckedNotice)
 				})
 			}
@@ -50,8 +49,8 @@ func (a *App) modPage(c *ui.Context) {
 
 	// Instance & Version Selector Bar + Segmented Addon Kind Tabs (Mods / Resource Packs / Shaders)
 	if !a.embedMods {
-		glass(ui.Row(c).FillWidth().Wrap().Gap(14*s).Padding(13*s, 18*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
-			ui.Row(c).Padding(3 * s).Gap(3 * s).Radius(10 * s).Background(fieldColor).Children(func() {
+		glass(ui.Row(c).FillWidth().Wrap().Gap(16*s).Padding(12*s, 20*s), radiusCard*s, s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Padding(4 * s).Gap(4 * s).Radius(radiusControl * s).Background(fieldColor).Children(func() {
 				for _, item := range []struct{ key, label, icon string }{
 					{"mods", t.ModsTabMods, "mods"},
 					{"resourcepack", t.ModsTabResourcePack, "layers"},
@@ -65,7 +64,7 @@ func (a *App) modPage(c *ui.Context) {
 						targetBg = panel
 						fg = accent
 					}
-					b := ui.ButtonBase(c.Key("addon-tab-" + tab.key)).Label(tab.label).Height(btnSm * s).PaddingX(14 * s).Gap(6 * s).Radius(7.5 * s).AlignItems(ui.Center)
+					b := ui.ButtonBase(c.Key("addon-tab-" + tab.key)).Label(tab.label).Height(btnSm * s).PaddingX(16 * s).Gap(8 * s).Radius(radiusChip * s).AlignItems(ui.Center)
 					if sel {
 						b.Shadow(0, 2*s, 6*s, 0, ui.RGBA(15, 23, 42, .08))
 					} else if b.Hovered() {
@@ -99,8 +98,8 @@ func (a *App) modPage(c *ui.Context) {
 
 	if r := a.root(); r != nil && r.Pack != nil && a.addonTab == "mods" {
 		card(c, "pack-audit", func() {
-			ui.Row(c).FillWidth().Gap(14 * s).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(42*s, 42*s).Radius(10 * s).Background(accentSoft).Center().Shrink(0).Children(func() {
+			ui.Row(c).FillWidth().Gap(16 * s).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(42*s, 42*s).Radius(radiusControl * s).Background(accentSoft).Center().Shrink(0).Children(func() {
 					ui.Icon(c, icons["layers"]).Size(22*s, 22*s).TextColor(accent)
 				})
 				ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
@@ -151,7 +150,7 @@ func (a *App) modPage(c *ui.Context) {
 			}
 		}
 		if len(a.assetPacks) > 0 {
-			glass(ui.Column(c.Key("pack-list")).FillWidth().Padding(6*s), radiusCard*s, s).Children(func() {
+			glass(ui.Column(c.Key("pack-list")).FillWidth().Padding(8*s), radiusCard*s, s).Children(func() {
 				for _, pack := range a.assetPacks {
 					p := pack
 					if a.modFilter != "" && !strings.Contains(strings.ToLower(p.Name+" "+p.File+" "+p.Description), strings.ToLower(a.modFilter)) {
@@ -186,7 +185,7 @@ func (a *App) modPage(c *ui.Context) {
 		}
 	}
 	first, last := modWindow(len(shown), 60*s, a.modListBounds, a.tabViewBounds)
-	list := glass(ui.Column(c.Key("mod-list")).FillWidth().Padding(6*s), radiusCard*s, s)
+	list := glass(ui.Column(c.Key("mod-list")).FillWidth().Padding(8*s), radiusCard*s, s)
 	a.modListBounds = list.LayoutBounds()
 	list.Children(func() {
 		if first > 0 {
@@ -205,10 +204,8 @@ func (a *App) modPage(c *ui.Context) {
 						a.notice(a.tr().ModsUpdateQueued)
 					})
 				}
-				if iconOnlyButton(c, "remove-"+m.File, "cross", t.ModsRemoveBtn, btnSm*s, a.pendingAt("removeMod", "rootId", a.root().ID, "name", m.File)) {
-					a.form.Name = m.File
-					a.dialog = "removeMod"
-					a.dialogOpen = true
+				if iconOnlyButton(c, "remove-"+m.File, "cross", t.ModsRemoveBtn, btnSm*s, a.pendingOp("removeMod:"+a.root().ID+":"+m.File)) {
+					a.removeModUndo(a.root().ID, a.root().SelectedVersion, m.File)
 				}
 			})
 		}

@@ -1,0 +1,15 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/internal/launcher
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkSeedMapViewportFirstPaint/progressive-block-16         	       5	 228145300 ns/op	 228129580 complete-ns/op	   7481080 first-paint-ns/op	 9600747 B/op	     289 allocs/op
+BenchmarkSeedMapViewportFirstPaint/progressive-block-16         	       5	 231289600 ns/op	 231362120 complete-ns/op	   7557920 first-paint-ns/op	 9555304 B/op	     288 allocs/op
+BenchmarkSeedMapViewportFirstPaint/progressive-block-16         	       5	 247740760 ns/op	 247739980 complete-ns/op	   7646020 first-paint-ns/op	 9600734 B/op	     288 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-overview-16          	       2	 883460100 ns/op	 883447300 complete-ns/op	  40111200 first-paint-ns/op	12592672 B/op	     338 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-overview-16          	       2	 831341700 ns/op	 831398650 complete-ns/op	  38043850 first-paint-ns/op	12346736 B/op	     337 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-overview-16          	       2	 834219550 ns/op	 834343050 complete-ns/op	  35920800 first-paint-ns/op	12837620 B/op	     340 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-detail-16            	       6	 192224350 ns/op	 192277267 complete-ns/op	   9075017 first-paint-ns/op	12489858 B/op	     281 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-detail-16            	       6	 190022400 ns/op	 189960317 complete-ns/op	   9314083 first-paint-ns/op	12489625 B/op	     281 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-detail-16            	       6	 190203967 ns/op	 190068483 complete-ns/op	   8611067 first-paint-ns/op	12407218 B/op	     280 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/internal/launcher	13.122s

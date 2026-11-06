@@ -69,7 +69,7 @@ func metric(c *ui.Context, key, name, value string, w float32) {
 
 func metricTone(c *ui.Context, key, name, value string, w float32, col ui.Color) {
 	s := uiScale(c)
-	ui.Column(c.Key(key)).Gap(3 * s).Width(w * s).Grow(1).Shrink(1).MinWidth(0).Clip().Children(func() {
+	ui.Column(c.Key(key)).Gap(4 * s).Width(w * s).Grow(1).Shrink(1).MinWidth(0).Clip().Children(func() {
 		ui.Text(c, name).FontSize(typeCaption2 * s).TextColor(muted).SingleLine()
 		tooltip(c, ui.Text(c, value).FontSize(typeFootnote*s).FontWeight(600).FontFeatures("tnum").TextColor(col).SingleLine(), value)
 	})
@@ -83,7 +83,7 @@ func metricRule(c *ui.Context) {
 // sessionHeader summarizes the selected run: what, how long, on what.
 func (a *App) sessionHeader(c *ui.Context, g *launcher.GameSession, scope string, sess []launcher.GameSession) {
 	s := uiScale(c)
-	ui.Row(c.Key("log-summary")).Label("日志摘要").FillWidth().Height(64*s).Shrink(0).Padding(0, 16*s).Gap(18*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("log-summary")).Label("日志摘要").FillWidth().Height(64*s).Shrink(0).Padding(0, 16*s).Gap(20*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
 		// With 2+ sessions the switcher already names the pack, so the
 		// header keeps only the state; one session shows name and state.
 		// In a pack's tab the hero above already shows the name, Minecraft
@@ -104,12 +104,12 @@ func (a *App) sessionHeader(c *ui.Context, g *launcher.GameSession, scope string
 		if !g.Ended.IsZero() {
 			end = g.Ended
 		}
-		ui.Row(c).Grow(1).MinWidth(0).Gap(18 * s).AlignItems(ui.Center).Clip().Children(func() {
+		ui.Row(c).Grow(1).MinWidth(0).Gap(20 * s).AlignItems(ui.Center).Clip().Children(func() {
 			if multi {
 				metricTone(c, "m-state", a.L("logpanels.state"), a.sessionStateText(g.State), 64, sessionTone(g.State))
 			}
 			if g.AccountName != "" && !a.sessionDup(*g, sess) {
-				ui.Column(c.Key("m-acc")).Gap(3 * s).Width(120 * s).Grow(1).Shrink(1).MinWidth(0).Clip().Children(func() {
+				ui.Column(c.Key("m-acc")).Gap(4 * s).Width(120 * s).Grow(1).Shrink(1).MinWidth(0).Clip().Children(func() {
 					ui.Text(c, a.L("logpanels.account")).FontSize(typeCaption2 * s).TextColor(muted).SingleLine()
 					a.sessionAccount(c, *g, 15*s, ink)
 				})
@@ -149,9 +149,7 @@ func (a *App) sessionHeader(c *ui.Context, g *launcher.GameSession, scope string
 			metric(c, "m-exit", a.L("logpanels.exit_code"), exit, 60)
 		})
 		if g.State == "running" && fixedButton(c, "log-stop", a.L("logpanels.stop"), "cross", 0, btnSm*s, false, false) && a.service != nil {
-			if e := a.service.StopSession(g.ID); e != nil {
-				a.message, a.errorMessage = a.friendlyErr(e), true
-			}
+			a.requestStop(g.RootID, g.ID, a.sessionLabel(*g, sess))
 			a.logSess.polled = time.Time{}
 		}
 		if scope != "" && len(a.logSess.list) > len(sess) && fixedButton(c, "log-all-games", a.L("logpanels.all_games"), "terminal", 0, btnSm*s, false, false) {
@@ -171,7 +169,7 @@ func (a *App) fileHeader(c *ui.Context) bool {
 			f = &lv.recent[i]
 		}
 	}
-	ui.Row(c.Key("log-summary")).Label("日志摘要").FillWidth().Height(64*s).Shrink(0).Padding(0, 16*s).Gap(18*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("log-summary")).Label("日志摘要").FillWidth().Height(64*s).Shrink(0).Padding(0, 16*s).Gap(20*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
 		back = fixedButton(c, "log-file-back", a.L("logpanels.back"), "chevron-left", 0, btnSm*s, false, false)
 		ui.Column(c).Gap(4 * s).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, filepath.Base(lv.file)).FontSize(typeCallout * s).FontWeight(700).TextColor(ink).SingleLine()
@@ -198,16 +196,16 @@ func (a *App) crashCard(c *ui.Context, g *launcher.GameSession) {
 	if a.isEN() {
 		cause, advice = in.CauseEn, in.AdviceEn
 	}
-	ui.Row(c.Key("log-crash")).FillWidth().Height(106*s).Shrink(0).Padding(0, 16*s).Gap(14*s).Radius(radiusCard*s).Background(ui.Hex("#ff3b30").Alpha(.06)).Border(1, ui.Hex("#ff3b30").Alpha(.22)).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(34*s, 34*s).Radius(10 * s).Background(ui.Hex("#ff3b30").Alpha(.12)).Center().Shrink(0).Children(func() {
+	ui.Row(c.Key("log-crash")).FillWidth().Height(106*s).Shrink(0).Padding(0, 16*s).Gap(16*s).Radius(radiusCard*s).Background(ui.Hex("#ff3b30").Alpha(.06)).Border(1, ui.Hex("#ff3b30").Alpha(.22)).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Size(34*s, 34*s).Radius(radiusControl * s).Background(ui.Hex("#ff3b30").Alpha(.12)).Center().Shrink(0).Children(func() {
 			ui.Icon(c, icons["info"]).Size(16*s, 16*s).TextColor(ui.Hex("#d70015"))
 		})
-		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, a.L("logpanels.probable_cause")).FontSize(typeCaption2 * s).FontWeight(600).TextColor(ui.Hex("#d70015")).NoWrap()
 			tooltip(c, ui.Text(c, cause).FontSize(typeCallout*s).FontWeight(700).TextColor(ink).SingleLine(), cause)
 			ui.Row(c).Gap(8 * s).AlignItems(ui.Center).MinWidth(0).Children(func() {
 				if in.Mod != "" {
-					ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(ui.Hex("#ff3b30").Alpha(.12)).Children(func() {
+					ui.Row(c).Shrink(0).Padding(4*s, 8*s).Radius(radiusPill).Background(ui.Hex("#ff3b30").Alpha(.12)).Children(func() {
 						ui.Text(c, a.L("logpanels.mod")+in.Mod).FontSize(typeCaption2 * s).FontWeight(700).TextColor(ui.Hex("#d70015")).NoWrap()
 					})
 				}
@@ -249,7 +247,7 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 			if k == "info" || k == "debug" {
 				fg = inkSecondary
 			}
-			b := ui.ButtonBase(c.Key("log-level-" + k)).Label(text).Height(btnSm * s).PaddingX(11 * s).Gap(6 * s).Radius(999).AlignItems(ui.Center).Shrink(0)
+			b := ui.ButtonBase(c.Key("log-level-" + k)).Label(text).Height(btnSm * s).PaddingX(12 * s).Gap(8 * s).Radius(radiusPill).AlignItems(ui.Center).Shrink(0)
 			bg, edge := ui.RGBA(255, 255, 255, .7), line
 			if sel {
 				bg, edge = accentSoft, accent.Alpha(.45)
@@ -261,7 +259,7 @@ func (a *App) logToolbar(c *ui.Context, cur *launcher.GameSession, sk string) {
 				if sel {
 					ui.Icon(c, icons["check"]).Size(10*s, 10*s).TextColor(accent)
 				} else {
-					ui.Box(c).Size(7*s, 7*s).Radius(999).Background(fg)
+					ui.Box(c).Size(7*s, 7*s).Radius(radiusPill).Background(fg)
 				}
 				ui.Text(c, a.L("log.level."+k)).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).NoWrap()
 				ui.Text(c, fmt.Sprint(n)).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap()
@@ -364,7 +362,7 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 	}
 	ui.Row(c.Key("log-empty")).Font(uiSansFamily()).FillWidth().MinHeight(108*s).Shrink(0).Padding(16*s, 20*s).Gap(16*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
 		emptyArtwork(c, "log-idle", "terminal", .8*s)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(5 * s).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, a.L("logpanels.no_game_is_running")).FontSize(typeHeadline * s).FontWeight(600).TextColor(inkSecondary).FillWidth()
 			ui.Text(c, a.L("logpanels.launch_to_follow_the_live_output_or_open")).FontSize(typeFootnote * s).TextColor(muted).FillWidth()
 		})
@@ -383,11 +381,11 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 		return
 	}
 	scrollArea(c, a.logScrollKey()+"-recent").Label("日志文件列表").FillWidth().Grow(1).Basis(0).MinHeight(0).Children(func() {
-		ui.Column(c.Key("log-recent")).FillWidth().Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).Padding(6 * s).Gap(2 * s).Children(func() {
+		ui.Column(c.Key("log-recent")).FillWidth().Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .72)).Border(1, glassEdge).Padding(8 * s).Gap(4 * s).Children(func() {
 			for _, f := range lv.recent {
 				f := f
 				folderHit := false
-				b := ui.ButtonBase(c.Key("log-recent-" + f.Name)).Label(f.Name).FillWidth().Height(44 * s).PaddingX(10 * s).Gap(12 * s).Radius(9 * s).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("log-recent-" + f.Name)).Label(f.Name).FillWidth().Height(44 * s).PaddingX(12 * s).Gap(12 * s).Radius(radiusControl * s).AlignItems(ui.Center)
 				if b.Hovered() {
 					b.Background(ui.RGBA(120, 130, 160, .10))
 				}
@@ -396,16 +394,16 @@ func (a *App) logEmpty(c *ui.Context, r *launcher.Instance, scope string) {
 					if f.Kind == "crash" {
 						col, kind, ic = ui.Hex("#d70015"), a.L("logpanels.crash_report"), "info"
 					}
-					ui.Box(c).Size(26*s, 26*s).Radius(7 * s).Background(col.Alpha(.10)).Center().Shrink(0).Children(func() {
+					ui.Box(c).Size(26*s, 26*s).Radius(radiusChip * s).Background(col.Alpha(.10)).Center().Shrink(0).Children(func() {
 						ui.Icon(c, icons[ic]).Size(13*s, 13*s).TextColor(col)
 					})
 					tooltip(c, ui.Text(c, f.Name).FontSize(typeFootnote*s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).MinWidth(0), f.Name)
-					ui.Row(c).Shrink(0).Padding(2*s, 8*s).Radius(999).Background(col.Alpha(.10)).Children(func() {
+					ui.Row(c).Shrink(0).Padding(4*s, 8*s).Radius(radiusPill).Background(col.Alpha(.10)).Children(func() {
 						ui.Text(c, kind).FontSize(typeCaption2 * s).FontWeight(600).TextColor(col).NoWrap()
 					})
 					ui.Text(c, a.fmtWhen(f.ModTime)).Width(110 * s).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
 					ui.Text(c, fmtSize(f.Size)).Width(70 * s).FontSize(typeFootnote * s).FontFeatures("tnum").TextColor(muted).NoWrap().Shrink(0)
-					folderHit = iconOnlyButton(c, "log-folder-"+f.Path, "folder", a.L("logpanels.show_in_folder_2")+f.Name, 28*s, false)
+					folderHit = iconOnlyButton(c, "log-folder-"+f.Path, "folder", a.L("logpanels.show_in_folder_2")+f.Name, btnSm*s, false)
 					ui.Icon(c, icons["chevron-right"]).Size(10*s, 10*s).TextColor(muted)
 				}).Clicked() && !folderHit {
 					lv.file, lv.key = f.Path, ""

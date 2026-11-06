@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Viking602/YoloMCL/internal/i18n"
 )
 
 func (s *Service) InstallMod(rootID, source, project, id, replace string) (string, error) {
@@ -48,61 +50,69 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 		if e != nil {
 			return e
 		}
-		var resolve func(ProjectVersion) error
-		resolve = func(v ProjectVersion) error {
+		var resolve func(ProjectVersion, bool) error
+		resolve = func(v ProjectVersion, install bool) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			key := v.Source + ":" + v.ProjectID
 			if previous, ok := seen[key]; ok {
 				if previous != v.ID {
-					return fmt.Errorf("%s 的依赖版本约束冲突", v.Name)
+					return fmt.Errorf(i18n.Text(false, "dependencies.version_conflict"), v.Name)
 				}
 				return nil
 			}
 			seen[key] = v.ID
-			if len(seen) > 128 {
-				return errors.New("依赖数量超出限制")
+			if len(seen) > maxDependencyProjects {
+				return errDependencyLimit
 			}
-			if !compatible(v, mc, loader) {
-				return fmt.Errorf("%s 不兼容 Minecraft %s / %s", v.Name, mc, loader)
+			if err := checkDependencyVersion(v, source, v.ProjectID, mc, loader); err != nil {
+				return err
 			}
 			for _, d := range v.Dependencies {
 				if d.Kind != "required" {
 					continue
 				}
-				present := skip[v.Source+":"+d.ProjectID]
+				if d.ProjectID != "" && skip[v.Source+":"+d.ProjectID] {
+					continue // explicit preview choices, including unchecked rows
+				}
+				var dep ProjectVersion
+				var err error
+				present := false
 				for _, m := range installed {
 					if m.Enabled && m.Source == v.Source && m.ProjectID == d.ProjectID && (d.VersionID == "" || m.VersionID == d.VersionID) {
 						present = true
+						dep, err = s.installedDependencyVersion(ctx, r, v.Source, d.ProjectID, m, mc, loader)
 						break
 					}
 				}
-				if present {
-					continue
+				if !present {
+					dep, err = s.dependencyVersion(ctx, v.Source, d, mc, loader)
 				}
-				var dep ProjectVersion
-				var e error
-				if d.VersionID != "" {
-					dep, e = s.projectVersion(ctx, v.Source, d.ProjectID, d.VersionID)
-				} else {
-					vs, err := s.Versions(ctx, v.Source, d.ProjectID, mc, loader)
-					e = err
-					if e == nil && len(vs) == 0 {
-						e = fmt.Errorf("依赖 %s 没有兼容版本", d.ProjectID)
+				if err != nil {
+					return err
+				}
+				if skip[dep.Source+":"+dep.ProjectID] {
+					continue // a version-only edge now has its canonical project key
+				}
+				if d.ProjectID == "" {
+					for _, m := range installed {
+						if m.Enabled && m.Source == dep.Source && m.ProjectID == dep.ProjectID && m.VersionID == dep.ID {
+							present = true
+							break
+						}
 					}
-					if e == nil {
-						dep = vs[0]
-					}
 				}
-				if e != nil {
-					return e
-				}
-				if e = resolve(dep); e != nil {
+				if e = resolve(dep, !present); e != nil {
 					return e
 				}
 			}
-			plan = append(plan, v)
+			if install {
+				plan = append(plan, v)
+			}
 			return nil
 		}
-		if e = resolve(version); e != nil {
+		if e = resolve(version, true); e != nil {
 			return e
 		}
 		stage, e := safeJoin(r.Path, ".mcl/staging/"+newID())

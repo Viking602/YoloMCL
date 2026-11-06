@@ -141,7 +141,7 @@ func (a *App) saveNotice(c *ui.Context) {
 		if w.savePath != "" && fixedButton(c, "save-open-folder", a.L("addons_tab.open_folder"), "folder", 0, btnSm*s, false, false) {
 			c.OpenURL("file:///" + filepath.ToSlash(filepath.Dir(w.savePath)))
 		}
-		if b := ui.ButtonBase(c.Key("save-notice-x")).Label(a.L("logsessions.close")).Size(22*s, 22*s).Radius(6 * s).Center(); b.Children(func() {
+		if b := ui.ButtonBase(c.Key("save-notice-x")).Label(a.L("logsessions.close")).Size(22*s, 22*s).Radius(radiusChip * s).Center(); b.Children(func() {
 			ui.Icon(c, icons["cross"]).Size(9*s, 9*s).TextColor(muted)
 		}).Clicked() {
 			w.saveMsg, w.savePath = "", ""

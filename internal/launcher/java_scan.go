@@ -3,6 +3,7 @@ package launcher
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -73,6 +74,15 @@ func javaPathKey(path string) string {
 // Read release metadata before launching a JVM. All modern JDK/JRE distributions
 // ship this file, making discovery independent of JVM cold-start time.
 func inspectJavaRelease(ctx context.Context, path string) (JavaInfo, error) {
+	if info, err := javaReleaseInfo(path); err == nil {
+		return info, nil
+	}
+	return inspectJava(ctx, path)
+}
+
+// javaReleaseInfo reads only the selected runtime's release metadata. Unlike
+// inspectJavaRelease it cannot start a process or search for installed runtimes.
+func javaReleaseInfo(path string) (JavaInfo, error) {
 	home := filepath.Dir(filepath.Dir(path))
 	b, e := readJavaMetadata(filepath.Join(home, "release"))
 	if e != nil && strings.EqualFold(filepath.Base(home), "jre") {
@@ -94,7 +104,10 @@ func inspectJavaRelease(ctx context.Context, path string) (JavaInfo, error) {
 			}
 		}
 	}
-	return inspectJava(ctx, path)
+	if e != nil {
+		return JavaInfo{}, e
+	}
+	return JavaInfo{}, errors.New("missing Java release version")
 }
 
 func (s *Service) CachedJavaList() []JavaInfo {

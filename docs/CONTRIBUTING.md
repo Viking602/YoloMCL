@@ -6,6 +6,7 @@ This repository follows standard [Effective Go](https://go.dev/doc/effective_go)
 
 - **Encoding and whitespace**: UTF-8, LF line endings, final newline required, trailing whitespace trimmed (except in Markdown). Go files use tabs (`tab_width = 4`); YAML, JSON, and shell scripts use 2 spaces.
 - **Formatting and imports**: Format all Go source files with `gofmt` and `goimports` using `-local github.com/Viking602/YoloMCL`.
+- **Developer utilities**: Prefer Go for new generators, benchmarks and maintenance scripts. Keep commands in the isolated `tools/cmd/` module and shared helpers in `tools/internal/`; see [developer tools](../tools/README.md). Do not add a Python runtime dependency. Existing Bash build/release orchestration remains supported.
 - **Import grouping**: Let `goimports` maintain a single `import (...)` declaration, with blank lines separating these groups:
   1. Standard library packages
   2. Third-party packages
@@ -37,13 +38,13 @@ By default, `make check` runs in order:
 1. Source formatting and import group order (`goimports -local github.com/Viking602/YoloMCL`).
 2. Package dependency boundary checks (`scripts/check-imports.awk`).
 3. Module tidiness (`go mod tidy -diff`) and dependency verification (`go mod verify`) for both `.` and `tools/`.
-4. `go vet ./...`.
-5. `staticcheck ./...` with all correctness, simplification and style checks enabled by `staticcheck.conf`, in both development and release (`-tags=mygo_noinspector`) modes.
-6. Shell regression tests (`scripts/test.sh`) and Go tests (`go test ./...`) in both development and release modes.
+4. `go vet ./...` for both modules.
+5. `staticcheck ./...` with all correctness, simplification and style checks enabled by `staticcheck.conf`, in both launcher development and release (`-tags=mygo_noinspector`) modes, plus the developer tools.
+6. Shell regression tests (`scripts/test.sh`), launcher Go tests in both development and release modes, and `go -C tools test ./...`.
 
 `make fmt` (or `bash scripts/check.sh --fix --format-only`) normalizes formatting and checks imports, without compiling or running tests. It never rewrites application logic. Use `make check CHECK_ARGS="--fix"` to format and then run all checks. `--cross` additionally runs `go vet` and `go build` (both development and release tags) across `windows`, `darwin`, and `linux` on `amd64` and `arm64`. Cross-compilation verifies buildability, not target-OS runtime behavior.
 
-Tool versions (`goimports`, `staticcheck`) are locked in `tools/go.mod` and `tools/go.sum` so they do not enter launcher runtime dependencies. When updating tools, update and verify both files explicitly.
+Tool versions (`goimports`, `staticcheck`) and developer command dependencies are locked in `tools/go.mod` and `tools/go.sum` so they do not enter launcher runtime dependencies. `--cross` also vets and builds the developer commands on all six targets. When updating tools, update and verify both files explicitly.
 
 GitHub Actions runs the same check command on Windows, macOS, and Linux runners. Unexecuted CI is never evidence that tests pass. When changing business behavior, add deterministic tests that catch real regressions (using `t.TempDir()` for temporary files); do not duplicate tests when merely moving code between files.
 
@@ -74,8 +75,10 @@ Follow the package dependency direction defined in [`architecture.md`](architect
 
 - `main` → `internal/app`
 - `internal/app` → `internal/buildinfo`, `internal/launcher`, `internal/nativeui`
-- `internal/nativeui` → `internal/launcher`, `internal/buildinfo`, `internal/i18n`
-- `internal/launcher` → `internal/config`, `internal/i18n`, `internal/launcher/{memory,proctree,textenc,vault}`
+- `internal/nativeui` → `internal/launcher`, `internal/buildinfo`, `internal/i18n`, `cubiomes`, `internal/structure3d`, `internal/worldgen`
+- `internal/launcher` → `cubiomes`, `cubiomes/modjar`, `internal/config`, `internal/i18n`, `internal/mcworld`, `internal/structure3d`, `internal/worldgen`, `internal/launcher/{memory,proctree,textenc,vault}`
+- `cubiomes/modjar` → `cubiomes`; `internal/mcworld` → `internal/structure3d` → `internal/worldgen`
+- `cubiomes` → standard library only; immutable generators and per-worker sampling state
 - `internal/config`, `internal/buildinfo`, `internal/i18n`, and platform leaf sub-packages → no other internal package dependencies
 
 Platform and boundary rules:

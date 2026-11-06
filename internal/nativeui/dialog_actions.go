@@ -9,6 +9,7 @@ import (
 )
 
 func (a *App) loadVersionConfigForm(versionID string) {
+	defer func() { a.versionInitial, a.versionDraftRoot = a.form, a.snapshot.ActiveRoot }()
 	a.form.ConfigVersion = versionID
 	a.form.VerJava = ""
 	a.form.VerMemory = "0"
@@ -43,12 +44,17 @@ func (a *App) openVersionConfig(rootID, versionID string) {
 	if versionID != "" {
 		a.loadVersionConfigForm(versionID)
 	}
+	a.dialogInitial = a.form
 }
 
 func (a *App) openDialog(name string) {
 	if a.launcherUpdateRequired() && name != "launcherUpdate" {
 		return
 	}
+	a.suspendVersionDraft()
+	a.popconfirmKey = ""
+	a.projectEdited = false
+	a.cancelKeyBindingLabels()
 	if name == "launcherUpdate" {
 		a.launcherUpdate.prompt = false
 	}
@@ -113,12 +119,17 @@ func (a *App) openDialog(name string) {
 	case "logs":
 		a.loadLogs()
 	}
+	a.dialogInitial = a.form
 }
 
 func (a *App) closeDialog() {
 	if a.dialog == "launcherUpdate" && a.launcherUpdateRequired() {
 		return
 	}
+	if a.confirmation != nil && a.confirmation.key == "discard-draft" {
+		a.confirmation = nil
+	}
+	a.cancelKeyBindingLabels()
 	a.dialogGen++
 	a.cancelProjectRequests()
 	if a.device != nil {
@@ -129,6 +140,8 @@ func (a *App) closeDialog() {
 	a.dialog = ""
 	a.dialogOpen = false
 	a.form.Password = ""
+	a.popconfirmKey = ""
+	a.resumeVersionDraft()
 }
 
 func (a *App) executeDialog(fn func() error) {

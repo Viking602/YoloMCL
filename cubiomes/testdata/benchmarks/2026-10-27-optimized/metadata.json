@@ -1,0 +1,42 @@
+{
+  "date_utc": "2026-10-27T06:52:50.969995+00:00",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+  "c_revision": "e61f90580cbdd883214a8054670dacae655e59c0",
+  "c_flags": [
+    "-std=c11",
+    "-O3",
+    "-fwrapv",
+    "-ffp-contract=off"
+  ],
+  "c_compiler": "gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.2.0",
+  "go_version": "go version go1.27.3 windows/amd64",
+  "go_count": 5,
+  "go_benchtime": "500ms",
+  "seed": 42,
+  "range_blocks": {
+    "x": 8192,
+    "y": 64,
+    "z": -8192,
+    "width": 128,
+    "height": 128,
+    "step": 4
+  },
+  "baseline_sha256": "eae6859a2d24ba23f95f2b57b9f79d8a2ac293b1e495687565682d3b4039fe24",
+  "cpu": "AMD Ryzen 7 9800X3D",
+  "goamd64": "v1",
+  "gomaxprocs": 16,
+  "sampling_workers": 1,
+  "viewport": {
+    "width": 640,
+    "height": 384,
+    "seed": 42,
+    "center_x": 8192,
+    "center_z": -8192,
+    "y": 64,
+    "step": 4,
+    "cache": "empty each operation",
+    "benchtime": "1s",
+    "includes_ui_upload": false
+  }
+}

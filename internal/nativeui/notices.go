@@ -24,12 +24,12 @@ func (a *App) noticeTone(kind string) (fg, fill ui.Color, icon, name string) {
 func (a *App) noticeBody(c *ui.Context, kind, msg, detail string, actions func()) ui.Element {
 	s := uiScale(c)
 	fg, fill, icon, name := a.noticeTone(kind)
-	row := ui.Row(c).Label(name+"通知").FillWidth().Padding(space2*s+2*s, space3*s, space2*s+2*s, space3*s).Radius(radiusRow*s).Background(fill).Border(1, fg.Alpha(.22)).Gap(space3 * s).AlignItems(ui.Center)
+	row := ui.Row(c).Label(name+"通知").FillWidth().Padding(space3*s, space3*s, space3*s, space3*s).Radius(radiusRow*s).Background(fill).Border(1, fg.Alpha(.22)).Gap(space3 * s).AlignItems(ui.Center)
 	return row.Children(func() {
-		ui.Box(c).Size(22*s, 22*s).Radius(11 * s).Background(fg).Center().Shrink(0).Children(func() {
+		ui.Box(c).Size(22*s, 22*s).Radius(radiusPill).Background(fg).Center().Shrink(0).Children(func() {
 			ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(panel)
 		})
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			ui.Text(c, msg).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).Wrap()
 			if detail != "" && detail != msg {
 				ui.Text(c, detail).FontSize(typeFootnote * s).TextColor(muted).Wrap()
@@ -68,7 +68,9 @@ func (a *App) toast(c *ui.Context) {
 	bottom := space3 * s
 	host := ui.Box(c.Key("toast-host")).Label("页面通知").Absolute().Left(pageGutter * s).Right(pageGutter * s).Bottom(bottom)
 	target, anim := float32(0), motionExit
-	if a.message != "" && a.dialog == "" {
+	undo := a.noticeUndo
+	hasUndo := undo != nil && undo.message == a.message
+	if a.message != "" && (a.dialog == "" || a.surfaceKind(a.dialog) == surfacePage) && a.confirmation == nil {
 		target, anim = 1, motionEnter
 	}
 	p := host.AnimateTo("toast-presence", target, anim)
@@ -81,10 +83,10 @@ func (a *App) toast(c *ui.Context) {
 		return
 	}
 	msg, kind := a.noticeShown, a.noticeShownKind
-	// Info notices leave by themselves after about 4 s; hovering holds
-	// them (the countdown restarts when the pointer leaves).
-	if kind == "info" && a.message != "" {
-		if host.Hovered() {
+	// Ordinary info notices leave after 4 s; Undo stays until used or
+	// dismissed. Hover and keyboard focus pause an ordinary notice's clock.
+	if kind == "info" && a.message != "" && !hasUndo {
+		if host.Hovered() || host.FocusWithin() {
 			a.toastHeld = true
 		} else if a.toastHeld {
 			a.toastHeld = false
@@ -109,6 +111,9 @@ func (a *App) toast(c *ui.Context) {
 	host.Opacity(p).Translate(0, (1-p)*10*s).Children(func() {
 		ui.Column(c).FillWidth().MaxWidth(860 * s).AlignSelf(ui.Center).Children(func() {
 			elevate2(a.noticeBody(c, kind, msg, "", func() {
+				if hasUndo && button(c, "notice-undo", a.L("floating.undo"), "refresh", false, undo.pending) {
+					a.undoRemoval()
+				}
 				if kind == "error" {
 					if a.noticeRetry != nil && button(c, "notice-retry", t.NoticeRetry, "refresh", false, false) {
 						retry := a.noticeRetry

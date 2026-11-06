@@ -1,19 +1,6 @@
 package nativeui
 
-import (
-	"fmt"
-	"strings"
-
-	"github.com/Viking602/YoloMCL/internal/launcher"
-)
-
-func jobSignature(jobs []launcher.Job) string {
-	var b strings.Builder
-	for _, j := range jobs {
-		b.WriteString(fmt.Sprintf("%s:%s:%d:%s|", j.ID, j.State, j.Done, j.Message))
-	}
-	return b.String()
-}
+import "github.com/Viking602/YoloMCL/internal/launcher"
 
 // applyJobNotice replaces the "任务已启动" notice once tasks finish: 导入完成
 // for a successful import, the failure reason otherwise.

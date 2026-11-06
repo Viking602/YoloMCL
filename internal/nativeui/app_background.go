@@ -67,12 +67,8 @@ func (a *App) pollSnapshots(systemLanguages func() []string) {
 			continue
 		}
 		a.post(func() {
-			old := jobSignature(a.snapshot.Jobs)
 			a.applyJobNotice(a.snapshot.Jobs, snap.Jobs)
 			a.applySnapshot(snap, epoch)
-			if old != jobSignature(snap.Jobs) && a.page == "mods" {
-				a.loadMods()
-			}
 		})
 	}
 }

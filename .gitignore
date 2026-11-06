@@ -22,3 +22,15 @@ coverage.out
 /YoloMCL
 /internal/nativeui/mcl
 
+# One-off local inspection and source-patching scripts.
+/_gd.py
+/_fk.py
+/cubiomes/modjar/_find_fk.py
+/cubiomes/modjar/_inspect.py
+/cubiomes/modjar/_patch*.py
+/patch-bak/
+/tmp-*/
+/logs/
+/qa-dive/
+/internal/nativeui/qa-dive/
+

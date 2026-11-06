@@ -34,7 +34,9 @@ func (a *App) tasks(c *ui.Context) {
 		card(c, "job-"+j.ID, func() {
 			ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["tasks"]).Size(20*s, 20*s).TextColor(accent)
-				tooltip(c, ui.Text(c, a.jobTitle(j)).Grow(1).Basis(0).MinWidth(0).SingleLine().FontSize(typeTitle*s).Bold().TextColor(ink), a.jobTitle(j))
+				title := a.jobTitle(j)
+				e := ui.Text(c, title).Grow(1).Basis(0).MinWidth(0).SingleLine().FontSize(typeTitle * s).Bold().TextColor(ink)
+				textTooltip(c, e, title, "", ui.Font{Family: c.Theme().Font, Size: typeTitle * s, Weight: 700}, 1)
 				color := muted
 				if j.State == "failed" {
 					color = danger
@@ -77,7 +79,7 @@ func (a *App) tasks(c *ui.Context) {
 					}
 				}
 			})
-			ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 				msg := a.jobMsg(j.Message)
 				if j.State == "failed" {
 					msg = classifyError(a.isEN(), msg, nil).Text()
@@ -108,7 +110,7 @@ func (a *App) tasks(c *ui.Context) {
 				ui.Progress(c, frac)
 			}
 			if len(j.Items) > 0 {
-				ui.Column(c).FillWidth().Gap(6*s).Padding(12*s).Radius(10*s).Background(raised).Border(1, line).Children(func() {
+				ui.Column(c).FillWidth().Gap(8*s).Padding(12*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
 					label(c, t.TasksItemsHeader).FontSize(typeFootnote * s).FontWeight(600)
 					scrollArea(c, "job-items-"+j.ID).MaxHeight(160*s).FillWidth().Padding(0, scrollGutter*s, 0, 0).Children(func() {
 						ui.Column(c).FillWidth().Gap(4 * s).Children(func() {

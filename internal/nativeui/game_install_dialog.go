@@ -10,7 +10,7 @@ func (a *App) installDialog(c *ui.Context) {
 	label(c, t.InstallDesc)
 
 	// Step 1: Target Location
-	ui.Column(c).FillWidth().Gap(10*s).Padding(16*s).Radius(12*s).Background(raised).Border(1, line).Children(func() {
+	ui.Column(c).FillWidth().Gap(12*s).Padding(16*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
 		ui.Text(c, t.InstallStep1Title).FontSize(typeSubhead * s).Bold().TextColor(ink)
 		if a.root() != nil {
 			if selectBox(c, "install-target", t.InstallTargetLabel, &a.form.Target, []string{t.InstallTargetCurrent, t.InstallTargetNew}).FillWidth().Changed() {
@@ -26,13 +26,13 @@ func (a *App) installDialog(c *ui.Context) {
 	})
 
 	// Step 2: Official Minecraft Version
-	ui.Column(c).FillWidth().Gap(10*s).Padding(16*s).Radius(12*s).Background(raised).Border(1, line).Children(func() {
+	ui.Column(c).FillWidth().Gap(12*s).Padding(16*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
 		ui.Text(c, t.InstallStep2Title).FontSize(typeSubhead * s).Bold().TextColor(ink)
 		a.minecraftVersionPicker(c)
 	})
 
 	// Step 3: Mod Loader & Version with Interactive Icon Cards + Scrollable Version Selector
-	ui.Column(c).FillWidth().Gap(10*s).Padding(16*s).Radius(12*s).Background(raised).Border(1, line).Children(func() {
+	ui.Column(c).FillWidth().Gap(12*s).Padding(16*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
 		ui.Text(c, t.InstallStep3Title).FontSize(typeSubhead * s).Bold().TextColor(ink)
 		ui.Row(c).FillWidth().Gap(8 * s).Children(func() {
 			for _, item := range []struct {
@@ -52,13 +52,13 @@ func (a *App) installDialog(c *ui.Context) {
 					cardBg = accentSoft
 					borderCol = accent
 				}
-				b := ui.ButtonBase(c.Key("loader-card-"+loaderKey(ld.name))).Label(ld.name).Grow(1).MinWidth(0).Padding(10*s, 8*s).Radius(10*s).Border(1, borderCol).AlignItems(ui.Center).Justify(ui.Center)
+				b := ui.ButtonBase(c.Key("loader-card-"+loaderKey(ld.name))).Label(ld.name).Grow(1).MinWidth(0).Padding(12*s, 8*s).Radius(radiusControl*s).Border(1, borderCol).AlignItems(ui.Center).Justify(ui.Center)
 				if b.Hovered() && !selected {
 					cardBg = fieldColor
 				}
 				b.Background(b.AnimateColor("bg", cardBg, fastAnim))
 				if b.Children(func() {
-					ui.Column(c).AlignItems(ui.Center).Gap(5 * s).Children(func() {
+					ui.Column(c).AlignItems(ui.Center).Gap(4 * s).Children(func() {
 						if !loaderLogo(c, ld.name, 34*s) {
 							ui.Icon(c, icons[loaderIconName(ld.name)]).Size(22*s, 22*s).TextColor(loaderTone(ld.name))
 						}

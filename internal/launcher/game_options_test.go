@@ -54,3 +54,77 @@ func TestReadGameOptionsRejectsMalformedAndOversizedFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestResourcePackFileEntry(t *testing.T) {
+	cases := []struct {
+		id   string
+		want string
+		ok   bool
+	}{
+		{"file/top.zip", "top.zip", true},
+		{"file/", "", false},
+		{"vanilla", "", false},
+		{"mod_resources", "", false},
+		{"fabric", "", false},
+		{"builtin/paster_vanilla_ui", "", false},
+		{"netherexp:jne_retextures", "", false},
+		{"Better-Leaves-9.0.zip", "Better-Leaves-9.0.zip", true},
+		{"My Folder Pack", "My Folder Pack", true},
+		{"Moonlight Mods Dynamic Assets", "Moonlight Mods Dynamic Assets", true},
+	}
+	for _, c := range cases {
+		got, ok := resourcePackFileEntry(c.id)
+		if ok != c.ok || got != c.want {
+			t.Fatalf("%q: got %q,%v want %q,%v", c.id, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestReadGameOptionsBarePackNames(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "options.txt"), []byte(`resourcePacks:["vanilla","mod_resources","base.zip","file/top.zip"]`))
+	st, err := readGameOptions(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(st.ResourcePackOrder, []string{"top.zip", "base.zip"}) {
+		t.Fatalf("order %v", st.ResourcePackOrder)
+	}
+}
+
+func TestResourcePackEmbeddedEntry(t *testing.T) {
+	cases := []struct {
+		id   string
+		want string
+		ok   bool
+	}{
+		{"netherexp:jne_retextures", "netherexp:jne_retextures", true},
+		{"file/top.zip", "", false},
+		{"vanilla", "", false},
+		{"modid:", "", false},
+		{":pack", "", false},
+		{"a:b/c", "", false},
+		{"builtin/x", "", false},
+	}
+	for _, c := range cases {
+		got, ok := resourcePackEmbeddedEntry(c.id)
+		if ok != c.ok || got != c.want {
+			t.Fatalf("%q: got %q,%v want %q,%v", c.id, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestReadGameOptionsEmbeddedPacks(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "options.txt"), []byte(
+		`resourcePacks:["vanilla","file/base.zip","netherexp:jne_retextures","file/top.zip"]`,
+	))
+	st, err := readGameOptions(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"top.zip", "netherexp:jne_retextures", "base.zip"}
+	if !reflect.DeepEqual(st.ResourcePackOrder, want) {
+		t.Fatalf("order %v want %v", st.ResourcePackOrder, want)
+	}
+}

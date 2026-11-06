@@ -24,7 +24,7 @@ func TestDialogEasesInAndOut(t *testing.T) {
 	}
 	tt.Advance(400 * time.Millisecond)
 	end, _ := tt.Find("活动弹窗")
-	if math.Abs(float64(mid.W-end.W)) > .01 || math.Abs(float64(mid.H-end.H)) > .01 || mid.Y <= end.Y || mid.Y-end.Y > 12 {
+	if math.Abs(float64(mid.W-end.W)) > .01 || math.Abs(float64(mid.H-end.H)) > .01 || mid.X <= end.X || mid.X-end.X > 12 || math.Abs(float64(mid.Y-end.Y)) > .01 {
 		t.Errorf("dialog should slide into place at its native size: mid %+v end %+v", mid, end)
 	}
 	// closing midway keeps drawing it (no pop), interrupting reopens smoothly

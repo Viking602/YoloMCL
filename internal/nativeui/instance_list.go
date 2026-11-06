@@ -85,7 +85,7 @@ func (a *App) instanceVirtualList(c *ui.Context, r *launcher.Instance) {
 	overlayScrollbar(list, track).Rows(func(row ui.ListRow) {
 		c, item := row.Context, rows[row.Index]
 		if item.heading != "" {
-			ui.Row(c).FillWidth().Padding(14*s, 10*s, 6*s, 10*s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().Padding(16*s, 12*s, 8*s, 12*s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				label(c, item.heading).FontSize(typeFootnote * s).FontWeight(650).TextColor(muted).SingleLine().Shrink(0)
 				label(c, fmt.Sprint(item.count)).FontSize(typeFootnote * s).TextColor(muted).SingleLine().Shrink(0)
 			})

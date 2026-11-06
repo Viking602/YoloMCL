@@ -44,6 +44,9 @@ func (a *App) handleDroppedFiles(paths []string) {
 	if len(paths) == 0 {
 		return
 	}
+	if a.guardDiscard(a.hasUnsavedDraft(), func() { a.handleDroppedFiles(paths) }) {
+		return
+	}
 	first := paths[0]
 	if st, err := os.Stat(first); err == nil && st.IsDir() {
 		a.openDialog("add")

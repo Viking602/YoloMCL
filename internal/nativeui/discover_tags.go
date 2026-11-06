@@ -62,7 +62,7 @@ func catTag(c *ui.Context, key, label string, selected bool) {
 	if selected {
 		bg, tc = fg, ui.RGBA(255, 255, 255, 1)
 	}
-	ui.Row(c).Shrink(0).Height(18 * s).PaddingX(6 * s).Radius(5 * s).Background(bg).Center().Children(func() {
+	ui.Row(c).Shrink(0).Height(18 * s).PaddingX(8 * s).Radius(radiusChip * s).Background(bg).Center().Children(func() {
 		ui.Text(c, label).FontSize(typeCaption2 * s).FontWeight(600).TextColor(tc).NoWrap()
 	})
 }
@@ -181,7 +181,7 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 			railTitle(c, a.L("discover_tags.tags"))
 			ui.Spacer(c).Grow(1)
 			if n := len(a.selectedCats()); n > 0 {
-				b := ui.ButtonBase(c.Key("cats-clear")).Label(a.L("discover_tags.clear")).Height(22 * s).PaddingX(8 * s).Radius(6 * s).AlignItems(ui.Center)
+				b := ui.ButtonBase(c.Key("cats-clear")).Label(a.L("discover_tags.clear")).Height(22 * s).PaddingX(8 * s).Radius(radiusChip * s).AlignItems(ui.Center)
 				fg := accent
 				if b.Hovered() {
 					b.Background(accentSoft)
@@ -195,7 +195,7 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 			}
 		})
 		scrollArea(c, "cats-scroll").FillWidth().MaxHeight(220 * s).Children(func() {
-			ui.Row(c).FillWidth().Wrap().Gap(6*s).Padding(0, 10*s).Children(func() {
+			ui.Row(c).FillWidth().Wrap().Gap(8*s).Padding(0, 12*s).Children(func() {
 				for _, o := range opts {
 					op := o
 					l := a.catLabel(op.Name)
@@ -203,7 +203,7 @@ func (a *App) discoverCatsRail(c *ui.Context) {
 						continue
 					}
 					sel := a.catSelected(op.ID)
-					b := ui.ButtonBase(c.Key("cat-" + op.ID)).Label(l).Radius(5 * s)
+					b := ui.ButtonBase(c.Key("cat-" + op.ID)).Label(l).Radius(radiusChip * s)
 					if b.Children(func() { catTag(c, op.Name, l, sel) }).Clicked() {
 						a.toggleCat(op.ID)
 					}

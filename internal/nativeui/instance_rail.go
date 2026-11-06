@@ -47,7 +47,7 @@ func (a *App) instanceList(c *ui.Context) {
 	t := a.tr()
 	r := a.root()
 	ui.Column(c.Key("instance-list")).Label("版本列表").Width(instListWidth * s).Shrink(0).FillHeight().Children(func() {
-		ui.Row(c.Key("inst-filter-row")).Label("筛选栏").FillWidth().Height(btnMd*s+20*s).Padding(20*s, 14*s, 0, 16*s).Gap(8 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+		ui.Row(c.Key("inst-filter-row")).Label("筛选栏").FillWidth().Height(btnMd*s+20*s).Padding(20*s, 16*s, 0, 16*s).Gap(8 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
 			textField(c.Key("inst-filter"), &a.instFilter).Placeholder(a.L("instance_rail.filter_instances")).Label(a.L("instance_rail.filter_instances")).Grow(1).MinWidth(0)
 			if iconOnlyButton(c, "inst-import", "layers", t.HomeImportPackBtn, btnMd*s, false) {
 				a.openDialog("import")
@@ -78,10 +78,20 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 	b.Background(b.AnimateColor("bg", bg, fastAnim))
 	b.Children(func() {
 		vv := v
-		a.instIcon(c, r, &vv, 34*s)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(2 * s).Children(func() {
+		// Status overlays do not change the title or version tag's available width.
+		ui.Box(c.Key("version-icon")).Size(34*s, 34*s).Shrink(0).Children(func() {
+			a.instIcon(c, r, &vv, 34*s)
+			if slices.Contains(r.RunningVersions, v.ID) {
+				tooltip(c, ui.Box(c.Key("running")).Absolute().Right(-2*s).Bottom(-2*s).Size(12*s, 12*s).Radius(radiusPill).Border(2*s, panel).Background(ui.Hex("#34c759")).Label(a.tr().HomeHeroBadgeRunning), a.tr().HomeHeroBadgeRunning)
+			} else if packHasUpdate(r, v.ID) {
+				tooltip(c, ui.Box(c.Key("update")).Absolute().Right(-3*s).Bottom(-3*s).Size(16*s, 16*s).Radius(radiusPill).Border(2*s, panel).Background(ui.Hex("#ff9500")).Center(), a.tr().PackUpdateBadge).Children(func() {
+					ui.Icon(c, icons["download"]).Size(9*s, 9*s).TextColor(panel)
+				})
+			}
+		})
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(4 * s).Children(func() {
 			title, subText := n.Title, n.Sub
-			ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				tooltip(c, ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(typeBody*s).FontWeight(600).TextColor(fg).SingleLine(), v.ID)
 				if n.MCTag && v.Minecraft != "" {
 					ui.Spacer(c).Grow(1)
@@ -91,10 +101,17 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 			if subText == "" {
 				subText = a.loaderLine(v)
 			}
-			tooltip(c, ui.Row(c).Height(18*s).MinWidth(0).Gap(5*s).AlignItems(ui.Center), subText).Children(func() {
-				ui.Box(c).Size(20*s, 18*s).Shrink(0).Radius(4 * s).Background(panel).Center().Children(func() {
-					if !loaderLogo(c, v.Loader, 14*s) {
-						ui.Icon(c, icons[loaderIconName(v.Loader)]).Size(12*s, 12*s).TextColor(inkSecondary)
+			tooltip(c, ui.Row(c).Height(18*s).MinWidth(0).Gap(4*s).AlignItems(ui.Center), subText).Children(func() {
+				ui.Box(c).Size(20*s, 18*s).Shrink(0).Center().Children(func() {
+					if key := loaderLogoKey(v.Loader); key != "" {
+						logo := ui.Image(c, loaderLogos[key]).Size(14*s, 14*s).Radius(radiusMin * s).Clip().Fit(ui.Contain).Label(key + " logo")
+						// Transparent marks keep their neutral tile within the icon;
+						// artwork with its own background keeps that background.
+						if key == "fabric" || key == "quilt" {
+							logo.Background(panel)
+						}
+					} else {
+						ui.Icon(c, icons[loaderIconName(v.Loader)]).Size(12*s, 12*s).TextColor(sub)
 					}
 				})
 				if version := loaderBuild(v); version != "" {
@@ -102,14 +119,6 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 				}
 			})
 		})
-		if slices.Contains(r.RunningVersions, v.ID) {
-			ui.Box(c).Size(8*s, 8*s).Radius(999).Background(ui.Hex("#34c759")).Shrink(0)
-		} else if packHasUpdate(r, v.ID) {
-			// a pack update is waiting: a small arrow, the word is on the page
-			tooltip(c, ui.Box(c).Size(16*s, 16*s).Radius(999).Background(ui.Hex("#ff9500").Alpha(.16)).Center().Shrink(0), a.tr().PackUpdateBadge).Children(func() {
-				ui.Icon(c, icons["download"]).Size(9*s, 9*s).TextColor(warningInk)
-			})
-		}
 	})
 	if b.RightClicked() {
 		if !sel {
@@ -130,7 +139,7 @@ func (a *App) mcTag(c *ui.Context, mc string, onAccent bool) {
 	if onAccent {
 		bg, fg = ui.RGBA(255, 255, 255, .22), panel
 	}
-	ui.Row(c).Shrink(0).Height(19 * s).PaddingX(7 * s).Radius(6 * s).Background(bg).Center().Children(func() {
+	ui.Row(c).Shrink(0).Height(19 * s).PaddingX(8 * s).Radius(radiusChip * s).Background(bg).Center().Children(func() {
 		ui.Text(c, mc).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
 	})
 }
@@ -139,7 +148,7 @@ func (a *App) mcTag(c *ui.Context, mc string, onAccent bool) {
 func (a *App) rootPicker(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Row(c.Key("root-picker-row")).Label("目录选择栏").FillWidth().Padding(12*s, 18*s, 16*s, 20*s).Gap(8 * s).AlignItems(ui.Center).Draw(func(p *ui.Painter, b ui.Rect) {
+	ui.Row(c.Key("root-picker-row")).Label("目录选择栏").FillWidth().Padding(12*s, 20*s, 16*s, 20*s).Gap(8 * s).AlignItems(ui.Center).Draw(func(p *ui.Painter, b ui.Rect) {
 		p.Fill(ui.Rect{X: b.X, Y: b.Y, W: b.W, H: 1}, line, 0)
 	}).Children(func() {
 		if len(a.snapshot.Instances) > 0 {
@@ -213,7 +222,7 @@ func (a *App) loaderChips(c *ui.Context, r launcher.Instance) {
 	}
 	// A compact dropdown keeps the filter on one line whatever loaders the
 	// directory holds (a five-way segmented control truncates at this width).
-	ui.Row(c.Key("loader-filter")).Label("加载器筛选").FillWidth().Padding(10*s, 16*s, 2*s, 16*s).Shrink(0).Children(func() {
+	ui.Row(c.Key("loader-filter")).Label("加载器筛选").FillWidth().Padding(12*s, 16*s, 4*s, 16*s).Shrink(0).Children(func() {
 		cur := a.instLoader
 		opts := append([]string{""}, keys...)
 		icon := func(k string) (string, ui.Color) {

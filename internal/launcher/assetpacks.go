@@ -3,6 +3,7 @@ package launcher
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -39,6 +40,25 @@ func stripFormatting(s string) string {
 }
 
 func readPackMcmeta(path string) string {
+	st, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	var meta struct {
+		Pack struct {
+			Description any `json:"description"`
+		} `json:"pack"`
+	}
+	if st.IsDir() {
+		b, err := os.ReadFile(filepath.Join(path, "pack.mcmeta"))
+		if err != nil || len(b) == 0 || len(b) > 1<<20 {
+			return ""
+		}
+		if json.Unmarshal(b, &meta) != nil {
+			return ""
+		}
+		return packDescriptionText(meta.Pack.Description)
+	}
 	r, e := zip.OpenReader(path)
 	if e != nil {
 		return ""
@@ -46,19 +66,59 @@ func readPackMcmeta(path string) string {
 	defer r.Close()
 	for _, f := range r.File {
 		if f.Name == "pack.mcmeta" && f.UncompressedSize64 <= 1<<20 {
-			var meta struct {
-				Pack struct {
-					Description any `json:"description"`
-				} `json:"pack"`
-			}
 			if readZipJSON(f, &meta) == nil {
-				if s, ok := meta.Pack.Description.(string); ok {
-					return stripFormatting(s)
-				}
+				return packDescriptionText(meta.Pack.Description)
 			}
 		}
 	}
 	return ""
+}
+
+// packDescriptionText pulls plain text from pack.mcmeta description: a string,
+// a text component {"text":"..."}, or an array of those (vanilla / many packs).
+// translate-only components are skipped (no locale table here).
+func packDescriptionText(v any) string {
+	return strings.TrimSpace(packDescriptionTextRaw(v))
+}
+
+func packDescriptionTextRaw(v any) string {
+	switch t := v.(type) {
+	case string:
+		return stripFormattingKeepSpace(t)
+	case map[string]any:
+		if s, ok := t["text"].(string); ok {
+			return stripFormattingKeepSpace(s)
+		}
+		if extra, ok := t["extra"].([]any); ok {
+			return packDescriptionTextRaw(extra)
+		}
+	case []any:
+		var b strings.Builder
+		for _, e := range t {
+			b.WriteString(packDescriptionTextRaw(e))
+		}
+		return b.String()
+	}
+	return ""
+}
+
+// stripFormattingKeepSpace drops § codes but keeps leading/trailing spaces so
+// adjacent text-component pieces still join correctly.
+func stripFormattingKeepSpace(s string) string {
+	var out strings.Builder
+	skip := false
+	for _, r := range s {
+		if skip {
+			skip = false
+			continue
+		}
+		if r == '§' {
+			skip = true
+			continue
+		}
+		out.WriteRune(r)
+	}
+	return out.String()
 }
 
 func (s *Service) ListAssetPacks(rootID, kind string) ([]AssetPack, error) {
@@ -86,19 +146,35 @@ func (s *Service) ListAssetPacksAt(rootID, versionID, kind string) ([]AssetPack,
 	out := []AssetPack{}
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() {
-			continue
-		}
-		low := strings.ToLower(name)
-		if !strings.HasSuffix(low, ".zip") && !strings.HasSuffix(low, ".zip.disabled") {
-			continue
-		}
 		full, e := safeJoin(vDir, folder+"/"+name)
 		if e != nil {
 			continue
 		}
 		st, e := os.Stat(full)
 		if e != nil {
+			continue
+		}
+		if entry.IsDir() {
+			// Folder resource packs (pack.mcmeta at root). Shader packs stay zip-only.
+			if kind != "resourcepack" {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(full, "pack.mcmeta")); err != nil {
+				continue
+			}
+			desc := readPackMcmeta(full)
+			out = append(out, AssetPack{
+				File:        name,
+				Name:        name,
+				Description: desc,
+				Kind:        kind,
+				Enabled:     true, // enablement comes from options.txt at preview time
+				Size:        st.Size(),
+			})
+			continue
+		}
+		low := strings.ToLower(name)
+		if !strings.HasSuffix(low, ".zip") && !strings.HasSuffix(low, ".zip.disabled") {
 			continue
 		}
 		clean := strings.TrimSuffix(strings.TrimSuffix(name, ".disabled"), ".zip")

@@ -71,7 +71,7 @@ func TestAccessibilityAccountRemoveIsTwoStep(t *testing.T) {
 	if (len(a.pendingRequests) > 0) || len(a.snapshot.Accounts) != n {
 		t.Fatal("first click must only arm the removal")
 	}
-	if _, ok := tt.Find(a.tr().AccRemoveConfirm); !ok {
+	if _, ok := tt.Find("按钮文字 popconfirm-accept-" + a.popconfirmKey); !ok {
 		t.Fatal("confirm step missing")
 	}
 	snapIf(t, tt, "p2_13_account_after_1x")

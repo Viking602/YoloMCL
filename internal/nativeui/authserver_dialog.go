@@ -11,7 +11,8 @@ import (
 
 // authServerEditor holds the inline add/edit form for a saved server.
 type authServerEditor struct {
-	prev, name, url, err string
+	prev, name, url, err      string
+	originalName, originalURL string
 }
 
 // authServerPicker lets the user choose a saved Yggdrasil server (which
@@ -44,7 +45,7 @@ func (a *App) authServerPicker(c *ui.Context) {
 		a.form.Server = byName[selected].URL
 	}
 	names = append(names, t.AccServerCustom)
-	ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+	ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 		label(c, t.AccThirdServerLabel).FontWeight(600)
 		ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			drawIcon := func(opt string) {
@@ -60,7 +61,7 @@ func (a *App) authServerPicker(c *ui.Context) {
 					if hl {
 						col = panel
 					}
-					ui.Text(c, t.AccBuiltinServer).Label("内置标记 "+opt).FontSize(typeCaption2*s).FontWeight(600).TextColor(col).Padding(1*s, 6*s).Radius(999).Background(col.Alpha(.12)).SingleLine().Shrink(0)
+					ui.Text(c, t.AccBuiltinServer).Label("内置标记 "+opt).FontSize(typeCaption2*s).FontWeight(600).TextColor(col).Padding(4*s, 8*s).Radius(radiusPill).Background(col.Alpha(.12)).SingleLine().Shrink(0)
 				}
 			}).Grow(1).Basis(0).MinWidth(0).Changed() {
 				if v, ok := byName[selected]; ok {
@@ -72,10 +73,10 @@ func (a *App) authServerPicker(c *ui.Context) {
 			cur, saved := byName[selected]
 			saved = saved && !cur.Builtin // built-ins are fixed
 			if saved && iconOnlyButton(c, "auth-server-edit", "settings", t.AccEditServerBtn, btnMd*s, a.dialogPending()) {
-				a.serverEdit = &authServerEditor{prev: cur.URL, name: cur.Name, url: cur.URL}
+				a.serverEdit = &authServerEditor{prev: cur.URL, name: cur.Name, url: cur.URL, originalName: cur.Name, originalURL: cur.URL}
 			}
-			if saved && iconOnlyButton(c, "auth-server-delete", "cross", t.AccDeleteServerBtn, btnMd*s, a.dialogPending()) {
-				a.execute("deleteAuthServer", map[string]string{"server": cur.URL}, func(json.RawMessage) { a.form.Server = "" })
+			if saved && iconOnlyButton(c, "auth-server-delete", "cross", t.AccDeleteServerBtn, btnSm*s, a.dialogPending()) {
+				a.removeAuthServerUndo(cur)
 			}
 			if button(c, "auth-server-add", t.AccAddServerBtn, "plus", false, a.dialogPending()) {
 				a.serverEdit = &authServerEditor{}
@@ -93,13 +94,13 @@ func (a *App) authServerEditorView(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
 	ed := a.serverEdit
-	ui.Column(c.Key("auth-server-editor")).Label("服务器编辑").FillWidth().Gap(10*s).Padding(14*s).Radius(12*s).Background(panel).Border(1, accent.Alpha(.25)).Children(func() {
+	ui.Column(c.Key("auth-server-editor")).Label("服务器编辑").FillWidth().Gap(12*s).Padding(16*s).Radius(radiusControl*s).Background(panel).Border(1, accent.Alpha(.25)).Children(func() {
 		title := t.AccAddServerBtn
 		if ed.prev != "" {
 			title = t.AccEditServerBtn
 		}
 		ui.Text(c, title).FontSize(typeBody * s).Bold().TextColor(ink)
-		ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+		ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 			label(c, t.AccServerURLLabel).FontWeight(600)
 			ui.Row(c).FillWidth().Gap(8 * s).Children(func() {
 				textField(c, &ed.url).Label(t.AccServerURLLabel).Placeholder("https://littleskin.cn/api/yggdrasil").Grow(1).Basis(0).MinWidth(0)
@@ -123,7 +124,9 @@ func (a *App) authServerEditorView(c *ui.Context) {
 		}
 		ui.Row(c).FillWidth().Gap(8 * s).Justify(ui.End).Children(func() {
 			if button(c, "auth-server-cancel", t.AccServerCancelBtn, "", false, false) {
-				a.serverEdit = nil
+				if !a.guardDiscard(a.serverEditorDirty(), func() { a.serverEdit = nil }) {
+					a.serverEdit = nil
+				}
 			}
 			if button(c, "auth-server-save", t.AccServerSaveBtn, "check", true, a.dialogPending() || strings.TrimSpace(ed.url) == "") {
 				u, e := launcher.NormalizeAuthServerURL(ed.url)

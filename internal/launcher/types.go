@@ -67,12 +67,14 @@ type Account struct {
 	ClientID string `json:"clientId,omitempty"`
 }
 type config struct {
-	Schema        int       `json:"schema"`
-	Settings      Settings  `json:"settings"`
-	Roots         []Root    `json:"roots"`
-	Accounts      []Account `json:"accounts"`
-	ActiveRoot    string    `json:"activeRoot"`
-	ActiveAccount string    `json:"activeAccount"`
+	GamePreferences map[string]string `json:"gamePreferences,omitempty"`
+	KeyBindings     map[string]string `json:"keyBindings,omitempty"`
+	Schema          int               `json:"schema"`
+	Settings        Settings          `json:"settings"`
+	Roots           []Root            `json:"roots"`
+	Accounts        []Account         `json:"accounts"`
+	ActiveRoot      string            `json:"activeRoot"`
+	ActiveAccount   string            `json:"activeAccount"`
 	// AuthServers are user-saved authlib-injector / Yggdrasil servers.
 	AuthServers []AuthServer `json:"authServers,omitempty"`
 }
@@ -184,24 +186,25 @@ type jobState struct {
 	holdDone  int
 }
 type Service struct {
-	modMetadata *modMetadataCache // initialized under mu; owns its own gate
-	mu          sync.Mutex
-	inventoryMu sync.Mutex
-	inventories map[string]*inventoryEntry
-	statusMu    sync.Mutex
-	statuses    map[string]*statusCacheEntry
-	statusUse   uint64
-	worldSizes  map[string]*worldSizeEntry
-	authMu      sync.Mutex
-	cfg         config
-	publisher   publisherconfig.Config
-	dir         string
-	http        *http.Client
-	jobs        map[string]*jobState
-	running     map[string]*runningGame
-	sessions    []*gameSession
-	rootLocks   map[string]bool
-	devices     map[string]*deviceSession
+	keyBindingLabels bindingLabelCache
+	modMetadata      *modMetadataCache // initialized under mu; owns its own gate
+	mu               sync.Mutex
+	inventoryMu      sync.Mutex
+	inventories      map[string]*inventoryEntry
+	statusMu         sync.Mutex
+	statuses         map[string]*statusCacheEntry
+	statusUse        uint64
+	worldSizes       map[string]*worldSizeEntry
+	authMu           sync.Mutex
+	cfg              config
+	publisher        publisherconfig.Config
+	dir              string
+	http             *http.Client
+	jobs             map[string]*jobState
+	running          map[string]*runningGame
+	sessions         []*gameSession
+	rootLocks        map[string]bool
+	devices          map[string]*deviceSession
 }
 type Mod struct {
 	File        string          `json:"file"`

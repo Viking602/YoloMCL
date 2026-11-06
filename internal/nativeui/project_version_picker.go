@@ -21,7 +21,7 @@ type projectVersionListState struct {
 // pickerChip is one filter chip; selected chips are tinted, never toggles.
 func (a *App) pickerChip(c *ui.Context, key, text string, sel bool) bool {
 	s := uiScale(c)
-	b := ui.ButtonBase(c.Key("vchip-" + key)).Label(text).Height(26 * s).PaddingX(10 * s).Radius(999).Gap(5 * s).AlignItems(ui.Center).Shrink(0)
+	b := ui.ButtonBase(c.Key("vchip-" + key)).Label(text).Height(26 * s).PaddingX(12 * s).Radius(radiusPill).Gap(4 * s).AlignItems(ui.Center).Shrink(0)
 	bg, fg, edge := ui.RGBA(255, 255, 255, .7), inkSecondary, line
 	if sel {
 		bg, fg, edge = accentSoft, accent, accent.Alpha(.4)
@@ -43,8 +43,8 @@ func (a *App) installVersions(c *ui.Context) {
 	f := &a.verFilter
 	vis := a.visibleVersions()
 	state := &a.versionList
-	ui.Column(c.Key("ver-picker")).FillWidth().Gap(10 * s).Children(func() {
-		ui.Row(c).FillWidth().Height(30 * s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Column(c.Key("ver-picker")).FillWidth().Gap(12 * s).Children(func() {
+		ui.Row(c).FillWidth().Height(30 * s).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, a.L("javaget_ui.version")).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).Shrink(0)
 			if n := len(a.projectVersions); n > 0 {
 				cnt := fmt.Sprintf(a.L("project_version_picker.versions"), n)
@@ -72,19 +72,19 @@ func (a *App) installVersions(c *ui.Context) {
 		}
 		// fixed-height list so filtering never moves the dialog
 		listH := float32(verRowH*verRows+4*(verRows-1)) * s
-		ui.Box(c.Key("ver-list")).FillWidth().Height(listH).Radius(12*s).Border(1, line).Background(ui.RGBA(255, 255, 255, .55)).Clip().Children(func() {
+		ui.Box(c.Key("ver-list")).FillWidth().Height(listH).Radius(radiusControl*s).Border(1, line).Background(ui.RGBA(255, 255, 255, .55)).Clip().Children(func() {
 			switch {
 			case a.projectFetch.err != "":
 				if a.loadFailed(c, "project-versions-failed", failPanel, false) {
 					a.reloadProjectVersions()
 				}
 			case a.projLoading:
-				ui.Row(c).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Center).Gap(10 * s).Children(func() {
+				ui.Row(c).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Center).Gap(12 * s).Children(func() {
 					statusSpinner(c, 16*s)
 					label(c, a.L("project_version_picker.loading_versions"))
 				})
 			case len(vis) == 0:
-				ui.Column(c).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Center).Gap(10 * s).Children(func() {
+				ui.Column(c).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Center).Gap(12 * s).Children(func() {
 					msg := a.L("project_version_picker.no_version_matches")
 					if len(a.projectVersions) == 0 {
 						msg = a.L("project_version_picker.no_version_fits_this_instance")
@@ -126,7 +126,7 @@ func (a *App) installVersions(c *ui.Context) {
 func (a *App) versionRow(c *ui.Context, v launcher.ProjectVersion, recommended bool) {
 	s := uiScale(c)
 	sel := v.ID == a.form.VersionID
-	b := ui.ButtonBase(c.Key("proj-ver-" + v.ID)).Label(v.Number).FillWidth().Height(verRowH * s).Shrink(0).PaddingX(12 * s).Radius(9 * s).Gap(10 * s).AlignItems(ui.Center)
+	b := ui.ButtonBase(c.Key("proj-ver-" + v.ID)).Label(v.Number).FillWidth().Height(verRowH * s).Shrink(0).PaddingX(12 * s).Radius(radiusControl * s).Gap(12 * s).AlignItems(ui.Center)
 	bg, edge := ui.Transparent, ui.Transparent
 	if sel {
 		bg, edge = accentSoft, accent.Alpha(.5)
@@ -145,7 +145,7 @@ func (a *App) versionRow(c *ui.Context, v launcher.ProjectVersion, recommended b
 		}
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 			tooltip(c, ui.Text(c, num).FontFeatures("tnum").FontSize(typeCallout*s).FontWeight(650).TextColor(fg).SingleLine().FillWidth(), num+"\n"+v.Name)
-			ui.Row(c).FillWidth().MinWidth(0).Gap(6 * s).AlignItems(ui.Center).Clip().Children(func() {
+			ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Clip().Children(func() {
 				a.versionGameBadge(c, v)
 				for _, l := range v.Loaders {
 					if lbl := loaderLabel(l); lbl != "" {
@@ -162,5 +162,6 @@ func (a *App) versionRow(c *ui.Context, v launcher.ProjectVersion, recommended b
 		a.versionMetrics(c, v, sel)
 	}).Clicked() {
 		a.form.VersionID = v.ID
+		a.projectEdited = true
 	}
 }

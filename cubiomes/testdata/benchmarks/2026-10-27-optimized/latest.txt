@@ -1,0 +1,26 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/cubiomes
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkLatest/Overworld-16         	      26	  21725600 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Overworld-16         	      26	  21570646 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Overworld-16         	      27	  21246911 ns/op	       1 B/op	       0 allocs/op
+BenchmarkLatest/Overworld-16         	      27	  22079826 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Overworld-16         	      24	  22629188 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Large-16             	      27	  20718030 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Large-16             	      28	  21482768 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Large-16             	      28	  21332314 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Large-16             	      27	  21439189 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Large-16             	      26	  20959638 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Nether-16            	     182	   3274149 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Nether-16            	     174	   3356194 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Nether-16            	     183	   3231069 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Nether-16            	     184	   3221462 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/Nether-16            	     182	   3282974 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/End-16               	    3495	    172330 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/End-16               	    3453	    173910 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/End-16               	    3504	    176708 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/End-16               	    3376	    176249 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLatest/End-16               	    3500	    173293 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/cubiomes	12.347s

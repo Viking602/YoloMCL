@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-27",
+  "os": "Windows amd64",
+  "cpu": "AMD Ryzen 7 9800X3D 8-Core Processor",
+  "go": "go1.27.3",
+  "GOAMD64": "v1",
+  "gcc": "16.2.0 MinGW-W64 x86_64-ucrt-posix-seh, WinLibs",
+  "c_revision": "e61f90580cbdd883214a8054670dacae655e59c0",
+  "flags": [
+    "-std=c11",
+    "-O3",
+    "-fwrapv",
+    "-ffp-contract=off"
+  ],
+  "go_benchtime": "500ms",
+  "repetitions": 5,
+  "seed": 42,
+  "range_blocks": {
+    "x": 8192,
+    "y": 64,
+    "z": -8192,
+    "width": 128,
+    "height": 128,
+    "step": 4
+  },
+  "modern_overworld_mode": "previous-leaf history with coordinate shifts; see benchmark.c",
+  "beta_mode": "NO_BETA_OCEAN",
+  "concurrency": "single worker; Go default GOMAXPROCS=16; C and Go benchmark processes run sequentially"
+}

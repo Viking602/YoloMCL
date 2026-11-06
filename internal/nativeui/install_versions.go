@@ -103,6 +103,7 @@ func (a *App) loadManifest() {
 			}
 			if a.form.Minecraft == "" {
 				a.form.Minecraft = manifest.Latest.Release
+				a.dialogInitial.Minecraft = a.form.Minecraft
 			}
 			a.applyMinecraftFilter()
 		})
@@ -137,6 +138,7 @@ func (a *App) loadLoaderVersions() {
 			a.loaders = items
 			if len(items) > 0 {
 				a.form.LoaderVersion = items[0]
+				a.dialogInitial.LoaderVersion = a.form.LoaderVersion
 			}
 		})
 	}()

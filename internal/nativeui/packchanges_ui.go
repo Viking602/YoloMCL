@@ -50,7 +50,7 @@ func (a *App) packChangeGroups(c *ui.Context, p *launcher.PackUpdatePlan) {
 	if shown == 0 {
 		return
 	}
-	ui.Column(c.Key("pack-changes")).Label("变更列表").FillWidth().Radius(12*s).Background(panel).Border(1, line).Clip().Children(func() {
+	ui.Column(c.Key("pack-changes")).Label("变更列表").FillWidth().Radius(radiusControl*s).Background(panel).Border(1, line).Clip().Children(func() {
 		first := true
 		for _, g := range groups {
 			if len(g.items) == 0 {
@@ -88,7 +88,7 @@ func (a *App) changeGroupView(c *ui.Context, s float32, g changeGroup) {
 	})
 	g.items = items
 	open := a.packExpand[g.key]
-	header := ui.ButtonBase(c.Key("pack-grp-" + g.key)).Label("变更分组 " + g.key).FillWidth().Height(38 * s).PaddingX(14 * s).Gap(10 * s).AlignItems(ui.Center)
+	header := ui.ButtonBase(c.Key("pack-grp-" + g.key)).Label("变更分组 " + g.key).FillWidth().Height(38 * s).PaddingX(16 * s).Gap(12 * s).AlignItems(ui.Center)
 	bg := ui.RGBA(255, 255, 255, 0)
 	if header.Hovered() {
 		bg = fieldColor
@@ -100,9 +100,9 @@ func (a *App) changeGroupView(c *ui.Context, s float32, g changeGroup) {
 	}
 	progress := header.AnimateTo("open", target, anim)
 	if header.Children(func() {
-		ui.Box(c).Size(8*s, 8*s).Radius(999).Background(g.color).Shrink(0)
+		ui.Box(c).Size(8*s, 8*s).Radius(radiusPill).Background(g.color).Shrink(0)
 		ui.Text(c, g.title).FontSize(typeCallout * s).FontWeight(650).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
-		ui.Row(c).Shrink(0).Height(18 * s).PaddingX(7 * s).Radius(999).Background(fieldColor).Center().Children(func() {
+		ui.Row(c).Shrink(0).Height(18 * s).PaddingX(8 * s).Radius(radiusPill).Background(fieldColor).Center().Children(func() {
 			ui.Text(c, fmt.Sprint(len(g.items))).FontSize(typeCaption2 * s).FontWeight(650).TextColor(inkSecondary).NoWrap()
 		})
 		if mods > 0 && mods < len(g.items) {
@@ -138,7 +138,7 @@ func (a *App) changeGroupView(c *ui.Context, s float32, g changeGroup) {
 func (a *App) changeRow(c *ui.Context, s float32, g changeGroup, it launcher.PackChange) {
 	t := a.tr()
 	dir, name := path.Split(strings.ReplaceAll(it.Path, "\\", "/"))
-	tooltip(c, ui.Row(c).Label("变更文件行").FillWidth().Height(changeRowH*s).Padding(0, 14*s, 0, 32*s).Gap(8*s).AlignItems(ui.Center), it.Path).Children(func() {
+	tooltip(c, ui.Row(c).Label("变更文件行").FillWidth().Height(changeRowH*s).Padding(0, 16*s, 0, 32*s).Gap(8*s).AlignItems(ui.Center), it.Path).Children(func() {
 		ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Children(func() {
 			if dir != "" {
 				ui.Text(c, dir).FontSize(typeCaption * s).TextColor(muted).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
@@ -164,7 +164,7 @@ func (a *App) changeRow(c *ui.Context, s float32, g changeGroup, it launcher.Pac
 }
 
 func reasonTag(c *ui.Context, s float32, text string, fg, bg, border ui.Color) {
-	ui.Row(c).Shrink(0).Height(20*s).PaddingX(8*s).Radius(999).Background(bg).Border(1, border).Center().Children(func() {
+	ui.Row(c).Shrink(0).Height(20*s).PaddingX(8*s).Radius(radiusPill).Background(bg).Border(1, border).Center().Children(func() {
 		ui.Text(c, text).FontSize(typeCaption2 * s).FontWeight(600).TextColor(fg).NoWrap()
 	})
 }

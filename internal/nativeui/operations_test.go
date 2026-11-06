@@ -6,6 +6,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,14 @@ import (
 )
 
 func worldsTester(t *testing.T) (*App, *ui.Tester, string) {
+	return worldsTesterVersion(t, "1.21.1")
+}
+
+func worldsTesterVersion(t *testing.T, version string) (*App, *ui.Tester, string) {
+	return worldsTesterProfile(t, version, "net.minecraft.client.main.Main")
+}
+
+func worldsTesterProfile(t *testing.T, version, mainClass string) (*App, *ui.Tester, string) {
 	t.Helper()
 	t.Setenv("MCL_DEVELOPMENT", "")
 	s, err := launcher.New(t.TempDir())
@@ -22,21 +31,21 @@ func worldsTester(t *testing.T) (*App, *ui.Tester, string) {
 		t.Fatal(err)
 	}
 	mc := t.TempDir()
-	verDir := filepath.Join(mc, "versions", "1.21.1")
+	verDir := filepath.Join(mc, "versions", version)
 	if err = os.MkdirAll(verDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err = os.WriteFile(filepath.Join(verDir, "1.21.1.json"), []byte(`{"id":"1.21.1","mainClass":"net.minecraft.client.main.Main","type":"release"}`), 0644); err != nil {
+	if err = os.WriteFile(filepath.Join(verDir, version+".json"), []byte(`{"id":"`+version+`","mainClass":"`+mainClass+`","type":"release"}`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	r, err := s.AddRoot(mc, "UI regression fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.Select(r.ID, "", "1.21.1"); err != nil {
+	if err = s.Select(r.ID, "", version); err != nil {
 		t.Fatal(err)
 	}
-	saves, err := s.InstanceFolder(r.ID, "1.21.1", "saves")
+	saves, err := s.InstanceFolder(r.ID, version, "saves")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +168,6 @@ func TestNativeWorldBackupRestoreDeleteFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	clickUI(t, tt, "按钮文字 wb-restore-"+file)
-	clickUI(t, tt, "按钮文字 wb-do-restore-"+file)
 	waitIdle()
 	data, err := os.ReadFile(p)
 	if err != nil || string(data) != "before-backup" || len(a.wv.backups) != 2 {
@@ -167,11 +175,11 @@ func TestNativeWorldBackupRestoreDeleteFlow(t *testing.T) {
 	}
 	snapshotUI(t, tt, "worlds-after-restore")
 	clickUI(t, tt, "删除备份")
-	if a.wv.confirm == "" {
+	if a.popconfirmKey == "" {
 		t.Fatal("delete must still require confirmation")
 	}
-	deleteFile := a.wv.confirm[len("delete:"):]
-	clickUI(t, tt, "按钮文字 wb-do-delete-"+deleteFile)
+	deleteFile := strings.TrimPrefix(a.popconfirmKey, "wb-delete-")
+	clickUI(t, tt, "按钮文字 popconfirm-accept-wb-delete-"+deleteFile)
 	waitIdle()
 	if len(a.wv.backups) != 1 {
 		t.Fatal("backup deletion did not refresh the local list")

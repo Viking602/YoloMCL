@@ -17,9 +17,11 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
+var nativeUITestWait = 5 * time.Second
+
 func waitUI(t *testing.T, tt *ui.Tester, predicate func() bool) {
 	t.Helper()
-	until := time.Now().Add(5 * time.Second)
+	until := time.Now().Add(nativeUITestWait)
 	for time.Now().Before(until) {
 		tt.Frame()
 		if predicate() {
@@ -179,45 +181,15 @@ func TestNativeOfflineDirectoryAndModFlow(t *testing.T) {
 	for _, mode := range []string{"grid", "list"} {
 		a.addonListMode = mode == "list"
 		tt.Frame()
-		for _, dismiss := range []string{"cancel", "escape", "backdrop", "close"} {
-			clickUI(t, tt, "切换启用 测试模组")
-			tt.Advance(250 * time.Millisecond)
-			if !a.dialogOpen || a.dialog != "disableMod" || !tt.HasText("native-test.jar") || !tt.HasText("确认禁用") {
-				t.Fatal("disable confirmation did not identify the target mod")
-			}
-			waitUI(t, tt, func() bool { _, ok := tt.Find("禁用模组图标"); return ok })
-			assertDisableModIcon(t, tt)
-			assertEnabled()
-			snapshotUI(t, tt, "disable-mod-confirm-"+mode)
-			switch dismiss {
-			case "cancel":
-				clickUI(t, tt, "取消")
-			case "escape":
-				tt.Key(0, ui.KeyEscape)
-			case "backdrop":
-				tt.ClickAt(24, 24)
-			case "close":
-				clickUI(t, tt, a.tr().DialogCloseBtn)
-			}
-			tt.Advance(250 * time.Millisecond)
-			if a.dialogOpen {
-				t.Fatalf("%s did not dismiss the confirmation", dismiss)
-			}
-			assertEnabled()
-		}
-		clickUI(t, tt, "切换启用 测试模组")
-		tt.Advance(250 * time.Millisecond)
-		clickUI(t, tt, "确认禁用")
-		clickUI(t, tt, "确认禁用") // a second click during exit must not toggle again
-		waitUI(t, tt, func() bool {
-			_, err := os.Stat(modFile + ".disabled")
-			return !a.dialogOpen && !a.modsLoading && !a.mods[0].Enabled && err == nil
-		})
-		tt.Advance(250 * time.Millisecond)
 		clickUI(t, tt, "切换启用 测试模组")
 		if a.dialogOpen {
-			t.Fatal("re-enabling unexpectedly requires confirmation")
+			t.Fatal("a reversible toggle opened a confirmation")
 		}
+		waitUI(t, tt, func() bool {
+			_, err := os.Stat(modFile + ".disabled")
+			return !a.modsLoading && !a.mods[0].Enabled && err == nil
+		})
+		clickUI(t, tt, "切换启用 测试模组")
 		waitUI(t, tt, func() bool {
 			_, err := os.Stat(modFile)
 			return a.mods[0].Enabled && err == nil

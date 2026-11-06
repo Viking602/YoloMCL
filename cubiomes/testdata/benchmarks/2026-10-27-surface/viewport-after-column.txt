@@ -1,0 +1,12 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/internal/launcher
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkSeedMapViewportFirstPaint/surface-overview-16         	       3	 489135067 ns/op	 488994900 complete-ns/op	  19945067 first-paint-ns/op	12346749 B/op	     338 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-overview-16         	       2	 508977000 ns/op	 508812050 complete-ns/op	  20848650 first-paint-ns/op	13083788 B/op	     343 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-overview-16         	       2	 554935200 ns/op	 555046250 complete-ns/op	  26334800 first-paint-ns/op	12837332 B/op	     339 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-detail-16           	       6	 193634283 ns/op	 193477783 complete-ns/op	   9803583 first-paint-ns/op	12243128 B/op	     279 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-detail-16           	       6	 195262400 ns/op	 195265467 complete-ns/op	   9407400 first-paint-ns/op	12571465 B/op	     281 allocs/op
+BenchmarkSeedMapViewportFirstPaint/surface-detail-16           	       6	 191181800 ns/op	 191022333 complete-ns/op	   9442383 first-paint-ns/op	12489460 B/op	     280 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/internal/launcher	8.091s

@@ -22,12 +22,12 @@ var dirParts = []struct {
 
 func storageBytes(st launcher.InstanceStatus, sub string) int64 {
 	if sub != "other" {
-		return st.Sizes[sub]
+		return max(0, st.Sizes[sub])
 	}
-	other := st.Total
+	other := max(0, st.Total)
 	for _, part := range dirParts {
 		if part.sub != "other" {
-			other -= st.Sizes[part.sub]
+			other = max(0, other-max(0, st.Sizes[part.sub]))
 		}
 	}
 	return max(0, other)
@@ -40,19 +40,8 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 		return
 	}
 	dir := st.Dir
-	if dir == "" {
-		dir = r.Path
-	}
-	ui.Row(c.Key("storage-bar")).Label("容量占比").FillWidth().Height(8*s).Shrink(0).Radius(4*s).Clip().Background(fieldColor).Margin(4*s, 0, 8*s, 0).Children(func() {
-		for _, p := range dirParts {
-			n, share := storageBytes(st, p.sub), float32(0)
-			if st.Total > 0 {
-				share = float32(float64(n) / float64(st.Total))
-			}
-			segment := tooltip(c, ui.Box(c.Key("storage-segment-"+p.sub)).Label("存储占比 "+p.sub).FillHeight().Basis(0).MinWidth(0).Background(p.tone), a.L("storage.label."+p.sub)+"  "+fmtSize(n))
-			segment.Grow(segment.AnimateTo("share", share, motionPack))
-		}
-	})
+	highlighted := ""
+	a.storageBar(c, st, &highlighted)
 	updates := 0
 	for _, m := range a.addonCache[r.ID+"|"+r.SelectedVersion+"|mods"].mods {
 		if m.Latest != nil {
@@ -67,17 +56,20 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 		if p.sub != "mods" && size == 0 && n == 0 {
 			continue // empty: nothing to show
 		}
-		b := ui.ButtonBase(c.Key("ov-dir-"+p.sub)).Label(a.L("storage.label."+p.sub)).FillWidth().Height(30*s).Shrink(0).PaddingX(8*s).Margin(0, -8*s, 0, -8*s).Radius(7 * s).Gap(10 * s).AlignItems(ui.Center)
+		b := ui.ButtonBase(c.Key("ov-dir-"+p.sub)).Label(a.L("storage.label."+p.sub)).FillWidth().Height(30*s).Shrink(0).PaddingX(8*s).Margin(0, -8*s, 0, -8*s).Radius(radiusChip * s).Gap(12 * s).AlignItems(ui.Center)
 		if !c.Preferences().ReduceMotion {
-			b.Transition(ui.ElementTransition{Animation: &motionPack, Position: true, Enter: &ui.Motion{Opacity: 0, Y: 6 * s}})
+			b.Transition(ui.ElementTransition{Animation: &motionFast, Enter: &ui.Motion{Opacity: 0}})
 		}
 		bg := ui.Transparent
-		if b.Hovered() {
+		if b.Hovered() || b.FocusVisible() {
+			highlighted = p.sub
+		}
+		if highlighted == p.sub {
 			bg = accentSoft
 		}
 		b.Background(b.AnimateColor("bg", bg, fastAnim))
 		if b.Children(func() {
-			ui.Box(c).Size(8*s, 8*s).Radius(2 * s).Background(p.tone).Shrink(0)
+			ui.Box(c).Size(8*s, 8*s).Radius(radiusMin * s).Background(p.tone).Shrink(0)
 			ui.Box(c).Width(116 * s).Shrink(0).Clip().Children(func() { label(c, a.L("storage.label."+p.sub)).FontSize(typeCallout * s).NoWrap() })
 			ui.Row(c).Grow(1).Basis(0).MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Clip().Children(func() {
 				if p.sub == "other" {
@@ -88,35 +80,22 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 				} else if _, ok := counts[p.sub]; ok {
 					key := "storage-count-" + p.sub
 					text := fmt.Sprintf(a.L("storage.count."+p.sub), n)
-					a.rollNumber(c, key, text, typeCallout*s, 600, ink).FillWidth()
+					a.fadeNumber(c, key, text, typeCallout*s, 600, ink).FillWidth()
 				}
 			})
 			ui.Box(c).Width(80 * s).Shrink(0).Children(func() {
 				key := "storage-size-" + p.sub
 				text := sizeOrDash(size)
-				a.rollNumber(c, key, text, typeFootnote*s, 400, inkSecondary, true).FillWidth()
+				a.fadeNumber(c, key, text, typeFootnote*s, 400, inkSecondary, true).FillWidth()
 			})
 			ui.Box(c).Width(44 * s).Shrink(0).AlignItems(ui.End).Children(func() {
-				text := ""
-				if st.Total > 0 && size > 0 {
-					pct := float64(size) * 100 / float64(st.Total)
-					text = fmt.Sprintf("%.0f%%", pct)
-					if pct < 1 {
-						text = "<1%"
-					}
-				}
+				text := storagePercent(size, st.Total)
 				key := "storage-percent-" + p.sub
-				a.rollNumber(c, key, text, typeFootnote*s, 400, muted, true).FillWidth()
+				a.fadeNumber(c, key, text, typeFootnote*s, 400, muted, true).FillWidth()
 			})
 			ui.Icon(c, icons["chevron"]).Size(10*s, 10*s).TextColor(muted).Shrink(0)
-		}).Clicked() && a.overviewActionReady("ov-dir") {
-			if p.sub == "other" {
-				a.openSub("")
-			} else if p.tab != "" {
-				a.setInstTab(p.tab)
-			} else {
-				a.openSub(p.sub)
-			}
+		}).Clicked() {
+			a.openStoragePart(p.sub)
 		}
 	}
 	ui.Spacer(c).Grow(1)
@@ -139,6 +118,37 @@ func (a *App) ovDir(c *ui.Context, st launcher.InstanceStatus, r launcher.Instan
 			a.openSub("")
 		}
 	})
+}
+
+func (a *App) openStoragePart(sub string) {
+	if !a.overviewActionReady("ov-dir") {
+		return
+	}
+	for _, part := range dirParts {
+		if part.sub != sub {
+			continue
+		}
+		switch {
+		case sub == "other":
+			a.openSub("")
+		case part.tab != "":
+			a.setInstTab(part.tab)
+		default:
+			a.openSub(sub)
+		}
+		return
+	}
+}
+
+func storagePercent(size, total int64) string {
+	if total <= 0 || size <= 0 {
+		return ""
+	}
+	pct := min(100, float64(size)*100/float64(total))
+	if pct < 1 {
+		return "<1%"
+	}
+	return fmt.Sprintf("%.0f%%", pct)
 }
 
 func sizeOrDash(n int64) string {

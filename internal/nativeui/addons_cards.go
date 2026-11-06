@@ -101,7 +101,7 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 	s := uiScale(c)
 	primary, secondary := a.itemNames(it)
 	ui.Box(c.Key("addon-card-" + it.key)).Label("资源卡片 " + primary).Grow(1).Basis(0).MinWidth(0).FillHeight().Children(func() {
-		b := ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name).Description(it.file).Absolute().Left(0).Top(0).Right(0).Bottom(0).Radius(radiusCard*s).Clip().Padding(14*s, 14*s, 12*s).Gap(10 * s).Column()
+		b := ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name).Description(it.file).Absolute().Left(0).Top(0).Right(0).Bottom(0).Radius(radiusCard*s).Clip().Padding(16*s, 16*s, 12*s).Gap(12 * s).Column()
 		bg, edge := panel, ui.RGBA(60, 70, 110, .08)
 		if b.Hovered() {
 			bg, edge = ui.Hex("#f2f5fb"), ui.RGBA(60, 70, 110, .16)
@@ -110,10 +110,11 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 			bg = mixColor(bg, ui.Hex("#eef0f4"), .7)
 		}
 		b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(1, b.AnimateColor("edge", edge, fastAnim))
-		if b.Hovered() {
+		{
+			b.Description(strings.TrimSpace(it.summary + "\n" + it.file))
 			// The file name shows under the card, kept inside the window.
 			ui.TooltipBase(c, b, func(tip ui.Element) {
-				tip.MaxWidth(460*s).Padding(5*s, 9*s).Radius(6*s).Background(ui.RGBA(28, 30, 38, .92)).Shadow(0, 2*s, 8*s, 0, ui.RGBA(0, 0, 0, .2))
+				tip.MaxWidth(460*s).Padding(4*s, 8*s).Radius(radiusChip*s).Background(ui.RGBA(28, 30, 38, .92)).Shadow(0, 2*s, 8*s, 0, ui.RGBA(0, 0, 0, .2))
 				tip.Column().Gap(4 * s).Children(func() {
 					if it.summary != "" {
 						ui.Text(c, it.summary).FontSize(typeCaption * s).TextColor(ui.Hex("#ffffff")).FillWidth()
@@ -137,14 +138,14 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 				}
 				ui.Box(c).Size(size, size).Shrink(0).Children(func() {
 					if icon != nil {
-						ui.Box(c).Size(size, size).Radius(size * .22).Clip().Background(panel).Center().Children(func() {
+						ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Clip().Background(panel).Center().Children(func() {
 							ui.Image(c, icon).Size(size, size).Fit(ui.Contain)
 						})
 					} else {
 						letterTile(c, primary+secondary, size, !it.enabled)
 					}
 				})
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 					ui.Text(c, primary).FillWidth().MinWidth(0).FontSize(typeBody * s).FontWeight(600).TextColor(ink).SingleLine()
 					if sub := secondary; sub != "" {
 						ui.Text(c, sub).FillWidth().MinWidth(0).FontSize(typeFootnote * s).TextColor(muted).SingleLine()
@@ -158,7 +159,7 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 				}
 			})
 			// Category chips, then the facts.
-			ui.Row(c).FillWidth().Height(18 * s).Shrink(0).Clip().Gap(6 * s).AlignItems(ui.Center).Opacity(op).Children(func() {
+			ui.Row(c).FillWidth().Height(18 * s).Shrink(0).Clip().Gap(8 * s).AlignItems(ui.Center).Opacity(op).Children(func() {
 				shown := 0
 				for _, cat := range it.cats {
 					if shown >= 3 || isLoaderCategory(cat) {
@@ -179,12 +180,12 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 			})
 			ui.Spacer(c).Grow(1)
 			// Facts as chips; room is left on the right for the actions.
-			ui.Row(c).FillWidth().Padding(0, 64*s, 0, 0).Clip().Gap(6 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().Padding(0, 64*s, 0, 0).Clip().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 				if !it.enabled {
 					quietTag(c, a.L("addon_filter.disabled"), muted)
 				}
 				if logo := sourceLogo(it.source); logo != nil {
-					ui.Row(c).Shrink(0).Height(18 * s).PaddingX(5 * s).Radius(5 * s).Background(ui.RGBA(120, 130, 160, .10)).Center().Children(func() {
+					ui.Row(c).Shrink(0).Height(18 * s).PaddingX(4 * s).Radius(radiusChip * s).Background(ui.RGBA(120, 130, 160, .10)).Center().Children(func() {
 						ui.Icon(c, logo).Size(11*s, 11*s).Label(sourceName(it.source))
 					})
 				}
@@ -209,13 +210,13 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 			})
 			if it.latest != "" {
 				update := a.L("addons_cards.update") + it.latest
-				tooltip(c, ui.Box(c.Key("addon-update-dot")).Absolute().Right(14*s).Top(14*s).Size(8*s, 8*s).Radius(999).Background(accent).Label(update), update)
+				tooltip(c, ui.Box(c.Key("addon-update-dot")).Absolute().Right(14*s).Top(14*s).Size(8*s, 8*s).Radius(radiusPill).Background(accent).Label(update), update)
 			}
 		}).Clicked() {
 			onToggle()
 		}
 		if actions != nil {
-			ui.Row(c).Absolute().Right(10 * s).Bottom(9 * s).Gap(2 * s).AlignItems(ui.Center).Children(actions)
+			ui.Row(c).Absolute().Right(10 * s).Bottom(9 * s).Gap(4 * s).AlignItems(ui.Center).Children(actions)
 		}
 	})
 }

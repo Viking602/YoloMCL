@@ -15,18 +15,18 @@ import (
 // setCard is one titled card of the instance 设置 tab.
 func setCard(c *ui.Context, key, icon, title, sub string, basis float32, fn func()) {
 	s := uiScale(c)
-	e := ui.Column(c.Key(key)).Label(title).Gap(14*s).Padding(18*s, 20*s).MinWidth(0)
+	e := ui.Column(c.Key(key)).Label(title).Gap(16*s).Padding(20*s, 20*s).MinWidth(0)
 	if basis > 0 {
 		e = e.Grow(1).Basis(basis * s)
 	} else {
 		e = e.FillWidth()
 	}
 	glass(e, radiusCard*s, s).Children(func() {
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(28*s, 28*s).Radius(8 * s).Background(accentSoft).Center().Shrink(0).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(28*s, 28*s).Radius(radiusChip * s).Background(accentSoft).Center().Shrink(0).Children(func() {
 				ui.Icon(c, icons[icon]).Size(14*s, 14*s).TextColor(accent)
 			})
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				ui.Text(c, title).FontSize(typeBody * s).FontWeight(650).TextColor(ink).SingleLine()
 				if sub != "" {
 					label(c, sub).FontSize(typeCaption * s).FillWidth().MinWidth(0)
@@ -68,14 +68,14 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 		v := *vv
 		ui.Row(c).FillWidth().Wrap().Gap(16 * s).AlignItems(ui.Stretch).Children(func() {
 			setCard(c, "set-basic", "gamepad", a.L("instance_settings.name_and_java"), "", 380, func() {
-				ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+				ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 					label(c, t.VersionNameLabel).FontSize(typeFootnote * s).FontWeight(600)
 					def := v
 					def.DisplayName = ""
 					textField(c.Key("ver-display-name"), &a.form.VerName).Label(t.VersionNameLabel).Placeholder(a.nameOf(r, def).Title).FillWidth()
 					label(c, t.VersionNameHint).FontSize(typeCaption * s).FillWidth().MinWidth(0)
 				})
-				ui.Column(c).FillWidth().Gap(6 * s).Children(func() {
+				ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 					ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 						label(c, "Java").FontSize(typeFootnote * s).FontWeight(600)
 						javaTag(c, javaFor(r, v))
@@ -129,11 +129,12 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 			renderJVMPresetBar(c, "ver-jvm-preset", &a.form.VerJVM, t, nil)
 		})
 		a.packSection(c, r)
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			if button(c, "save-version-settings", t.RootCfgSaveBtn, "check", true, a.instancePending("updateVersion", "setVersionName")) {
 				a.saveVersionConfig(r.ID)
 			}
 		})
+		a.packKeyBindingsSection(c, r)
 	})
 }
 
@@ -150,7 +151,7 @@ func (a *App) memoryCard(c *ui.Context, v launcher.VersionSummary) {
 		if a.form.VerMemAuto {
 			cur = t.MemModeAuto
 		}
-		ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			val := ""
 			if a.form.VerMemAuto {
 				if mb := a.autoMemoryFor(a.form.ConfigVersion); mb > 0 {
@@ -193,14 +194,14 @@ func (a *App) memoryCard(c *ui.Context, v launcher.VersionSummary) {
 		if ui.Slider(c, &a.verMemSlider, 1024, hi).Label(a.L("instance_settings.memory_size")).FillWidth().Changed() {
 			a.form.VerMemory = fmt.Sprint(int(math.Round(a.verMemSlider/256)) * 256)
 		}
-		ui.Row(c).FillWidth().Wrap().Gap(6 * s).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Wrap().Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			for _, mb := range []int{2048, 4096, 6144, 8192, 12288, 16384} {
 				if float64(mb) > hi {
 					continue
 				}
 				m := mb
 				active := strings.TrimSpace(a.form.VerMemory) == fmt.Sprint(m)
-				chip := ui.ButtonBase(c.Key(fmt.Sprint("mem-preset-", m))).Label(gbText(m)).Height(26 * s).PaddingX(10 * s).Radius(999).AlignItems(ui.Center)
+				chip := ui.ButtonBase(c.Key(fmt.Sprint("mem-preset-", m))).Label(gbText(m)).Height(26 * s).PaddingX(12 * s).Radius(radiusPill).AlignItems(ui.Center)
 				bg, fg := ui.RGBA(120, 130, 160, .08), inkSecondary
 				if active {
 					bg, fg = accentSoft, accent

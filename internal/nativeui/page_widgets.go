@@ -20,9 +20,10 @@ func pageHeader(c *ui.Context, crumb func(), text, description string, actions f
 			if crumb != nil {
 				crumb()
 			}
-			ui.Text(c, text).Label("页面标题 " + text).FontSize(typeDisplay * s).FontWeight(750).TextColor(ink).SingleLine()
+			titleLabel := ui.Text(c, text).Label("页面标题 " + text).FontSize(typeDisplay * s).FontWeight(750).TextColor(ink).MinWidth(0).SingleLine()
+			textTooltip(c, titleLabel, text, "", ui.Font{Family: c.Theme().Font, Size: typeDisplay * s, Weight: 750}, 1)
 			if description != "" {
-				ui.Text(c, description).FontSize(typeCallout * s).TextColor(muted).MinWidth(0) // wraps: descriptive text never ellipsizes
+				bodyText(c, description).FontSize(typeCallout * s).TextColor(muted) // wraps: descriptive text never ellipsizes
 			}
 		})
 		if actions != nil {
@@ -32,7 +33,7 @@ func pageHeader(c *ui.Context, crumb func(), text, description string, actions f
 }
 
 func appleSoftIconBox(c *ui.Context, size float32, iconName string, from, to, fg ui.Color) {
-	ui.Box(c).Size(size, size).Radius(size*.3).Shrink(0).LinearGradient(tintGradient(from, to)).InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, .35)).Shadow(0, size*.08, size*.25, -size*.06, from.Alpha(.35)).Center().Children(func() {
+	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Shrink(0).LinearGradient(tintGradient(from, to)).InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, .35)).Shadow(0, size*.08, size*.25, -size*.06, from.Alpha(.35)).Center().Children(func() {
 		if icons[iconName] != nil {
 			ui.Icon(c, icons[iconName]).Size(size*.52, size*.52).TextColor(fg)
 		}
@@ -42,11 +43,11 @@ func appleSoftIconBox(c *ui.Context, size float32, iconName string, from, to, fg
 // Apple Pill Badge with soft gradient fill
 func badge(c *ui.Context, s string, color ui.Color) {
 	scale := uiScale(c)
-	from, to := ui.Hex("#f1f5f9"), ui.Hex("#e8eef6")
+	from, to := ui.Hex("#f3f4f6"), ui.Hex("#e7e9ec")
 	fg := color
 	switch color {
 	case accent, blue:
-		from, to = ui.Hex("#eaf3ff"), ui.Hex("#dcebff")
+		from, to = ui.Hex("#f1f2f4"), ui.Hex("#e4e7eb")
 		fg = accent
 	case success, successInk:
 		from, to = ui.Hex("#e8faed"), ui.Hex("#d3f5dd")
@@ -58,21 +59,21 @@ func badge(c *ui.Context, s string, color ui.Color) {
 		from, to = ui.Hex("#fff6e5"), ui.Hex("#ffebcc")
 		fg = warningInk
 	}
-	ui.Row(c).Shrink(0).Padding(3*scale, 9*scale).Radius(999).LinearGradient(tintGradient(from, to)).Border(1, ui.RGBA(255, 255, 255, .7)).Children(func() {
+	ui.Row(c).Shrink(0).Padding(space1*scale, space2*scale).Radius(radiusPill).LinearGradient(tintGradient(from, to)).Border(1, ui.RGBA(255, 255, 255, .7)).Children(func() {
 		ui.Text(c, s).FontSize(typeCaption * scale).FontWeight(600).TextColor(fg).NoWrap().Shrink(0)
 	})
 }
 
 func tagChip(c *ui.Context, s string) {
 	scale := uiScale(c)
-	ui.Row(c).Shrink(0).Padding(3*scale, 9*scale).Radius(999).Background(fieldColor).Children(func() {
+	ui.Row(c).Shrink(0).Padding(space1*scale, space2*scale).Radius(radiusPill).Background(fieldColor).Children(func() {
 		ui.Text(c, s).FontSize(typeCaption2 * scale).FontWeight(500).TextColor(inkSecondary).NoWrap().Shrink(0)
 	})
 }
 
 func card(c *ui.Context, key string, fn func()) {
 	s := uiScale(c)
-	glass(ui.Column(c.Key(key)).FillWidth().Clip().Gap(14*s).Padding(18*s, 22*s), radiusCard*s, s).Children(fn)
+	glass(ui.Column(c.Key(key)).FillWidth().Clip().Gap(16*s).Padding(20*s, 24*s), radiusCard*s, s).Children(fn)
 }
 
 // textField is the one single-line input: a fixed control height with no
@@ -80,7 +81,11 @@ func card(c *ui.Context, key string, fn func()) {
 // sit on the same middle line in every field; 13-DIP side insets.
 func textField(c *ui.Context, value *string) ui.Element {
 	s := uiScale(c)
-	return ui.TextInput(c, value).Height(btnMd*s).Padding(0, 13*s).FontSize(typeCallout * s)
+	e := ui.TextInput(c, value).Height(btnMd*s).Padding(0, 12*s).FontSize(typeCallout*s).Radius(radiusControl*s).Background(panel).InsetShadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
+	if inDialog && e.Shortcut(0, ui.KeyEnter) && lastDialogPrimary != "" {
+		enterFired = lastDialogPrimary
+	}
+	return e
 }
 
 func empty(c *ui.Context, titleText, description string) {

@@ -1,0 +1,38 @@
+{
+  "minecraft": "26.3",
+  "terrablender": "26.3.0.0.9",
+  "biomesoplenty": "26.3.0.0.15",
+  "java": "Zulu OpenJDK26.0.2",
+  "source_sha256": "89e3495ddf30f8f0e26294088a6ac9ce1e2f6038de6754deda7afd3f851c2cbc",
+  "benchmark": {
+    "warmups": 5,
+    "scope": "BridgeSampler CPU only; excludes HTTP and server thread queue",
+    "minMs": 32.1302,
+    "roundsMs": [
+      32.4303,
+      32.2427,
+      32.1302,
+      32.3778,
+      32.6298,
+      32.4115,
+      32.3287,
+      32.2853,
+      32.8334
+    ],
+    "range": {
+      "SizeX": 128,
+      "X": 8192,
+      "Y": 64,
+      "Z": -8192,
+      "SizeY": 1,
+      "SizeZ": 128,
+      "StepY": 1,
+      "StepXZ": 4,
+      "Voronoi": false
+    },
+    "medianMs": 32.3778,
+    "seed": "42",
+    "sha256NumericIds": "6ecaffeab619de0c3add79a34e0e2f25392802f2b407ba949abf08f18b33f79b"
+  },
+  "note": "Historical isolated Java CPU reference, retained as numerical evidence only. No Java tool or HTTP bridge is part of the product."
+}

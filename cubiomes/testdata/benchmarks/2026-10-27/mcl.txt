@@ -1,0 +1,26 @@
+goos: windows
+goarch: amd64
+pkg: github.com/Viking602/YoloMCL/internal/launcher
+cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+BenchmarkMultiNoiseTile-16    	      34	  16108315 ns/op	   67080 B/op	      11 allocs/op
+BenchmarkMultiNoiseTile-16    	      38	  16011597 ns/op	   67077 B/op	      11 allocs/op
+BenchmarkMultiNoiseTile-16    	      37	  15808322 ns/op	   67067 B/op	      11 allocs/op
+BenchmarkMultiNoiseTile-16    	      38	  15721432 ns/op	   67066 B/op	      11 allocs/op
+BenchmarkMultiNoiseTile-16    	      38	  15507484 ns/op	   67063 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.7.10-16 	    1216	    494777 ns/op	   68047 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.7.10-16 	    1222	    492428 ns/op	   70148 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.7.10-16 	    1234	    488112 ns/op	   70117 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.7.10-16 	    1256	    484210 ns/op	   71091 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.7.10-16 	    1188	    485591 ns/op	   68069 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.12.2-16 	    1212	    494919 ns/op	   70174 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.12.2-16 	    1219	    498136 ns/op	   71211 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.12.2-16 	    1101	    497331 ns/op	   69325 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.12.2-16 	    1228	    514898 ns/op	   69083 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.12.2-16 	    1158	    528666 ns/op	   70324 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.17.1-16 	    1030	    579547 ns/op	   68800 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.17.1-16 	    1041	    567937 ns/op	   74170 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.17.1-16 	    1048	    571046 ns/op	   68768 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.17.1-16 	    1060	    573013 ns/op	   68749 B/op	      11 allocs/op
+BenchmarkLegacyTile/1.17.1-16 	    1056	    578826 ns/op	   68756 B/op	      11 allocs/op
+PASS
+ok  	github.com/Viking602/YoloMCL/internal/launcher	12.824s

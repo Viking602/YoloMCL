@@ -14,21 +14,7 @@ type modDisableState struct {
 func (a *App) toggleModFn(m launcher.Mod) func() {
 	return func() {
 		r := a.root()
-		if r == nil {
-			return
-		}
-		if m.Enabled {
-			name, _ := a.itemNames(a.modItem(m))
-			iconURL := a.modIconURLs[m.SHA1]
-			for _, entry := range a.addonEntries() {
-				if entry.mod != nil && entry.it.file == m.File {
-					name, _ = a.itemNames(entry.it)
-					iconURL = entry.it.iconURL
-					break
-				}
-			}
-			a.openDialog("disableMod")
-			a.modDisable = modDisableState{rootID: r.ID, version: r.SelectedVersion, file: m.File, name: name, sha1: m.SHA1, iconURL: iconURL}
+		if r == nil || a.service == nil {
 			return
 		}
 		id, file := r.ID, m.File
@@ -56,16 +42,16 @@ func (a *App) disableModDialog(c *ui.Context) {
 		iconURL = a.modIconURLs[target.sha1] // metadata can arrive while the dialog is open
 	}
 	icon := a.addonIcon(target.rootID, target.version, "mod", target.file, iconURL, target.sha1)
-	ui.Column(c).Font(uiSansFamily()).FillWidth().Gap(18 * s).Children(func() {
-		ui.Row(c).FillWidth().Padding(14*s, 16*s).Gap(12 * s).Radius(12 * s).Background(raised).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(40*s, 40*s).Radius(10 * s).Clip().Background(panel).Shrink(0).Center().Children(func() {
+	ui.Column(c).Font(uiSansFamily()).FillWidth().Gap(20 * s).Children(func() {
+		ui.Row(c).FillWidth().Padding(16*s, 16*s).Gap(12 * s).Radius(radiusControl * s).Background(raised).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(40*s, 40*s).Radius(radiusControl * s).Clip().Background(panel).Shrink(0).Center().Children(func() {
 				if icon != nil {
 					ui.Image(c, icon).Label("禁用模组图标").Size(40*s, 40*s).Fit(ui.Contain)
 				} else {
 					letterTile(c, target.name, 40*s, false)
 				}
 			})
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(5 * s).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				tooltip(c, ui.Text(c, target.name).FillWidth().FontSize(typeHeadline*s).FontWeight(600).TextColor(ink).MaxLines(2), target.name)
 				tooltip(c, ui.Text(c, target.file).FillWidth().FontSize(typeCaption*s).TextColor(muted).SingleLine(), target.file)
 			})

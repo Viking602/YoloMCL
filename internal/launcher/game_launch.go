@@ -177,6 +177,16 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		// A second process may share options.txt. Apply profiles only while
+		// this root has no live game; the launch job already owns its lock.
+		s.mu.Lock()
+		canApplyKeys := !s.rootRunningLocked(r.ID)
+		s.mu.Unlock()
+		if canApplyKeys {
+			if e = applyRootKeyBindings(ctx, r, s.globalManagedOptions()); e != nil {
+				return e
+			}
+		}
 		cmd := exec.Command(java, args...)
 		cmd.Dir = gameDir
 		hideWindow(cmd)

@@ -97,7 +97,7 @@ func (a *App) releaseDiscover() {
 	a.discoverMotion = discoverMotionState{}
 	*f = discoverFeedState{fetch: f.fetch}
 	a.discoverMCOpen = false
-	delete(a.numberRolls, "discover-total")
+	delete(a.contentSwaps, "discover-total")
 	a.imageMu.Lock()
 	for key, use := range a.imageUses {
 		if use.discover {
@@ -146,6 +146,7 @@ func (a *App) startDiscoverRequest(q launcher.SearchQuery, more bool) {
 			// The sidebar already shows the new scope. Drop the old cards and
 			// count now, so they cannot be mistaken for (or opened as) its results.
 			a.searchResult = launcher.SearchResult{}
+			delete(a.contentSwaps, "discover-total")
 			m.cards, m.cardProjects = nil, nil
 			m.scroll.st.ScrollTo(0, 0, ui.Animation{Duration: time.Nanosecond})
 		}
@@ -216,7 +217,7 @@ func (a *App) appendDiscoverResults(q launcher.SearchQuery, result launcher.Sear
 	a.searchResult.Total = max(result.Total, len(a.searchResult.Projects))
 	f.nextOffset, f.err = q.Offset+n, ""
 	f.done = discoverFeedEnd(q, result, n) || len(a.searchResult.Projects) == before
-	a.discoverMotion.mode = discoverLift
+	a.discoverMotion.mode = discoverFade
 	a.discoverMotion.cardProjects = nil
 }
 
@@ -251,7 +252,7 @@ func uniqueDiscoverProjects(existing, page []launcher.Project) []launcher.Projec
 // scrollbar and scroll anchor while more results are appended below it.
 func (a *App) discoverFeedGrid(c *ui.Context, grid ui.Element, cols int, ps []launcher.Project) {
 	s := uiScale(c)
-	gap, cardH := 14*s, 194*s+2 // the card's fixed slots plus its 1 px border
+	gap, cardH := space4*s, 194*s+2 // the card's fixed slots plus its 1 px border
 	step := cardH + gap
 	rows := (len(ps) + cols - 1) / cols
 	bounds := grid.LayoutBounds()

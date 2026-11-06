@@ -59,6 +59,5 @@ func (a *App) discoverCategoryBody(c *ui.Context) ui.Element {
 	}
 	// Keep the slot's height stable and glyphs at native resolution. Invisible
 	// filters cannot take mouse or keyboard focus while the content is loading.
-	y := (1 - m.progress) * 8 * s
-	return body.Opacity(m.progress).Margin(y, 0, -y, 0).Disabled(m.progress == 0)
+	return body.Opacity(m.progress).Disabled(m.progress == 0)
 }

@@ -152,7 +152,7 @@ func (a *App) worldsView(c *ui.Context, r launcher.Instance) {
 		total += w.Size
 	}
 	// header: count + total size, then 全部备份 / 打开存档文件夹
-	ui.Row(c.Key("worlds-head")).FillWidth().Height(36 * s).Gap(10 * s).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("worlds-head")).FillWidth().Height(36 * s).Gap(12 * s).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, fmt.Sprintf(a.L("storage.count.saves"), len(a.wv.list))).FontSize(typeHeadline * s).FontWeight(700).TextColor(ink).NoWrap()
 		if total > 0 {
 			numText(c, a.L("worlds_ui.text")+fmtSize(total), typeFootnote*s, muted)
@@ -170,7 +170,7 @@ func (a *App) worldsView(c *ui.Context, r launcher.Instance) {
 		}
 	})
 	if running {
-		ui.Row(c.Key("worlds-running")).FillWidth().Height(36 * s).PaddingX(12 * s).Gap(8 * s).Radius(10 * s).Background(warning.Alpha(.10)).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key("worlds-running")).FillWidth().Height(36 * s).PaddingX(12 * s).Gap(8 * s).Radius(radiusControl * s).Background(warning.Alpha(.10)).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(warning).Shrink(0)
 			label(c, a.L("worlds_ui.game_running_backups_may_lag_restore_needs_the")).FontSize(typeFootnote * s).SingleLine().Grow(1).Basis(0).MinWidth(0)
 		})
@@ -183,7 +183,7 @@ func (a *App) worldsView(c *ui.Context, r launcher.Instance) {
 		emptyState(c, "worlds-empty", "world", a.L("overview.no_worlds_yet"), a.L("worlds_ui.worlds_you_create_in_game_show_up_here"), nil)
 		return
 	}
-	ui.Column(c.Key("worlds-list")).FillWidth().Gap(10 * s).Children(func() {
+	ui.Column(c.Key("worlds-list")).FillWidth().Gap(12 * s).Children(func() {
 		for _, w := range a.wv.list {
 			a.worldCard(c, r, w, running)
 		}
@@ -196,8 +196,8 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 	job := a.worldJob(w.Dir)
 	busy := a.worldBusy(w.Dir)
 	ui.Column(c.Key("world-"+w.Dir)).Label("存档 "+w.Name).FillWidth().Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).Children(func() {
-		ui.Row(c).FillWidth().Height(76 * s).PaddingX(16 * s).Gap(14 * s).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(48*s, 48*s).Radius(8 * s).Background(fieldColor).Center().Clip().Shrink(0).Children(func() {
+		ui.Row(c).FillWidth().Height(76 * s).PaddingX(16 * s).Gap(16 * s).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(48*s, 48*s).Radius(radiusChip * s).Background(fieldColor).Center().Clip().Shrink(0).Children(func() {
 				var img ui.ImageSource
 				if w.HasIcon {
 					id, ver, dir := r.ID, r.SelectedVersion, w.Dir
@@ -211,7 +211,7 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 			})
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-					tooltip(c, ui.Text(c, w.Name).FontSize(typeSubhead*s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0), w.Name)
+					tapTooltip(c, ui.Text(c, w.Name).FontSize(typeSubhead*s).Bold().TextColor(ink).SingleLine().Shrink(1).MinWidth(0), w.Name)
 					tone := muted
 					if w.Mode == "hardcore" {
 						tone = danger
@@ -243,6 +243,9 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 			if iconOnlyButton(c, "world-open-"+w.Dir, "folder", a.L("worlds_ui.open_folder"), btnSm*s, false) {
 				a.openWorldDir(w.Dir)
 			}
+			if iconOnlyButton(c, "world-seed-map-"+w.Dir, "cube", fmt.Sprintf(a.L("seedmap.open_world"), w.Name), btnSm*s, false) {
+				a.openSeedMap(w.Dir)
+			}
 			if fixedButton(c, "world-backup-"+w.Dir, a.L("worlds_ui.back_up"), "download", 0, btnSm*s, false, busy) {
 				a.execute("backupWorld", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir}, nil)
 			}
@@ -258,7 +261,7 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 			}
 		})
 		if job != nil && job.BytesTotal > 0 {
-			ui.Box(c).FillWidth().PaddingX(16*s).Padding(0, 16*s, 10*s, 16*s).Children(func() {
+			ui.Box(c).FillWidth().PaddingX(16*s).Padding(0, 16*s, 12*s, 16*s).Children(func() {
 				ui.Progress(c, float64(job.BytesDone)/float64(job.BytesTotal))
 			})
 		}
@@ -285,7 +288,7 @@ func (a *App) openWorldDir(dir string) {
 func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.World, running bool) {
 	s := uiScale(c)
 	busy := a.worldBusy(w.Dir)
-	ui.Column(c.Key("world-backups-"+w.Dir)).FillWidth().Padding(0, 16*s, 14*s, 16*s).Gap(6 * s).Children(func() {
+	ui.Column(c.Key("world-backups-"+w.Dir)).FillWidth().Padding(0, 16*s, 16*s, 16*s).Gap(8 * s).Children(func() {
 		ui.Box(c).FillWidth().Height(1).Background(line).Margin(0, 0, 4*s, 0)
 		if running {
 			label(c, a.L("worlds_ui.close_the_game_to_restore")).FontSize(typeFootnote * s).TextColor(danger)
@@ -302,7 +305,7 @@ func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.Wor
 		}
 		for _, b := range a.wv.backups {
 			b := b
-			ui.Row(c.Key("wb-" + b.File)).FillWidth().Height(40 * s).PaddingX(10 * s).Gap(12 * s).Radius(8 * s).Background(raised).AlignItems(ui.Center).Children(func() {
+			ui.Row(c.Key("wb-" + b.File)).FillWidth().Height(40 * s).PaddingX(12 * s).Gap(12 * s).Radius(radiusChip * s).Background(raised).AlignItems(ui.Center).Children(func() {
 				ui.Icon(c, icons["doc"]).Size(13*s, 13*s).TextColor(muted).Shrink(0)
 				ui.Box(c).Width(150 * s).Shrink(0).Children(func() {
 					numText(c, b.Time.Local().Format("2006-01-02 15:04:05"), typeFootnote*s, ink)
@@ -312,37 +315,18 @@ func (a *App) worldBackupList(c *ui.Context, r launcher.Instance, w launcher.Wor
 					quietTag(c, a.L("worlds_ui.auto_before_restore"), muted)
 				}
 				ui.Spacer(c).Grow(1)
-				switch a.wv.confirm {
-				case "restore:" + b.File:
-					label(c, a.L("worlds_ui.current_world_is_backed_up_first")).FontSize(typeFootnote * s).SingleLine().Shrink(1).MinWidth(0)
-					if fixedButton(c, "wb-cancel-"+b.File, a.L("install_dialog.cancel"), "", 0, btnSm*s, false, false) {
-						a.wv.confirm = ""
-					}
-					if fixedButton(c, "wb-do-restore-"+b.File, a.L("worlds_ui.restore_2"), "refresh", 0, btnSm*s, true, running || busy) {
-						a.wv.confirm = ""
-						a.execute("restoreWorld", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir, "path": b.File}, nil)
-					}
-				case "delete:" + b.File:
-					label(c, a.L("worlds_ui.this_can_t_be_undone")).FontSize(typeFootnote * s).SingleLine().Shrink(1).MinWidth(0)
-					if fixedButton(c, "wb-cancel-"+b.File, a.L("install_dialog.cancel"), "", 0, btnSm*s, false, false) {
-						a.wv.confirm = ""
-					}
-					if fixedButton(c, "wb-do-delete-"+b.File, a.L("worlds_ui.delete"), "trash", 0, btnSm*s, false, busy) {
-						a.wv.confirm = ""
-						world := w.Dir
-						a.execute("deleteWorldBackup", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir, "path": b.File}, func(json.RawMessage) {
-							a.loadWorldBackups(world)
-							a.loadWorlds()
-						})
-					}
-				default:
-					if fixedButton(c, "wb-restore-"+b.File, a.L("worlds_ui.restore_3"), "refresh", 0, btnSm*s, false, running || busy) {
-						a.wv.confirm = "restore:" + b.File
-					}
-					if iconOnlyButton(c, "wb-delete-"+b.File, "trash", a.L("worlds_ui.delete_backup"), btnSm*s, busy) {
-						a.wv.confirm = "delete:" + b.File
-					}
+				if fixedButton(c, "wb-restore-"+b.File, a.L("worlds_ui.restore_3"), "refresh", 0, btnSm*s, false, running || busy) {
+					a.execute("restoreWorld", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir, "path": b.File}, func(json.RawMessage) {
+						a.loadWorldBackups(w.Dir)
+					})
 				}
+				a.confirmIcon(c, "wb-delete-"+b.File, "trash", a.L("worlds_ui.delete_backup"), b.File, a.L("worlds_ui.this_can_t_be_undone"), btnSm*s, busy, func() {
+					world := w.Dir
+					a.execute("deleteWorldBackup", map[string]string{"rootId": r.ID, "version": r.SelectedVersion, "name": w.Dir, "path": b.File}, func(json.RawMessage) {
+						a.loadWorldBackups(world)
+						a.loadWorlds()
+					})
+				})
 			})
 		}
 	})

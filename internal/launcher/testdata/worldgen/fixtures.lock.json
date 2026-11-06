@@ -1,0 +1,77 @@
+{
+  "terralith": {
+    "version": "2.6.5+26.3",
+    "versionId": "fqnsIp6d",
+    "url": "https://cdn.modrinth.com/data/8oi3bsk5/versions/fqnsIp6d/Terralith_v2.6.5%2B26.3.zip",
+    "filename": "Terralith_v2.6.5+26.3.zip",
+    "sha512": "edc75fb0be5d009590d16d0d96ef73fc2e87c3edd3c5b4d80589070a636beeaf4ea202ee3cffaa06ad68a615bbb03e924cd3e173cbd649fb47b5ec6fc74c2482",
+    "dependencies": []
+  },
+  "tectonic": {
+    "version": "3.0.29-datapack",
+    "versionId": "pxgiJaJp",
+    "url": "https://cdn.modrinth.com/data/lWDHr9jE/versions/pxgiJaJp/tectonic-datapack-3.0.29.zip",
+    "filename": "tectonic-datapack-3.0.29.zip",
+    "sha512": "e425783bb29ef1633af881e0174f21d7f0039591a7ba1dd4686d016a373680b46c0117219a66651b05aa0924c933f03ef8ab2ed68c801e431207b260feb6bdb0",
+    "dependencies": []
+  },
+  "biomes-o-plenty": {
+    "version": "26.3.0.0.15",
+    "versionId": "MAQI6dsY",
+    "url": "https://cdn.modrinth.com/data/HXF82T3G/versions/MAQI6dsY/BiomesOPlenty-fabric-26.3-26.3.0.0.15.jar",
+    "filename": "BiomesOPlenty-fabric-26.3-26.3.0.0.15.jar",
+    "sha512": "8f5198d5ad7de6b288ccbc5aeea0de274e73692a04b5d28ba3fa5a25052e9701432f116d94debcd0a33aaf6d8d7fa38f6c77253cefe234efbf472fa9affdbb88",
+    "dependencies": [
+      {
+        "version_id": null,
+        "project_id": "P7dR8mSH",
+        "file_name": null,
+        "dependency_type": "required"
+      },
+      {
+        "version_id": null,
+        "project_id": "s3dmwKy5",
+        "file_name": null,
+        "dependency_type": "required"
+      }
+    ]
+  },
+  "terrablender": {
+    "version": "26.3.0.0.9",
+    "versionId": "xirJYe1V",
+    "url": "https://cdn.modrinth.com/data/kkmrDlKT/versions/xirJYe1V/TerraBlender-fabric-26.3-26.3.0.0.9.jar",
+    "filename": "TerraBlender-fabric-26.3-26.3.0.0.9.jar",
+    "sha512": "183f809fe992aaaaf4d84c594730b95b392338caf17b690debbb14434b23b46f5923cfcc5aecb81368ea06a299503a3738dcf942b7f179abd000f1312cf2cbdb",
+    "dependencies": [
+      {
+        "version_id": null,
+        "project_id": "P7dR8mSH",
+        "file_name": null,
+        "dependency_type": "required"
+      }
+    ]
+  },
+  "glitchcore": {
+    "version": "26.3.0.0.5",
+    "versionId": "kfFeDnrp",
+    "url": "https://cdn.modrinth.com/data/s3dmwKy5/versions/kfFeDnrp/GlitchCore-fabric-26.3-26.3.0.0.5.jar",
+    "filename": "GlitchCore-fabric-26.3-26.3.0.0.5.jar",
+    "sha512": "f975535e561285898163e7512008fe61ffaac66b6fc60a4e4763d0f2279617f75900d7a2ab2708d8dc348337119df61d2783aa101a9f1a24020f99888aa0d457",
+    "dependencies": [
+      {
+        "version_id": null,
+        "project_id": "P7dR8mSH",
+        "file_name": null,
+        "dependency_type": "required"
+      }
+    ]
+  },
+  "fabric-api": {
+    "version": "0.165.0+26.3",
+    "versionId": "EQKgpeKu",
+    "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/EQKgpeKu/fabric-api-0.165.0%2B26.3.jar",
+    "filename": "fabric-api-0.165.0+26.3.jar",
+    "sha512": "0a4b8a14e847b71567b557b43d906c2167fa263eeeef37454a821ba286996e3da1616dc2d9647736d28a250d5ecf400541cae808359b29a62324a8a6f2ad5e30",
+    "dependencies": []
+  }
+}
