@@ -1,6 +1,6 @@
 module github.com/Viking602/YoloMCL
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/egoist/mygo v0.7.4

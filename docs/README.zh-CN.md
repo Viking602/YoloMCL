@@ -40,7 +40,7 @@ YoloMCL 是一个用 Go 编写的 Minecraft: Java 版启动器，使用 [MyGo](h
 
 ## 构建
 
-需要 Go 1.27.3（见 `go.mod`）、GNU Make 和 Bash；检查和签名发布还需要 OpenSSL 3、`tar`、`gzip`、`zip`（Windows 使用系统自带 `tar`）。Windows 请在 Git Bash 中运行并安装 GNU Make。
+需要 Go 1.27.4（见 `go.mod`）、GNU Make 和 Bash；检查和签名发布还需要 OpenSSL 3、`tar`、`gzip`、`zip`（Windows 使用系统自带 `tar`）。Windows 请在 Git Bash 中运行并安装 GNU Make。
 
 ```sh
 make build                  # 开发构建，输出至 .cache/

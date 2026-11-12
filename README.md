@@ -68,7 +68,7 @@ All six targets are built by the release workflow. Some existing features are no
 
 ## Build from source
 
-Use the Go version in [`go.mod`](go.mod), currently **Go 1.27.3**, GNU Make, and Bash. Checks and signed releases also require OpenSSL 3 and standard archive tools (`tar`, `gzip`, and `zip`; Windows uses its built-in `tar` for ZIP). On Windows, run Make from Git Bash and install GNU Make if needed.
+Use the Go version in [`go.mod`](go.mod), currently **Go 1.27.4**, GNU Make, and Bash. Checks and signed releases also require OpenSSL 3 and standard archive tools (`tar`, `gzip`, and `zip`; Windows uses its built-in `tar` for ZIP). On Windows, run Make from Git Bash and install GNU Make if needed.
 
 ```sh
 make build                      # development executable in .cache/
