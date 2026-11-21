@@ -276,10 +276,18 @@ func (s *Service) AddLocalAssetPacks(rootID, kind string, paths []string) error 
 	}
 	return s.mutateRoot(rootID, func(r Root) error {
 		vDir := r.VersionDir()
+		isHorizon := isHorizonRootVersion(r)
 		for _, src := range paths {
 			ext := strings.ToLower(filepath.Ext(src))
-			if ext != ".zip" && !(kind == "shader" && ext == ".hshader") {
-				if kind == "shader" {
+			if ext == ".hshader" {
+				if kind != "shader" {
+					return errors.New("只能导入 .zip 格式的材质包或光影包")
+				}
+				if !isHorizon {
+					return horizonErr("Horizon 光影（.hshader）仅适用于 Horizon 实例", "Horizon shaders (.hshader) can only be installed into a Horizon instance")
+				}
+			} else if ext != ".zip" {
+				if kind == "shader" && isHorizon {
 					return errors.New("只能导入 .zip 或 .hshader 格式的光影包")
 				}
 				return errors.New("只能导入 .zip 格式的材质包或光影包")

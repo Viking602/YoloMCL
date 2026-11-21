@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -650,6 +652,108 @@ func TestDetectLoaderDoesNotConfuseHorizonModpackNames(t *testing.T) {
 	}
 	if got := detectLoader(gameVersion{ID: "horizon-nightly-2026-11-20-0a875da"}); got != "horizon" {
 		t.Fatalf("detectLoader(horizon-nightly-...) = %q, want horizon", got)
+	}
+}
+
+func TestHorizonConcurrentBuildInstallSerialized(t *testing.T) {
+	primaryAsset, _, ok := horizonPlatformAssets(runtime.GOOS, runtime.GOARCH)
+	if !ok {
+		t.Skipf("no Horizon release asset defined for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+	const buildID = "nightly-2026-11-20-0a875da"
+	tmp := t.TempDir()
+	archivePath := filepath.Join(tmp, primaryAsset)
+	topName := strings.TrimSuffix(strings.TrimSuffix(primaryAsset, ".zip"), ".tar.gz")
+	files := map[string][]byte{
+		topName + "/" + horizonBinaryName("horizon-client"):  []byte("client"),
+		topName + "/" + horizonBinaryName("horizon-prepare"): []byte("prepare"),
+		topName + "/research-lock.json":                      []byte(`{"minecraft":{"version":"26.3","java_major":25}}`),
+	}
+	if strings.HasSuffix(primaryAsset, ".zip") {
+		writeTestZip(t, archivePath, files)
+	} else {
+		writeTestTarGz(t, archivePath, files, false)
+	}
+	archiveBytes, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(archiveBytes)
+	sumsBytes := []byte(fmt.Sprintf("%s  %s\n", hex.EncodeToString(sum[:]), primaryAsset))
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sigV2 := base64.StdEncoding.EncodeToString(ed25519.Sign(priv, append([]byte("horizon release "+buildID+"\n"), sumsBytes...))) + "\n"
+
+	var downloads atomic.Int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/releases":
+			_ = json.NewEncoder(w).Encode([]horizonGitHubRelease{{
+				TagName:     "nightly",
+				Name:        "Nightly 2026-11-20 · 0a875da",
+				Prerelease:  true,
+				PublishedAt: "2026-11-20T11:18:27Z",
+				Assets: []struct {
+					Name string `json:"name"`
+					Size int64  `json:"size"`
+				}{{Name: primaryAsset, Size: int64(len(archiveBytes))}},
+			}})
+		case "/download/nightly/" + horizonSumsFile:
+			_, _ = w.Write(sumsBytes)
+		case "/download/nightly/" + horizonSigV2File:
+			_, _ = w.Write([]byte(sigV2))
+		case "/download/nightly/" + primaryAsset:
+			downloads.Add(1)
+			time.Sleep(40 * time.Millisecond)
+			_, _ = w.Write(archiveBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	svc, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.http = srv.Client()
+	svc.horizonTest = &horizonTestConfig{
+		apiURL:      srv.URL + "/api/releases",
+		downloadURL: srv.URL + "/download",
+		keys:        []ed25519.PublicKey{pub},
+	}
+
+	const workers = 4
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	dirs := make(chan string, workers)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, dir, err := svc.ensureHorizonBuild(context.Background(), buildID, "nightly", func(string, int, int) {})
+			if err != nil {
+				errs <- err
+				return
+			}
+			dirs <- dir
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	close(dirs)
+	for err := range errs {
+		t.Fatalf("concurrent ensureHorizonBuild failed: %v", err)
+	}
+	if got := downloads.Load(); got != 1 {
+		t.Fatalf("expected serialized shared build download once, got %d downloads", got)
+	}
+	for dir := range dirs {
+		if !horizonBuildInstalled(dir) {
+			t.Fatalf("expected installed build at %q", dir)
+		}
 	}
 }
 

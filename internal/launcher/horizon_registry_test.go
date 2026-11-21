@@ -572,6 +572,18 @@ func TestHorizonModInstallManageCheckAndOverview(t *testing.T) {
 		t.Fatalf("expected overview Shaders=1, got %+v, err=%v", stShader, err)
 	}
 
+	// AddLocalAssetPacks accepts .hshader on Horizon and rejects it on non-Horizon instances.
+	localHshader := filepath.Join(tmp, "local_sky.hshader")
+	writeTestZip(t, localHshader, map[string][]byte{
+		"horizon-shaders.toml": []byte("description = \"Local Horizon shader\"\n"),
+	})
+	if err := svc.AddLocalAssetPacks(fRoot.ID, "shader", []string{localHshader}); err == nil {
+		t.Fatal("expected AddLocalAssetPacks(.hshader) on Fabric instance to fail")
+	}
+	if err := svc.AddLocalAssetPacks(hRoot.ID, "shader", []string{localHshader}); err != nil {
+		t.Fatalf("AddLocalAssetPacks(.hshader) on Horizon: %v", err)
+	}
+
 	// AddLocalMods rejects .jar and accepts .hmod on Horizon.
 	fakeJar := filepath.Join(tmp, "bad.jar")
 	_ = os.WriteFile(fakeJar, []byte("jar"), 0o644)

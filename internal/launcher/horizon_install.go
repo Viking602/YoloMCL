@@ -99,8 +99,13 @@ func (s *Service) lockHorizonPrep(preparedDir string) func() {
 
 func (s *Service) ensureHorizonBuild(ctx context.Context, buildID, releaseTag string, p progress) (HorizonRelease, string, error) {
 	if buildID != "" {
-		if dir, err := s.horizonBuildDir(buildID); err == nil && horizonBuildInstalled(dir) {
-			return HorizonRelease{BuildID: buildID, ReleaseTag: releaseTag}, dir, nil
+		if dir, err := s.horizonBuildDir(buildID); err == nil {
+			unlock := s.lockHorizonPrep(dir)
+			installed := horizonBuildInstalled(dir)
+			unlock()
+			if installed {
+				return HorizonRelease{BuildID: buildID, ReleaseTag: releaseTag}, dir, nil
+			}
 		}
 	}
 	p("获取 Horizon 版本列表", 0, 0)
@@ -127,6 +132,8 @@ func (s *Service) ensureHorizonBuild(ctx context.Context, buildID, releaseTag st
 	if err != nil {
 		return HorizonRelease{}, "", err
 	}
+	unlock := s.lockHorizonPrep(targetDir)
+	defer unlock()
 	if horizonBuildInstalled(targetDir) {
 		return rel, targetDir, nil
 	}
@@ -197,13 +204,13 @@ func (s *Service) ensureHorizonBuild(ctx context.Context, buildID, releaseTag st
 		}
 	}
 
+	if err := os.WriteFile(filepath.Join(topDir, horizonInstalledMarker), nil, 0o644); err != nil {
+		return HorizonRelease{}, "", err
+	}
 	if err := os.RemoveAll(targetDir); err != nil {
 		return HorizonRelease{}, "", err
 	}
 	if err := os.Rename(topDir, targetDir); err != nil {
-		return HorizonRelease{}, "", err
-	}
-	if err := os.WriteFile(filepath.Join(targetDir, horizonInstalledMarker), nil, 0o644); err != nil {
 		return HorizonRelease{}, "", err
 	}
 	_ = os.Remove(archivePath)

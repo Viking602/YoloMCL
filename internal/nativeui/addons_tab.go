@@ -61,7 +61,7 @@ func (a *App) importAddons(kind string) {
 		return
 	}
 	picker := "zip"
-	if kind == "shader" {
+	if kind == "shader" && a.isHorizonVersion() {
 		picker = "shader"
 	}
 	a.chooseFiles(picker, func(paths []string) {

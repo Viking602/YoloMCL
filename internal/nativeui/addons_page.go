@@ -38,7 +38,7 @@ func (a *App) modPage(c *ui.Context) {
 			if button(c, "add-assetpack", t.ModsImportPackBtn, "plus", true, a.instancePending("addLocalAssetPacks") || a.root() == nil) {
 				id := a.root().ID
 				picker := "zip"
-				if kind == "shader" {
+				if kind == "shader" && a.isHorizonVersion() {
 					picker = "shader"
 				}
 				a.chooseFiles(picker, func(paths []string) {
