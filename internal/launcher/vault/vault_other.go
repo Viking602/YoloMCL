@@ -1,13 +1,11 @@
-//go:build !windows
+//go:build !windows && !darwin && !linux
 
 package vault
 
 import "errors"
 
-func Seal(b []byte) ([]byte, error) {
-	return nil, errors.New("此版本的安全凭据存储需要 Windows DPAPI")
-}
+var errUnsupported = errors.New("此平台尚不支持安全保存登录凭据")
 
-func Unseal(b []byte) ([]byte, error) {
-	return nil, errors.New("此版本的安全凭据存储需要 Windows DPAPI")
-}
+func Store(string, string, []byte) error  { return errUnsupported }
+func Load(string, string) ([]byte, error) { return nil, errUnsupported }
+func Delete(string, string) error         { return errUnsupported }

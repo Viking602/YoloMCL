@@ -24,18 +24,18 @@ A native Minecraft: Java Edition launcher written in Go with [MyGo](https://gith
 
 ## Features
 
-- **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, and NeoForge instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), export installed instances in either format, review pack updates, and keep backups of overwritten files.
-- **Content discovery**: Browse Modrinth and CurseForge with continuous loading; install mods, resource packs, shaders, and modpacks with automatic dependency resolution.
+- **Instances and modpacks**: Install and manage vanilla, Fabric, Quilt, Forge, NeoForge, and Horizon (Rust native) instances. Import `.mrpack` and CurseForge `.zip` modpacks (including drag-and-drop), export installed instances in either format, review pack updates, and keep backups of overwritten files.
+- **Content discovery**: Browse Modrinth, CurseForge, and the official Horizon registry with continuous loading; install mods (`.jar` / `.hmod`), resource packs, shaders (`.zip` / `.hshader`), and modpacks with automatic dependency resolution and signature verification.
 - **Game management**: Manage worlds, backups, screenshots, recent multiplayer servers, and structured game/crash logs.
 - **Seed map and structure previews**: Explore supported biomes, terrain, caves and ores; find nearby structures and inspect interactive 3D previews. Predictions and preview support depend on the selected version and installed content; see the [seed map guide](docs/seed-map.md).
 - **Game preferences**: Edit instance or global key bindings, video, audio and controls, with searchable mod settings and options-file backups.
 - **Java and memory**: Detect installed Java runtimes and allocate memory from pack size and available RAM.
-- **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services, subject to the platform limits below. Preview skins and switch capes.
+- **Accounts and cosmetics**: Sign in with offline profiles, Microsoft accounts, or Yggdrasil/authlib-injector services. Preview skins and switch capes.
 - **Desktop UI**: High-DPI scaling, bundled JetBrains Mono font with system CJK fallback, and English / Simplified Chinese localization following the system language by default.
 - **Rendering**: New Windows configurations enable interface hardware acceleration, with automatic software fallback if GPU rendering is unavailable. Settings can disable it (restart required); existing preferences are preserved.
 - **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
-See the [1.2.0 release notes](docs/release-notes/v1.2.0.md) for the changes in this update.
+See the [1.4.0 release notes](docs/release-notes/v1.4.0.md) for the changes in this update.
 
 ### Export a modpack
 
@@ -61,10 +61,11 @@ The launcher checks once after the first frame and offers available stable updat
 
 ### Current platform limits
 
-All six targets are built by the release workflow. Some existing features are not yet equivalent across platforms:
+All six targets are built by the release workflow. One feature still differs across platforms:
 
 - Automatic Temurin downloads currently support Windows x64; other platforms can select a system Java installation.
-- Secure account-token storage currently uses Windows DPAPI. Microsoft and third-party account persistence on macOS/Linux is not yet supported; tokens are not stored in plaintext as a fallback.
+
+Microsoft and third-party login states persist on all three desktop platforms. Windows uses DPAPI and macOS keeps the encryption key in Keychain. Linux encrypts credential files with a random key stored in an owner-only (`0600`) file, so login still works without a Secret Service session. Existing Linux keys in Secret Service are copied to the local key file when available; if that service is already inaccessible before migration, sign in once again to establish the local key. Linux's automatic fallback depends on user-directory permissions and does not protect credentials from someone who can copy the full launcher data directory.
 
 ## Build from source
 

@@ -5,34 +5,33 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	lobetheme "github.com/lobehub/lobe-mygo/pkg/theme"
 )
 
-// noticeTone is a notice type's colours, icon and spoken name: the type is
-// told by icon and label as well as colour.
-func (a *App) noticeTone(kind string) (fg, fill ui.Color, icon, name string) {
+// noticeTone is a notice type's Lobe Alert colours, Lucide icon and spoken name.
+func (a *App) noticeTone(kind string) (fg, fill ui.Color, icon *ui.SVG, name string) {
 	t := a.tr()
 	switch kind {
 	case "error":
-		return danger, ui.Hex("#fff1f0"), "cross", t.NoticeError
+		return danger, lobetheme.Mix(panel, danger, .06), lucide.CircleX(), t.NoticeError
 	case "warning":
-		return warningInk, ui.Hex("#fff7e6"), "info", t.NoticeWarning
+		return warningInk, lobetheme.Mix(panel, warning, .07), lucide.TriangleAlert(), t.NoticeWarning
 	}
-	return accent, ui.Hex("#eef5ff"), "info", t.NoticeInfo
+	return accent, lobetheme.Mix(panel, accent, .05), lucide.Info(), t.NoticeInfo
 }
 
-// noticeBody is the shared notice: icon badge, message, actions on the right.
+// noticeBody is the shared Lobe Alert-styled notice: Lucide tone icon, message, actions on the right.
 func (a *App) noticeBody(c *ui.Context, kind, msg, detail string, actions func()) ui.Element {
 	s := uiScale(c)
 	fg, fill, icon, name := a.noticeTone(kind)
-	row := ui.Row(c).Label(name+"通知").FillWidth().Padding(space3*s, space3*s, space3*s, space3*s).Radius(radiusRow*s).Background(fill).Border(1, fg.Alpha(.22)).Gap(space3 * s).AlignItems(ui.Center)
+	row := ui.Row(c).Label(name+"通知").FillWidth().Padding(space3*s, space4*s).Radius(radiusRow*s).Background(fill).Border(1, fg.Alpha(.20)).Gap(space3 * s).AlignItems(ui.Center)
 	return row.Children(func() {
-		ui.Box(c).Size(22*s, 22*s).Radius(radiusPill).Background(fg).Center().Shrink(0).Children(func() {
-			ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(panel)
-		})
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
-			ui.Text(c, msg).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).Wrap()
+		ui.Icon(c, icon).Size(18*s, 18*s).TextColor(fg).Shrink(0)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3 * s).Children(func() {
+			ui.Text(c, msg).FontSize(typeCallout * s).FontWeight(550).TextColor(ink).Wrap()
 			if detail != "" && detail != msg {
-				ui.Text(c, detail).FontSize(typeFootnote * s).TextColor(muted).Wrap()
+				ui.Text(c, detail).FontSize(typeFootnote * s).TextColor(inkSecondary).Wrap()
 			}
 		})
 		if actions != nil {
@@ -44,6 +43,30 @@ func (a *App) noticeBody(c *ui.Context, kind, msg, detail string, actions func()
 // inlineNotice shows a notice in place, where the problem is.
 func (a *App) inlineNotice(c *ui.Context, kind, msg, detail string) {
 	a.noticeBody(c, kind, msg, detail, nil)
+}
+
+// lobeAlert renders a scaled Lobe UI soft Alert callout matching feedback.Alert's
+// visual tokens (tinted container mix + 1px accent ring + Lucide status icon)
+// while scaling cleanly with uiScale(c) down to 900×540 windows.
+func lobeAlert(c *ui.Context, kind, text string) {
+	s := uiScale(c)
+	fg, icon := accent, lucide.Info()
+	switch kind {
+	case "success":
+		fg, icon = successInk, lucide.CircleCheck()
+	case "warning":
+		fg, icon = warningInk, lucide.TriangleAlert()
+	case "error":
+		fg, icon = danger, lucide.CircleX()
+	}
+	fill := lobetheme.Mix(panel, fg, .05)
+	ui.Row(c).FillWidth().Padding(10*s, 12*s).Gap(10*s).Radius(radiusControl*s).
+		Background(fill).InsetShadow(0, 0, 0, 1, fg.Alpha(.18)).AlignItems(ui.Start).Children(func() {
+		ui.Box(c).Height(18 * s).AlignItems(ui.Center).Justify(ui.Center).Shrink(0).Children(func() {
+			ui.Icon(c, icon).Size(15*s, 15*s).TextColor(fg)
+		})
+		bodyText(c, text).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).MinWidth(0)
+	})
 }
 
 // toast is the page notice: it floats over the bottom of the page, above the launch bar (never

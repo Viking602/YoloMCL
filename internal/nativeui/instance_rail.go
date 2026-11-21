@@ -67,24 +67,29 @@ func (a *App) instanceList(c *ui.Context) {
 func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSummary, n versionName) {
 	s := uiScale(c)
 	sel := v.ID == r.SelectedVersion
-	b := ui.ButtonBase(c.Key("ver-row-"+v.ID)).Label("版本卡片 "+v.ID).FillWidth().Height(54*s).Padding(0, 12*s).Radius(radiusRow * s).Gap(12 * s).AlignItems(ui.Center).Clip().
+	b := ui.ButtonBase(c.Key("ver-row-"+v.ID)).Label("版本卡片 "+v.ID).FillWidth().Height(54*s).Padding(0, 12*s, 0, 14*s).Radius(radiusRow * s).Gap(12 * s).AlignItems(ui.Center).Clip().
 		Transition(ui.ElementTransition{Animation: &motionMove, Position: true, Enter: &ui.Motion{Opacity: 0, Scale: .97}, Exit: &ui.Motion{Opacity: 0, Scale: .97}})
-	bg, fg, sub := ui.Transparent, ink, muted
+	bg, edge, fg, sub := ui.Transparent, ui.Transparent, ink, muted
 	if sel {
-		bg, fg, sub = accent, panel, ui.RGBA(255, 255, 255, .78)
+		bg, edge, fg, sub = panel, lineStrong, ink, inkSecondary
+		b.Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
+		b.Draw(func(p *ui.Painter, rect ui.Rect) {
+			barH := rect.H * .44
+			p.Fill(ui.Rect{X: rect.X + 3*s, Y: rect.Y + (rect.H-barH)/2, W: 2.5 * s, H: barH}, lobePrimary, 1.25*s)
+		})
 	} else if b.Hovered() {
-		bg = ui.RGBA(255, 255, 255, .8)
+		bg = lobeLight.FillTertiary
 	}
-	b.Background(b.AnimateColor("bg", bg, fastAnim))
+	b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(1, b.AnimateColor("edge", edge, fastAnim))
 	b.Children(func() {
 		vv := v
 		// Status overlays do not change the title or version tag's available width.
 		ui.Box(c.Key("version-icon")).Size(34*s, 34*s).Shrink(0).Children(func() {
 			a.instIcon(c, r, &vv, 34*s)
 			if slices.Contains(r.RunningVersions, v.ID) {
-				tooltip(c, ui.Box(c.Key("running")).Absolute().Right(-2*s).Bottom(-2*s).Size(12*s, 12*s).Radius(radiusPill).Border(2*s, panel).Background(ui.Hex("#34c759")).Label(a.tr().HomeHeroBadgeRunning), a.tr().HomeHeroBadgeRunning)
+				tooltip(c, ui.Box(c.Key("running")).Absolute().Right(-2*s).Bottom(-2*s).Size(12*s, 12*s).Radius(radiusPill).Border(2*s, panel).Background(success).Label(a.tr().HomeHeroBadgeRunning), a.tr().HomeHeroBadgeRunning)
 			} else if packHasUpdate(r, v.ID) {
-				tooltip(c, ui.Box(c.Key("update")).Absolute().Right(-3*s).Bottom(-3*s).Size(16*s, 16*s).Radius(radiusPill).Border(2*s, panel).Background(ui.Hex("#ff9500")).Center(), a.tr().PackUpdateBadge).Children(func() {
+				tooltip(c, ui.Box(c.Key("update")).Absolute().Right(-3*s).Bottom(-3*s).Size(16*s, 16*s).Radius(radiusPill).Border(2*s, panel).Background(warning).Center(), a.tr().PackUpdateBadge).Children(func() {
 					ui.Icon(c, icons["download"]).Size(9*s, 9*s).TextColor(panel)
 				})
 			}
@@ -92,7 +97,11 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Clip().Gap(4 * s).Children(func() {
 			title, subText := n.Title, n.Sub
 			ui.Row(c).FillWidth().MinWidth(0).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				tooltip(c, ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(typeBody*s).FontWeight(600).TextColor(fg).SingleLine(), v.ID)
+				weight := 550
+				if sel {
+					weight = 650
+				}
+				tooltip(c, ui.Text(c, title).Shrink(1).MinWidth(0).FontSize(typeBody*s).FontWeight(weight).TextColor(fg).SingleLine(), v.ID)
 				if n.MCTag && v.Minecraft != "" {
 					ui.Spacer(c).Grow(1)
 					a.mcTag(c, v.Minecraft, sel)
@@ -133,14 +142,14 @@ func (a *App) instRow(c *ui.Context, r launcher.Instance, v launcher.VersionSumm
 	}
 }
 
-func (a *App) mcTag(c *ui.Context, mc string, onAccent bool) {
+func (a *App) mcTag(c *ui.Context, mc string, selected bool) {
 	s := uiScale(c)
-	bg, fg := fieldColor, inkSecondary
-	if onAccent {
-		bg, fg = ui.RGBA(255, 255, 255, .22), panel
+	bg, fg, edge := fieldColor, inkSecondary, ui.Transparent
+	if selected {
+		bg, fg, edge = raised, ink, line
 	}
-	ui.Row(c).Shrink(0).Height(19 * s).PaddingX(8 * s).Radius(radiusChip * s).Background(bg).Center().Children(func() {
-		ui.Text(c, mc).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
+	ui.Row(c).Shrink(0).Height(19*s).PaddingX(7*s).Radius(radiusChip*s).Background(bg).Border(1, edge).Center().Children(func() {
+		ui.Text(c, mc).FontSize(typeCaption * s).FontWeight(550).TextColor(fg).NoWrap()
 	})
 }
 
@@ -203,7 +212,7 @@ func dirLabel(r launcher.Instance) string {
 // the row hides when the directory has a single kind.
 func (a *App) loaderChips(c *ui.Context, r launcher.Instance) {
 	s := uiScale(c)
-	order := []string{"fabric", "forge", "neoforge", "quilt", "vanilla"}
+	order := []string{"fabric", "forge", "neoforge", "quilt", "horizon", "vanilla"}
 	have := map[string]bool{}
 	for _, v := range r.Versions {
 		have[loaderKey(v.Loader)] = true

@@ -18,8 +18,11 @@ func (a *App) searchAt(offset int) {
 
 func (a *App) discoverQuery(offset int) launcher.SearchQuery {
 	kind := normalizeResourceType(a.resourceType)
+	if a.provider == "horizon" && kind == "modpack" {
+		kind = "mod"
+	}
 	loader := loaderKey(a.filterLoader)
-	if loader == "vanilla" || (kind != "mod" && kind != "modpack") {
+	if a.provider == "horizon" || loader == "vanilla" || (kind != "mod" && kind != "modpack") {
 		loader = ""
 	}
 	sortKey := normalizeSortKey(a.searchSort)

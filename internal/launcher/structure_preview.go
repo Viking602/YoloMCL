@@ -40,36 +40,48 @@ func (s *Service) StructureAssetStoreEra(rootID, versionID, world string, withou
 	if versionID != "" {
 		jarName = versionID
 	}
+	installedVer, _ := seedMapInstalledVersion(context.Background(), r.Path, jarName)
+	isHorizon := installedLoader(installedVer) == "horizon"
 	client := filepath.Join(r.Path, "versions", jarName, jarName+".jar")
 	if st, e := os.Stat(client); e == nil && !st.IsDir() {
 		_ = store.OpenJar("client:"+jarName, client)
 	} else {
-		// inherited vanilla jar: try versions/<inherits>/<inherits>.jar via version json later; best-effort scan
-		_ = openInheritedClientJar(store, r.Path, jarName)
+		_ = openInheritedClientJar(store, r.Path, jarName, installedVer)
 	}
-	mods, _ := s.ListModsAt(rootID, versionID)
-	mods = sortModsForAssetLayers(mods)
-	for _, m := range mods {
-		if !m.Enabled || !strings.HasSuffix(strings.ToLower(m.File), ".jar") || eraExcluded(m.File, without) {
-			continue
-		}
-		path := filepath.Join(gameDir, "mods", m.File)
-		_ = store.OpenJar("mod:"+m.File, path)
-	}
-	structure3d.DetectLithostitched(store, gameDir)
-	structure3d.ApplyKnownModPoolEdits(store)
-	for _, m := range mods {
-		if m.Enabled && strings.Contains(strings.ToLower(m.File), "tectonic") && !eraExcluded(m.File, without) {
-			if cfg := readTectonicConfig(gameDir); !tectonicPackDisabled && cfg.bool("general.mod_enabled", true) {
-				store.SetMonumentYOffset(int(cfg.num("oceans.monument_offset", 0)))
+	var mods []Mod
+	if isHorizon {
+		for _, src := range horizonEnabledModPaths(context.Background(), gameDir) {
+			if st, e := os.Stat(src.Path); e == nil && st.IsDir() {
+				_ = store.OpenDir(src.Name, src.Path)
+			} else if e == nil {
+				_ = store.OpenJar(src.Name, src.Path)
 			}
-			break
 		}
-	}
-	// KubeJS loads kubejs/data as a datapack and kubejs/assets as a
-	// resource pack, both above mods and below user packs.
-	if kjs := filepath.Join(gameDir, "kubejs"); dirHasAny(kjs, "data", "assets") {
-		_ = store.OpenDir("kubejs", kjs)
+	} else {
+		mods, _ = s.ListModsAt(rootID, versionID)
+		mods = sortModsForAssetLayers(mods)
+		for _, m := range mods {
+			if !m.Enabled || !strings.HasSuffix(strings.ToLower(m.File), ".jar") || eraExcluded(m.File, without) {
+				continue
+			}
+			path := filepath.Join(gameDir, "mods", m.File)
+			_ = store.OpenJar("mod:"+m.File, path)
+		}
+		structure3d.DetectLithostitched(store, gameDir)
+		structure3d.ApplyKnownModPoolEdits(store)
+		for _, m := range mods {
+			if m.Enabled && strings.Contains(strings.ToLower(m.File), "tectonic") && !eraExcluded(m.File, without) {
+				if cfg := readTectonicConfig(gameDir); !tectonicPackDisabled && cfg.bool("general.mod_enabled", true) {
+					store.SetMonumentYOffset(int(cfg.num("oceans.monument_offset", 0)))
+				}
+				break
+			}
+		}
+		// KubeJS loads kubejs/data as a datapack and kubejs/assets as a
+		// resource pack, both above mods and below user packs.
+		if kjs := filepath.Join(gameDir, "kubejs"); dirHasAny(kjs, "data", "assets") {
+			_ = store.OpenDir("kubejs", kjs)
+		}
 	}
 	openStructureResourcePacks(store, gameDir, mods, func() []AssetPack {
 		packs, _ := s.ListAssetPacksAt(rootID, versionID, "resourcepack")
@@ -77,6 +89,14 @@ func (s *Service) StructureAssetStoreEra(rootID, versionID, world string, withou
 	})
 	openDatapackDir(store, "global", filepath.Join(gameDir, "datapacks"))
 	if world != "" {
+		if isHorizon {
+			if paths, ok := openHorizonDatapacksForStore(context.Background(), gameDir, world); ok {
+				for _, p := range paths {
+					_ = structure3d.OpenPack(store, "datapack:"+world+":"+filepath.Base(p), p)
+				}
+				return store, nil
+			}
+		}
 		if wdir, e := safeJoin(gameDir, "saves/"+world); e == nil {
 			structure3d.OpenWorldDatapacks(store, world, wdir) // level.dat enabled order
 		}
@@ -104,24 +124,18 @@ func openDatapackDir(store *structure3d.Store, label, dir string) {
 	}
 }
 
-func openInheritedClientJar(store *structure3d.Store, root, id string) error {
-	// Walk versions for a jar that exists matching id or parent folders.
-	dir := filepath.Join(root, "versions")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
+func openInheritedClientJar(store *structure3d.Store, root, id string, v gameVersion) error {
+	for _, cand := range horizonClientJarCandidates(v) {
+		jar, err := safeJoin(root, "versions/"+cand+"/"+cand+".jar")
+		if err != nil {
 			continue
 		}
-		jar := filepath.Join(dir, e.Name(), e.Name()+".jar")
 		if st, err := os.Stat(jar); err == nil && !st.IsDir() {
-			// Prefer exact id match; otherwise open first as fallback only when id jar missing.
-			if e.Name() == id {
-				return store.OpenJar("client:"+e.Name(), jar)
-			}
+			return store.OpenJar("client:"+cand, jar)
 		}
+	}
+	if jar := vanillaClientJar(root, minecraftVersionOf(v), id); jar != "" {
+		return store.OpenJar("client:"+strings.TrimSuffix(filepath.Base(jar), ".jar"), jar)
 	}
 	return nil
 }

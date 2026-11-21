@@ -32,6 +32,9 @@ func testService(t *testing.T) *Service {
 	}
 	return s
 }
+func (s *Service) secretPath(key string) string {
+	return filepath.Join(s.dir, "credentials", key+".bin")
+}
 func fakeHTTP(t *testing.T, s *Service, routes map[string][]byte) {
 	t.Helper()
 	s.http = &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
@@ -159,6 +162,12 @@ func TestOfflineIdentityPersistenceAndEmptySnapshot(t *testing.T) {
 	}
 	if _, e = os.Stat(loaded.secretPath(a.ID)); !os.IsNotExist(e) {
 		t.Fatal("offline accounts should not store authentication credentials")
+	}
+	if e = loaded.RemoveAccount(a.ID); e != nil {
+		t.Fatalf("offline account removal must not require a system keyring: %v", e)
+	}
+	if len(loaded.Snapshot().Accounts) != 0 {
+		t.Fatal("offline account was not removed")
 	}
 }
 func TestFolderIsolationAndPathBoundaries(t *testing.T) {

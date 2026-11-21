@@ -23,8 +23,8 @@ func setCard(c *ui.Context, key, icon, title, sub string, basis float32, fn func
 	}
 	glass(e, radiusCard*s, s).Children(func() {
 		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(28*s, 28*s).Radius(radiusChip * s).Background(accentSoft).Center().Shrink(0).Children(func() {
-				ui.Icon(c, icons[icon]).Size(14*s, 14*s).TextColor(accent)
+			ui.Box(c).Size(28*s, 28*s).Radius(radiusChip*s).Background(raised).Border(1, line).Center().Shrink(0).Children(func() {
+				ui.Icon(c, icons[icon]).Size(14*s, 14*s).TextColor(inkSecondary)
 			})
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
 				ui.Text(c, title).FontSize(typeBody * s).FontWeight(650).TextColor(ink).SingleLine()
@@ -66,8 +66,15 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 			return
 		}
 		v := *vv
+		isHorizon := loaderKey(v.Loader) == "horizon"
+		basicTitle := a.L("instance_settings.name_and_java")
+		javaLabel := "Java"
+		if isHorizon {
+			basicTitle = a.L("instance_settings.name_and_prep")
+			javaLabel = a.L("instance_settings.prep_java_label")
+		}
 		ui.Row(c).FillWidth().Wrap().Gap(16 * s).AlignItems(ui.Stretch).Children(func() {
-			setCard(c, "set-basic", "gamepad", a.L("instance_settings.name_and_java"), "", 380, func() {
+			setCard(c, "set-basic", "gamepad", basicTitle, "", 380, func() {
 				ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 					label(c, t.VersionNameLabel).FontSize(typeFootnote * s).FontWeight(600)
 					def := v
@@ -77,7 +84,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 				})
 				ui.Column(c).FillWidth().Gap(8 * s).Children(func() {
 					ui.Row(c).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-						label(c, "Java").FontSize(typeFootnote * s).FontWeight(600)
+						label(c, javaLabel).FontSize(typeFootnote * s).FontWeight(600)
 						javaTag(c, javaFor(r, v))
 					})
 					ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
@@ -122,14 +129,23 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 					if a.form.VerJava != "" {
 						label(c, a.form.VerJava).FontSize(typeCaption * s).Ellipsis("…").SingleLine().FillWidth().MinWidth(0)
 					}
+					if isHorizon {
+						label(c, a.L("instance_settings.prep_java_hint")).FontSize(typeCaption * s).FillWidth().MinWidth(0)
+					}
 				})
 			})
-			a.memoryCard(c, v)
+			if isHorizon {
+				a.horizonRuntimeSettingsCard(c)
+			} else {
+				a.memoryCard(c, v)
+			}
 		})
-		setCard(c, "set-jvm", "terminal", a.L("instance_settings.jvm_arguments"), a.L("instance_settings.added_to_the_launch_command_leave_empty_to"), 0, func() {
-			textField(c.Key("ver-jvm-input"), &a.form.VerJVM).Label(t.RootCfgVerJVMLabel).Placeholder(t.RootCfgVerJVMHint).FillWidth()
-			renderJVMPresetBar(c, "ver-jvm-preset", &a.form.VerJVM, t, nil)
-		})
+		if !isHorizon {
+			setCard(c, "set-jvm", "terminal", a.L("instance_settings.jvm_arguments"), a.L("instance_settings.added_to_the_launch_command_leave_empty_to"), 0, func() {
+				textField(c.Key("ver-jvm-input"), &a.form.VerJVM).Label(t.RootCfgVerJVMLabel).Placeholder(t.RootCfgVerJVMHint).FillWidth()
+				renderJVMPresetBar(c, "ver-jvm-preset", &a.form.VerJVM, t, nil)
+			})
+		}
 		a.packSection(c, r)
 		ui.Row(c).FillWidth().Gap(12 * s).AlignItems(ui.Center).Children(func() {
 			if button(c, "save-version-settings", t.RootCfgSaveBtn, "check", true, a.instancePending("updateVersion", "setVersionName")) {
@@ -137,6 +153,25 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 			}
 		})
 		a.packKeyBindingsSection(c, r)
+	})
+}
+
+func (a *App) horizonRuntimeSettingsCard(c *ui.Context) {
+	s := uiScale(c)
+	setCard(c, "set-horizon-runtime", "layers", a.L("instance_settings.native_runtime"), a.L("instance_settings.native_runtime_sub"), 380, func() {
+		lobeAlert(c, "info", a.L("instance_settings.horizon_no_jvm_note"))
+		ui.Column(c).FillWidth().Padding(10*s, 12*s).Gap(7*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
+			specRow := func(k, v string) {
+				ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, k).FontSize(typeCaption * s).TextColor(muted).NoWrap().Shrink(0)
+					ui.Spacer(c).Grow(1)
+					ui.Text(c, v).FontSize(typeCaption * s).FontWeight(600).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+				})
+			}
+			specRow(a.L("instance_settings.horizon_spec_engine"), a.L("instance_settings.horizon_spec_engine_val"))
+			specRow(a.L("instance_settings.horizon_spec_memory"), a.L("overview_runtime.native_memory"))
+			specRow(a.L("instance_settings.horizon_spec_launch"), a.L("instance_settings.horizon_spec_launch_val"))
+		})
 	})
 }
 

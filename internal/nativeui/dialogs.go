@@ -214,6 +214,9 @@ func (a *App) surfacePanel(c *ui.Context, backdrop, box ui.Element, presence, s,
 				a.launchAgainDialog(c)
 			}
 		})
+		if a.dialog == "install" {
+			a.gameInstallFooter(c)
+		}
 		if a.dialog == "packUpdate" {
 			a.packUpdateFooter(c)
 		}
@@ -256,8 +259,9 @@ func (a *App) surfacePanel(c *ui.Context, backdrop, box ui.Element, presence, s,
 }
 
 func dialogSurface(e ui.Element, s float32) ui.Element {
-	return e.Radius(radiusDialog*s).Background(panel).Border(1, glassEdge).
-		Shadow(0, 12*s, 28*s, -8*s, ui.RGBA(24, 32, 64, .18))
+	return e.Radius(radiusDialog*s).Background(panel).Border(1, lineStrong).
+		Shadow(0, 2*s, 6*s, 0, ui.RGBA(0, 0, 0, .06)).
+		Shadow(0, 14*s, 36*s, -6*s, ui.RGBA(0, 0, 0, .14))
 }
 
 func (a *App) addDialog(c *ui.Context) {

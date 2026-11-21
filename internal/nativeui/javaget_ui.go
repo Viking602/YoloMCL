@@ -27,6 +27,7 @@ type javaGetState struct {
 	job          string
 	jobMajor     int
 	thenLaunch   bool
+	retryJob     string
 	needFor      string // the pack that asked for it
 	lastDone     int
 	lastAt       time.Time
@@ -137,7 +138,14 @@ func (a *App) javaJobEnded(j launcher.Job) bool {
 			}
 		}
 		a.message = ""
-		a.openJavaGet(n, name, true)
+		isLaunch := j.TitleKey == "" || j.TitleKey == "game.launch"
+		if isLaunch {
+			g.retryJob = ""
+			a.openJavaGet(n, name, true)
+		} else {
+			g.retryJob = j.ID
+			a.openJavaGet(n, a.jobTitle(j), false)
+		}
 		return true
 	}
 	if j.ID != g.job {
@@ -151,13 +159,20 @@ func (a *App) javaJobEnded(j launcher.Job) bool {
 			g.thenLaunch = false
 			a.closeDialog()
 			a.launch()
+		} else if g.retryJob != "" {
+			retryID := g.retryJob
+			g.retryJob = ""
+			a.closeDialog()
+			a.execute("retryJob", map[string]string{"id": retryID}, a.taskAdded)
 		}
 		g.job, g.needFor = "", ""
 	case "cancelled":
 		g.job = ""
+		g.retryJob = ""
 	case "failed":
 		a.message, a.errorMessage = a.friendlyErr(errors.New(j.Message)), true
 		g.job = ""
+		g.retryJob = ""
 	}
 	return true
 }

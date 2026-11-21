@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
 
 	"github.com/Viking602/YoloMCL/internal/buildinfo"
 )
@@ -81,7 +82,7 @@ func (a *App) launcherUpdateDialog(c *ui.Context) {
 		label(c, a.launcherUpdateText()).Label("launcher-update-dialog-status")
 	}
 	if state.phase == "installing" && state.total > 0 {
-		ui.Progress(c, float64(state.downloaded)/float64(state.total))
+		progressBar(c, float64(state.downloaded)/float64(state.total), feedback.ProgressActive)
 	}
 	if state.phase == "available" && state.release != nil && state.release.install == nil {
 		label(c, a.L("launcher_update_dialog.this_installation_cannot_update_in_place_download_the")).FontSize(typeCaption * s)

@@ -25,7 +25,11 @@ func (a *App) modPage(c *ui.Context) {
 			}
 			if button(c, "add-mod", t.ModsImportJarBtn, "plus", true, a.instancePending("addLocalMods") || a.root() == nil) {
 				id := a.root().ID
-				a.chooseFiles("mods", func(paths []string) {
+				picker := "mods"
+				if a.isHorizonVersion() {
+					picker = "hmods"
+				}
+				a.chooseFiles(picker, func(paths []string) {
 					a.execute("addLocalMods", map[string]any{"rootId": id, "paths": paths}, func(json.RawMessage) { a.loadMods() })
 				})
 			}
@@ -33,7 +37,11 @@ func (a *App) modPage(c *ui.Context) {
 			kind := a.addonTab
 			if button(c, "add-assetpack", t.ModsImportPackBtn, "plus", true, a.instancePending("addLocalAssetPacks") || a.root() == nil) {
 				id := a.root().ID
-				a.chooseFiles("zip", func(paths []string) {
+				picker := "zip"
+				if kind == "shader" {
+					picker = "shader"
+				}
+				a.chooseFiles(picker, func(paths []string) {
 					a.execute("addLocalAssetPacks", map[string]any{"rootId": id, "kind": kind, "paths": paths}, func(json.RawMessage) { a.loadMods() })
 				})
 			}

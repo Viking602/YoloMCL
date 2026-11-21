@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/choice"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
@@ -34,9 +35,9 @@ func (a *App) memoryMaximum() float64 {
 
 func (a *App) preferences(c *ui.Context) {
 	s := uiScale(c)
-	surface := ui.Hex("#f9fafd")
+	surface := panel
 	ui.Column(c.Key("settings-layout")).Grow(1).MinHeight(0).FillWidth().Children(func() {
-		header := ui.Box(c.Key("settings-header")).Label("设置固定标题栏").FillWidth().Padding(24*s, pageGutter*s, 20*s).Shrink(0).Background(surface)
+		header := ui.Box(c.Key("settings-header")).Label("设置固定标题栏").FillWidth().Padding(20*s, pageGutter*s, 18*s).Shrink(0).Background(surface)
 		target := float32(0)
 		if track := scrollTracks["settings-scroll"]; track != nil && track.st.Y > 1 {
 			target = 1
@@ -48,6 +49,7 @@ func (a *App) preferences(c *ui.Context) {
 		header.Children(func() {
 			ui.Row(c).FillWidth().MaxWidth(settingsColumnWidth * s).AlignSelf(ui.Center).Children(func() { a.settingsHeader(c) })
 		})
+		ui.Box(c).FillWidth().Height(1).Background(line).Shrink(0)
 		ui.Column(c.Key("settings-viewport")).Label("设置滚动区域").Grow(1).MinHeight(0).FillWidth().Clip().Children(func() {
 			scrollArea(c, "settings-scroll").Grow(1).MinHeight(0).FillWidth().Padding(space4*s, pageGutter*s, a.scrollEndPad(s)+(space8-space6)*s).Children(func() {
 				ui.Column(c).FillWidth().MaxWidth(settingsColumnWidth * s).AlignSelf(ui.Center).Gap(space5 * s).Children(func() {
@@ -62,9 +64,8 @@ func (a *App) preferences(c *ui.Context) {
 			})
 			// A short fade softens clipped rows without blurring the scrolling
 			// page. The fixed toolbar never changes height as the user scrolls.
-			ui.Box(c.Key("settings-scroll-edge")).Label("设置滚动过渡").Absolute().Left(0).Right(0).Top(0).Height(12 * s).Opacity(edge).
-				LinearGradient(ui.LinearGradient{From: surface, To: surface.Alpha(0), Angle: 180})
-			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Height(1).Background(line).Opacity(edge)
+			ui.Box(c.Key("settings-scroll-edge")).Label("设置滚动过渡").Absolute().Left(0).Right(0).Top(0).Height(10 * s).Opacity(edge).
+				LinearGradient(ui.LinearGradient{From: contentBackground, To: contentBackground.Alpha(0), Angle: 180})
 		})
 	})
 }
@@ -82,8 +83,8 @@ func (a *App) accountSettings(c *ui.Context) {
 		}
 		lead := func() {
 			a.headAvatar(c, ac, settingIcon*s, func() {
-				ui.Box(c).Size(settingIcon*s, settingIcon*s).Radius(radiusPill).LinearGradient(tintGradient(ui.Hex("#64d2ff"), accentIndigo)).Center().Shrink(0).Children(func() {
-					ui.Icon(c, icons["account"]).Size(15*s, 15*s).TextColor(panel)
+				ui.Box(c).Size(settingIcon*s, settingIcon*s).Radius(radiusControl * s).Background(lobePrimary).Center().Shrink(0).Children(func() {
+					ui.Icon(c, icons["account"]).Size(15*s, 15*s).TextColor(lobeLight.PrimaryForeground)
 				})
 			})
 		}
@@ -124,9 +125,9 @@ func (a *App) settingsHeader(c *ui.Context) {
 			tooltip(c, ui.Text(c, t.SettingsDesc).Label("设置简要说明").FontSize(typeFootnote*s).TextColor(muted).FillWidth().MinWidth(0).SingleLine(), t.SettingsDesc)
 		})
 		ui.Row(c.Key("settings-actions")).Label("设置操作栏").Shrink(0).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-			tooltip(c, ui.Row(c).Label("设置自动保存提示"), t.SettingsDefaultHint).Padding(4*s, 8*s).Gap(4 * s).Radius(radiusPill).Background(successInk.Alpha(.07)).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, icons["check"]).Size(11*s, 11*s).TextColor(successInk)
-				ui.Text(c, a.L("settings.auto_save")).FontSize(typeCaption * s).FontWeight(550).TextColor(successInk).NoWrap()
+			tooltip(c, ui.Row(c).Label("设置自动保存提示"), t.SettingsDefaultHint).Padding(4*s, 9*s).Gap(5*s).Radius(radiusChip*s).Background(lobeLight.SuccessBg).Border(1, lobeLight.SuccessBorder).AlignItems(ui.Center).Children(func() {
+				ui.Icon(c, icons["check"]).Size(12*s, 12*s).TextColor(lobeLight.SuccessText)
+				ui.Text(c, a.L("settings.auto_save")).FontSize(typeCaption * s).FontWeight(550).TextColor(lobeLight.SuccessText).NoWrap()
 			})
 			if fixedButton(c, "reset-settings", t.SettingsResetBtn, "refresh", 0, btnMd*s, false, false) {
 				recommended := 4096
@@ -277,7 +278,7 @@ func (a *App) memoryRow(c *ui.Context) {
 		if auto {
 			return
 		}
-		ui.Text(c, fmt.Sprintf("%.1f GB", a.memory/1024)).FontSize(typeBody * s).Bold().TextColor(accent).NoWrap()
+		ui.Text(c, fmt.Sprintf("%.1f GB", a.memory/1024)).FontFeatures("tnum").FontSize(typeBody * s).Bold().TextColor(ink).NoWrap()
 		input := textField(c.Key("memory-input"), &a.memoryText).Label(t.SettingsMemoryInputAria).Width(84*s).Height(btnMd*s).Padding(4*s, 8*s)
 		if input.Changed() {
 			if value, e := strconv.Atoi(a.memoryText); e == nil && value >= 512 && value <= int(a.memoryMaximum()) {
@@ -306,7 +307,11 @@ func (a *App) memoryRow(c *ui.Context) {
 			position := math.Max(lo, math.Min(hi, math.Log2(max(a.memory, 512))))
 			// Divide the full logarithmic range so both ends are reachable,
 			// including physical memory limits that are not powers of two.
-			slider := ui.SliderBase(c.Key("memory-slider"), &position, lo, hi).Label(t.SettingsMemorySliderAria).Grow(1).MinWidth(0).Height(btnMd * s).PaddingX(12 * s).Step((hi - lo) / 128)
+			slider := choice.Slider(c.Key("memory-slider"), &position, choice.SliderProps{
+				Min:  lo,
+				Max:  hi,
+				Step: (hi - lo) / 128,
+			}).Label(t.SettingsMemorySliderAria).Grow(1).MinWidth(0)
 			if slider.Changed() {
 				value := math.Pow(2, position)
 				a.memory = math.Max(minMB, math.Min(maxMB, math.Round(value/128)*128))
@@ -316,15 +321,6 @@ func (a *App) memoryRow(c *ui.Context) {
 				a.memoryText = fmt.Sprint(int(a.memory))
 				a.persistSettings("")
 			}
-			slider.Draw(func(p *ui.Painter, r ui.Rect) {
-				track := ui.Rect{X: r.X + 10*s, Y: r.Y + r.H/2 - 3*s, W: r.W - 20*s, H: 6 * s}
-				fraction := float32((position - lo) / (hi - lo))
-				p.Fill(track, ui.RGBA(120, 120, 128, .18), radiusPill)
-				p.FillGradient(ui.Rect{X: track.X, Y: track.Y, W: max(track.W*fraction, 6*s), H: track.H}, appleAccentGradient(false), 3*s)
-				knob := ui.Rect{X: track.X + track.W*fraction - 11*s, Y: r.Y + r.H/2 - 11*s, W: 22 * s, H: 22 * s}
-				p.Shadow(knob, radiusPill, 0, 2*s, 6*s, 0, ui.RGBA(0, 0, 0, .2))
-				p.Fill(knob, panel, radiusPill)
-			})
 			var presets []string
 			for _, mb := range []int{2048, 4096, 8192, 12288} {
 				if float64(mb) <= a.memoryMaximum() {

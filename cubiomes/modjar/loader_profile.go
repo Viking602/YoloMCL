@@ -53,7 +53,7 @@ func SelectLoader(loader, minecraft, version string) (LoaderProfile, error) {
 	p := LoaderProfile{Loader: loader, Minecraft: minecraft, Version: version, Namespace: "named"}
 	before := func(release string) bool { return compareMaven(mavenVersion(minecraft), mavenVersion(release)) < 0 }
 	switch loader {
-	case "vanilla":
+	case "vanilla", "horizon":
 		p.Namespace = "official"
 	case "fabric":
 		p.Namespace = "intermediary"

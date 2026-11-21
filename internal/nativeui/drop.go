@@ -86,16 +86,36 @@ func (a *App) handleDroppedFiles(paths []string) {
 			})
 			return
 		}
-	case ".jar":
-		if r := a.root(); r != nil {
-			var jars []string
+	case ".hshader":
+		if r := a.root(); r == nil {
+			a.message, a.errorMessage = a.tr().DropNeedRoot, true
+			return
+		} else {
+			var packs []string
 			for _, p := range paths {
-				if strings.EqualFold(filepath.Ext(p), ".jar") {
-					jars = append(jars, p)
+				if strings.EqualFold(filepath.Ext(p), ".hshader") {
+					packs = append(packs, p)
 				}
 			}
-			if len(jars) > 0 {
-				a.execute("addLocalMods", map[string]any{"rootId": r.ID, "paths": jars}, func(json.RawMessage) {
+			if len(packs) > 0 {
+				a.execute("addLocalAssetPacks", map[string]any{"rootId": r.ID, "kind": "shader", "paths": packs}, func(json.RawMessage) {
+					a.addonTab = "shader"
+					a.goPage("mods")
+					a.loadMods()
+				})
+			}
+			return
+		}
+	case ".jar", ".hmod":
+		if r := a.root(); r != nil {
+			var mods []string
+			for _, p := range paths {
+				if strings.EqualFold(filepath.Ext(p), ext) {
+					mods = append(mods, p)
+				}
+			}
+			if len(mods) > 0 {
+				a.execute("addLocalMods", map[string]any{"rootId": r.ID, "paths": mods}, func(json.RawMessage) {
 					a.addonTab = "mods"
 					a.goPage("mods")
 					a.loadMods()

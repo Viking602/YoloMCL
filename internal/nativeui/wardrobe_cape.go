@@ -224,14 +224,14 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 	}
 	// Fixed box: thumbnail, one name line, nothing else, so rows align.
 	b := tooltip(c, ui.ButtonBase(c.Key("cape-"+key)).Label(name), tip).Size(w, h).Shrink(0).Column().Gap(4 * s).AlignItems(ui.Center)
-	edge := ui.Transparent
+	edge := line
 	if sel {
-		edge = accent
+		edge = lobePrimary
 	} else if b.Hovered() {
-		edge = ui.RGBA(60, 72, 110, .22)
+		edge = ui.Hex("#cfcfcf")
 	}
 	b.Children(func() {
-		ui.Box(c).Size(w, h-22*s).Shrink(0).Radius(radiusControl*s).Background(ui.RGBA(120, 130, 160, .10)).Border(2, b.AnimateColor("edge", edge, fastAnim)).Center().Children(func() {
+		ui.Box(c).Size(w, h-22*s).Shrink(0).Radius(radiusControl*s).Background(raised).Border(1.5, b.AnimateColor("edge", edge, fastAnim)).Center().Children(func() {
 			if key == noCapeKey {
 				ui.Icon(c, icons["cross"]).Size(16*s, 16*s).TextColor(muted)
 			} else if thumb != nil {
@@ -252,11 +252,11 @@ func (a *App) capeTile(c *ui.Context, cape launcher.Cape, thumb *ui.Bitmap, w, h
 				})
 			}
 		})
-		fg := inkSecondary
+		fg, weight := inkSecondary, 400
 		if sel {
-			fg = accent
+			fg, weight = ink, 600
 		}
-		ui.Text(c, name).FontSize(typeCaption * s).TextColor(fg).SingleLine().Ellipsis("…").MaxWidth(w).Height(16 * s).Shrink(0)
+		ui.Text(c, name).FontSize(typeCaption * s).FontWeight(weight).TextColor(fg).SingleLine().Ellipsis("…").MaxWidth(w).Height(16 * s).Shrink(0)
 	})
 	if b.Clicked() && (!sel || failed) {
 		// A failed preview stays idle until explicitly retried or refreshed.

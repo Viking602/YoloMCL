@@ -25,6 +25,9 @@ func (s *Service) Categories(ctx context.Context, source, kind string) ([]Catego
 	if _, ok := cfClass[kind]; !ok {
 		kind = "mod"
 	}
+	if source == "horizon" {
+		return s.horizonCategories(ctx, kind)
+	}
 	key := source + "|" + kind
 	if v, ok := catCache.Load(key); ok {
 		return v.([]Category), nil

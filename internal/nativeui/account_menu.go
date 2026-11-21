@@ -15,28 +15,28 @@ func (a *App) accountEntry(c *ui.Context) {
 	if ac := a.account(); ac != nil {
 		tip = ac.Name + "   " + a.accountKindTag(*ac)
 	}
-	b := tooltip(c, ui.ButtonBase(c.Key("account-menu")).Label(t.SideAccountManage), tip).Height(btnSm*s).PaddingX(8*s).Gap(8*s).AlignItems(ui.Center).Radius(radiusPill).Border(1, glassEdge).Shrink(0)
-	bg := ui.RGBA(255, 255, 255, .6)
-	if a.accountMenuOpen || a.page == "settings" {
-		bg = accentSoft
+	b := tooltip(c, ui.ButtonBase(c.Key("account-menu")).Label(t.SideAccountManage), tip).Height(btnSm*s).PaddingX(8*s).Gap(7*s).AlignItems(ui.Center).Radius(radiusControl*s).Border(1, lineStrong).Shrink(0)
+	bg := panel
+	if a.accountMenuOpen {
+		bg = raised
 	} else if b.Hovered() {
-		bg = panel
+		bg = raised
 	}
-	b.Background(b.AnimateColor("bg", bg, fastAnim))
+	b.Background(b.AnimateColor("bg", bg, fastAnim)).Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .03))
 	if b.Children(func() {
-		a.headAvatar(c, a.account(), 22*s, func() {
-			ui.Box(c).Size(22*s, 22*s).Radius(radiusPill).LinearGradient(tintGradient(ui.Hex("#64d2ff"), accentIndigo)).Center().Children(func() {
-				ui.Icon(c, icons["account"]).Size(12*s, 12*s).TextColor(panel)
+		a.headAvatar(c, a.account(), 20*s, func() {
+			ui.Box(c).Size(20*s, 20*s).Radius(radiusMin * s).Background(lobePrimary).Center().Children(func() {
+				ui.Icon(c, icons["account"]).Size(12*s, 12*s).TextColor(lobeLight.PrimaryForeground)
 			})
 		})
-		ui.Text(c, midEllipsis(c, name, 130*s, typeCallout*s, 600)).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).NoWrap()
+		ui.Text(c, midEllipsis(c, name, 130*s, typeFootnote*s, 600)).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).NoWrap()
 		if ac := a.account(); ac != nil {
 			kind := ac.Kind
 			if kind != "microsoft" && kind != "yggdrasil" {
 				kind = "offline"
 			}
 			col := accountTypeColor(kind)
-			ui.Box(c).Size(18*s, 18*s).Radius(radiusPill).Background(col.Alpha(.12)).Center().Shrink(0).Children(func() {
+			ui.Box(c).Size(18*s, 18*s).Radius(radiusMin * s).Background(col.Alpha(.10)).Center().Shrink(0).Children(func() {
 				accountTypeIconL(c, a, "当前账号类型 ", kind, ac.Server, 11*s, col)
 			})
 		}
@@ -49,7 +49,7 @@ func (a *App) accountEntry(c *ui.Context) {
 		} else {
 			angle = b.AnimateTo("menu-arrow", angle, motionFast)
 		}
-		ui.Icon(c, icons["chevron-down"]).Label("账号菜单箭头").Size(9.5*s, 9.5*s).TextColor(muted).Rotate(angle)
+		ui.Icon(c, icons["chevron-down"]).Label("账号菜单箭头").Size(12*s, 12*s).TextColor(muted).Rotate(angle)
 	}).Clicked() {
 		if len(a.snapshot.Accounts) == 0 {
 			a.openDialog("accountAdd")
@@ -89,30 +89,27 @@ func (a *App) accountMenu(c *ui.Context, anchor ui.Element) {
 				for _, acc := range a.snapshot.Accounts {
 					ac := acc
 					active := cur != nil && cur.ID == ac.ID
-					row := ui.ButtonBase(c.Key("qs-" + ac.ID)).Label("切换到 " + ac.Name).FillWidth().Height(44 * s).PaddingX(8 * s).Gap(12 * s).Radius(nestedRadius(radiusPanel, space2) * s).AlignItems(ui.Center)
+					row := ui.ButtonBase(c.Key("qs-" + ac.ID)).Label("切换到 " + ac.Name).FillWidth().Height(44 * s).PaddingX(8 * s).Gap(12 * s).Radius(radiusControl * s).AlignItems(ui.Center)
 					bg := ui.Transparent
 					if active {
-						bg = accentSoft
+						bg = lobeLight.FillSecondary
 					} else if row.Hovered() {
-						bg = ui.RGBA(120, 130, 160, .10)
+						bg = lobeLight.FillTertiary
 					}
 					row.Background(bg)
 					if row.Children(func() {
 						a.headAvatar(c, &ac, 26*s, func() {
-							ui.Box(c).Size(26*s, 26*s).Radius(radiusChip*s).Background(panel).Border(1, line).Center().Shrink(0).Children(func() {
-								ui.Icon(c, icons["account"]).Size(13*s, 13*s).TextColor(accent)
+							ui.Box(c).Size(26*s, 26*s).Radius(radiusChip*s).Background(raised).Border(1, line).Center().Shrink(0).Children(func() {
+								ui.Icon(c, icons["account"]).Size(13*s, 13*s).TextColor(inkSecondary)
 							})
 						})
 						fg := ink
-						if active {
-							fg = accent
-						}
 						tooltip(c, ui.Text(c, ac.Name).FontSize(typeCallout*s).FontWeight(600).TextColor(fg).SingleLine().Grow(1).MinWidth(0), ac.Name)
 						a.accountTypeTag(c, ac)
 						if active {
-							ui.Icon(c, icons["check"]).Size(13*s, 13*s).TextColor(accent).Shrink(0)
+							ui.Icon(c, icons["check"]).Size(14*s, 14*s).TextColor(lobePrimary).Shrink(0)
 						} else {
-							ui.Box(c).Size(13*s, 13*s).Shrink(0)
+							ui.Box(c).Size(14*s, 14*s).Shrink(0)
 						}
 					}).Clicked() && !a.pendingOp("select") {
 						a.accountMenuOpen = false
@@ -126,9 +123,9 @@ func (a *App) accountMenu(c *ui.Context, anchor ui.Element) {
 			// Footer rows share the account rows' geometry: same height, hover,
 			// a 26-DIP icon column, so the text lines up with the names.
 			item := func(key, text, icon string) bool {
-				b := ui.ButtonBase(c.Key(key)).Label(text).FillWidth().Height(44 * s).PaddingX(8 * s).Radius(nestedRadius(radiusPanel, space2) * s)
+				b := ui.ButtonBase(c.Key(key)).Label(text).FillWidth().Height(44 * s).PaddingX(8 * s).Radius(radiusControl * s)
 				if b.Hovered() {
-					b.Background(ui.RGBA(120, 130, 160, .10))
+					b.Background(lobeLight.FillTertiary)
 				}
 				return b.Children(func() {
 					ui.Row(c).FillWidth().FillHeight().Gap(12 * s).AlignItems(ui.Center).Children(func() {

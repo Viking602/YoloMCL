@@ -10,11 +10,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	keyring "github.com/zalando/go-keyring"
 )
 
 func TestAppearanceLoadsActiveAndSelectableLegacyCapes(t *testing.T) {
 	if runtime.GOOS != "windows" {
-		t.Skip("Microsoft account credentials require Windows DPAPI")
+		keyring.MockInit()
 	}
 	s := testService(t)
 	account := Account{ID: "cape-fixture", Kind: "microsoft"}

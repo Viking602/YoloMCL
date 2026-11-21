@@ -1,6 +1,8 @@
 package nativeui
 
 import (
+	"strings"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Viking602/YoloMCL/internal/launcher"
@@ -18,7 +20,11 @@ func (a *App) toggleModFn(m launcher.Mod) func() {
 			return
 		}
 		id, file := r.ID, m.File
-		a.toggleAsync("mods", file, func() error { return a.service.ToggleMod(id, file) })
+		to := toggledName(file)
+		if strings.EqualFold(m.Loader, "horizon") || a.isHorizonVersion() {
+			to = file
+		}
+		a.toggleAsyncTo("mods", file, to, func() error { return a.service.ToggleMod(id, file) })
 	}
 }
 
@@ -63,7 +69,11 @@ func (a *App) disableModDialog(c *ui.Context) {
 			}
 			if button(c, "confirm-disable-mod", a.L("mod_disable.disable_mod"), "", true, !a.modDisableReady()) {
 				a.closeDialog()
-				a.toggleAsync("mods", target.file, func() error { return a.service.ToggleMod(target.rootID, target.file) })
+				to := toggledName(target.file)
+				if a.isHorizonVersion() {
+					to = target.file
+				}
+				a.toggleAsyncTo("mods", target.file, to, func() error { return a.service.ToggleMod(target.rootID, target.file) })
 			}
 		})
 	})

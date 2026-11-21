@@ -21,6 +21,8 @@ func loaderName(s string) string {
 		return "Forge"
 	case "neoforge":
 		return "NeoForge"
+	case "horizon":
+		return "Horizon"
 	}
 	return "原版"
 }
@@ -41,6 +43,8 @@ func loaderKey(s string) string {
 		return "forge"
 	case "neoforge":
 		return "neoforge"
+	case "horizon":
+		return "horizon"
 	}
 	return v
 }
@@ -141,6 +145,8 @@ func loaderLabel(l string) string {
 		return "Fabric"
 	case "quilt":
 		return "Quilt"
+	case "horizon":
+		return "Horizon"
 	case "iris":
 		return "Iris"
 	case "optifine":

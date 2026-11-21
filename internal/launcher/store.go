@@ -14,6 +14,7 @@ import (
 	"time"
 
 	publisherconfig "github.com/Viking602/YoloMCL/internal/config"
+	"github.com/Viking602/YoloMCL/internal/launcher/vault"
 )
 
 func New(dataDir string) (*Service, error) {
@@ -162,26 +163,15 @@ func (s *Service) getAccount(id string) (Account, error) {
 	}
 	return Account{}, errors.New("请先添加并选择账号")
 }
-func (s *Service) secretPath(key string) string {
-	return filepath.Join(s.dir, "credentials", key+".bin")
-}
 func (s *Service) putSecret(key string, v any) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
-	b, err = seal(b)
-	if err != nil {
-		return err
-	}
-	return atomicBytes(s.secretPath(key), b, 0600)
+	return vault.Store(s.dir, key, b)
 }
 func (s *Service) getSecret(key string, v any) error {
-	b, err := os.ReadFile(s.secretPath(key))
-	if err != nil {
-		return errors.New("登录凭据不可用，请重新登录")
-	}
-	b, err = unseal(b)
+	b, err := vault.Load(s.dir, key)
 	if err != nil {
 		return err
 	}

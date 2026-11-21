@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
 
 	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
@@ -107,7 +108,16 @@ func (a *App) tasks(c *ui.Context) {
 				if j.State == "running" && j.BytesTotal > 0 { // match the % and the pill
 					frac = float64(j.BytesDone) / float64(j.BytesTotal)
 				}
-				ui.Progress(c, frac)
+				st := feedback.ProgressNormal
+				switch j.State {
+				case "running":
+					st = feedback.ProgressActive
+				case "done", "completed":
+					st = feedback.ProgressSuccess
+				case "failed":
+					st = feedback.ProgressException
+				}
+				progressBar(c, frac, st)
 			}
 			if len(j.Items) > 0 {
 				ui.Column(c).FillWidth().Gap(8*s).Padding(12*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {

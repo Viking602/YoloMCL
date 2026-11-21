@@ -184,7 +184,7 @@ func labelKeys(c Copy) map[string]map[string]string {
 		"skinModel":     {"slim": c.WardrobeModelAlex, "default": c.WardrobeModelSteve},
 		"installTarget": {"current": c.InstallTargetCurrent, "new": c.InstallTargetNew},
 		"versionKind":   {"release": c.InstallKindRelease, "snapshot": c.InstallKindSnapshot, "old_beta": c.InstallKindBeta, "old_alpha": c.InstallKindAlpha, "other": c.InstallKindOther, "all": c.InstallKindAll},
-		"loader":        {"vanilla": c.LoaderVanilla, "fabric": c.LoaderFabric, "quilt": c.LoaderQuilt, "forge": c.LoaderForge, "neoforge": c.LoaderNeoForge},
+		"loader":        {"vanilla": c.LoaderVanilla, "fabric": c.LoaderFabric, "quilt": c.LoaderQuilt, "forge": c.LoaderForge, "neoforge": c.LoaderNeoForge, "horizon": c.LoaderHorizon},
 		"cape":          {"none": c.WardrobeCapeNone},
 	}
 	labels := make(map[string]map[string]string, len(groups))

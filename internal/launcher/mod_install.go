@@ -34,6 +34,21 @@ func (s *Service) installModIn(ctx context.Context, p progress, r Root, source, 
 		if loader == "vanilla" {
 			return errors.New("原版不加载模组，请先安装并选择 Fabric / Quilt / Forge / NeoForge")
 		}
+		if loader == "horizon" {
+			if source == "horizon" {
+				return s.installHorizonModIn(ctx, p, r, project, id, replace)
+			}
+			return horizonErr(
+				"Horizon 使用原生模组格式（horizon-mods/），无法直接安装 Modrinth / CurseForge 的 Java 模组",
+				"Horizon uses its own native mod format (horizon-mods/) and cannot install Java mods from Modrinth or CurseForge directly",
+			)
+		}
+		if source == "horizon" {
+			return horizonErr(
+				"Horizon 模组（.hmod）仅适用于 Horizon 实例",
+				"Horizon mods (.hmod) can only be installed into a Horizon instance",
+			)
+		}
 		version, e := s.projectVersion(ctx, source, project, id)
 		if e != nil {
 			return e

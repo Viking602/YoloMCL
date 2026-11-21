@@ -201,7 +201,7 @@ The frame-rate endpoint uses a catalog-defined localized maximum label: 260 is d
 | `launcher/memory` | Physical and available memory on Windows, macOS and Linux |
 | `launcher/proctree` | Windows Job Objects and Unix process groups for game-process lifetime management |
 | `launcher/textenc` | UTF-8, GB18030 and platform code-page decoding for game output |
-| `launcher/vault` | Windows DPAPI for stored account tokens; other platforms return an unsupported-operation error |
+| `launcher/vault` | Windows DPAPI credential files; AES-GCM credential files on macOS/Linux. macOS keeps the key in Keychain; Linux stores a random key in an owner-only file and imports existing Secret Service keys when available. No plaintext token fallback. |
 
 Java auto-download currently targets Windows amd64. Platform-specific implementations and tests live in the corresponding package or OS-constrained files.
 

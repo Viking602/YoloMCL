@@ -308,7 +308,7 @@ func TestBilingualSwitchingAndCoreWorkflows(t *testing.T) {
 	clickUI(t, tt, "Close")
 
 	clickUI(t, tt, "Install Game")
-	if !tt.HasText("Install Minecraft & Mod Loader Wizard") || !tt.HasText("Step 3: Choose Mod Loader & Version") {
+	if !tt.HasText("Install Minecraft") || !tt.HasText("Runtime & Mod Loader") {
 		t.Fatalf("English install dialog incomplete: %v", tt.Texts())
 	}
 	clickUI(t, tt, "Close")

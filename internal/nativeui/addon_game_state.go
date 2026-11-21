@@ -69,8 +69,12 @@ func (a *App) gameState() (launcher.GameOptions, bool) {
 	return st, ok
 }
 
-// shaderLoader finds Iris / Oculus / OptiFine among the instance's mods.
+// shaderLoader finds Iris / Oculus / OptiFine among the instance's mods,
+// or reports Horizon's built-in shader runtime.
 func (a *App) shaderLoader() (name, version string, known bool) {
+	if v := a.gameVersion(); v != nil && strings.EqualFold(v.Loader, "horizon") {
+		return "Horizon", v.LoaderVersion, true
+	}
 	r := a.root()
 	if r == nil {
 		return "", "", false

@@ -67,7 +67,7 @@ func emptyArtwork(c *ui.Context, key, icon string, size float32) {
 // narrow pane. The compact dashboard variant shares the same artwork and type.
 func emptyState(c *ui.Context, key, icon, title, description string, actions func()) {
 	s := uiScale(c)
-	ui.Column(c.Key(key)).Font(uiSansFamily()).FillWidth().Padding(28*s, 24*s).Gap(12*s).Radius(radiusCard*s).Background(ui.RGBA(255, 255, 255, .76)).Border(1, glassEdge).AlignItems(ui.Center).Children(func() {
+	ui.Column(c.Key(key)).Font(uiSansFamily()).FillWidth().Padding(32*s, 24*s).Gap(12*s).Radius(radiusCard*s).Background(raised).Border(1, line).AlignItems(ui.Center).Children(func() {
 		emptyArtwork(c, key, icon, 1.15*s)
 		ui.Column(c).FillWidth().MaxWidth(520 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, title).FillWidth().FontSize(typeTitle * s).FontWeight(600).TextColor(inkSecondary).TextAlign(ui.Center)

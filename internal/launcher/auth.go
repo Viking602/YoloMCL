@@ -5,10 +5,11 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
-	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Viking602/YoloMCL/internal/launcher/vault"
 )
 
 type tokenSecret struct {
@@ -109,14 +110,12 @@ func (s *Service) RemoveAccount(id string) error {
 					draft.ActiveAccount = draft.Accounts[0].ID
 				}
 			}
-			if e := s.saveConfigLocked(draft); e != nil {
-				return e
+			if a.Kind != "offline" {
+				if e := vault.Delete(s.dir, id); e != nil {
+					return e
+				}
 			}
-			e := os.Remove(s.secretPath(id))
-			if os.IsNotExist(e) {
-				return nil
-			}
-			return e
+			return s.saveConfigLocked(draft)
 		}
 	}
 	return errors.New("账号不存在")

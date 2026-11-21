@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
 
 	"github.com/Viking602/YoloMCL/internal/buildinfo"
 )
@@ -37,7 +38,7 @@ func (a *App) aboutSettings(c *ui.Context) {
 			a.launcherUpdateButton(c)
 		})
 		if state := a.launcherUpdate; state.phase == "installing" && state.total > 0 {
-			ui.Progress(c, float64(state.downloaded)/float64(state.total))
+			progressBar(c, float64(state.downloaded)/float64(state.total), feedback.ProgressActive)
 		}
 	})
 }

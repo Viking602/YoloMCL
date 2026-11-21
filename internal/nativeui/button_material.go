@@ -24,11 +24,12 @@ type buttonMaterial struct {
 }
 
 var buttonMaterials = [...]buttonMaterial{
-	buttonPrimary:   {blue, accentIndigo, ui.Hex("#2b95ff"), ui.Hex("#7471f0"), ui.RGBA(22, 80, 190, .18), ui.Hex("#ffffff"), .28, .06, .10, .22, .18},
-	buttonSecondary: {ui.Hex("#ffffff"), ui.Hex("#f4f7fc"), ui.Hex("#f4f7fc"), ui.Hex("#edf4ff"), ui.Hex("#d1d9e6"), inkSecondary, 1, .06, .06, .09, .12},
-	buttonTertiary:  {ui.Hex("#edf4ff"), ui.Hex("#dfebfa"), ui.Hex("#f4f7fc"), ui.Hex("#edf4ff"), ui.RGBA(60, 72, 110, .10), inkSecondary, .85, .06, .05, .08, .16},
-	buttonGhost:     {ui.Transparent, ui.Transparent, ui.Hex("#edf4ff"), ui.Hex("#edf4ff"), ui.Transparent, inkSecondary, 0, 0, 0, 0, .14},
-	buttonText:      {ui.Transparent, ui.Transparent, ui.Transparent, ui.Transparent, ui.Transparent, accentHover, 0, 0, 0, 0, 0},
+	// Lobe UI monochrome primary & crisp neutral surfaces with subtle tactile press depth.
+	buttonPrimary:   {ui.Hex("#262626"), ui.Hex("#1c1c1c"), ui.Hex("#363636"), ui.Hex("#2b2b2b"), ui.Hex("#1f1f1f"), ui.Hex("#f8f8f8"), .12, .12, .08, .12, .18},
+	buttonSecondary: {ui.Hex("#ffffff"), ui.Hex("#fbfbfb"), ui.Hex("#fafafa"), ui.Hex("#f3f3f4"), ui.Hex("#e3e3e3"), ink, .9, .03, .04, .05, .10},
+	buttonTertiary:  {ui.Hex("#f3f3f4"), ui.Hex("#ededef"), ui.Hex("#ececee"), ui.Hex("#e5e5e7"), ui.RGBA(0, 0, 0, .06), inkSecondary, .7, .03, .03, .04, .10},
+	buttonGhost:     {ui.Transparent, ui.Transparent, ui.RGBA(0, 0, 0, .05), ui.RGBA(0, 0, 0, .06), ui.Transparent, inkSecondary, 0, 0, 0, 0, .08},
+	buttonText:      {ui.Transparent, ui.Transparent, ui.Transparent, ui.Transparent, ui.Transparent, accent, 0, 0, 0, 0, 0},
 }
 
 var (
@@ -60,15 +61,11 @@ func styleButtonMaterial(b ui.Element, u float32, variant buttonVariant, disable
 	top, bottom, edge := m.top, m.bottom, m.edge
 	highlight, shade := ui.RGBA(255, 255, 255, m.highlight), ui.RGBA(0, 0, 0, m.shade)
 	angle, shadow := float32(180), ui.RGBA(0, 0, 0, 1)
-	if variant == buttonPrimary {
-		angle, shadow = 120, ui.RGBA(10, 100, 255, 1)
-		shade = ui.RGBA(0, 0, 60, m.shade)
-	}
 	press, hover, visible := float32(0), float32(0), float32(1)
 	if hovered {
 		top, bottom, hover = m.hoverTop, m.hoverBottom, 1
 		if variant == buttonSecondary {
-			edge = ui.Hex("#9abce9")
+			edge = ui.Hex("#d4d4d4")
 		}
 	}
 	if pressed {
@@ -77,13 +74,15 @@ func styleButtonMaterial(b ui.Element, u float32, variant buttonVariant, disable
 		highlight, shade = ui.RGBA(0, 0, 0, m.depression), ui.Transparent
 		switch variant {
 		case buttonPrimary:
-			top, bottom = ui.Hex("#0a6fe0"), ui.Hex("#4f4dd0")
-			highlight = ui.RGBA(0, 0, 60, m.depression)
+			top, bottom = ui.Hex("#111111"), ui.Hex("#262626")
+			highlight = ui.RGBA(0, 0, 0, m.depression)
 		case buttonSecondary:
-			top, bottom, edge = ui.Hex("#dfebfa"), ui.Hex("#f4f7fc"), ui.Hex("#7ea8df")
+			top, bottom, edge = ui.Hex("#e8e8ea"), ui.Hex("#f7f7f8"), ui.Hex("#cccccc")
+		case buttonTertiary:
+			top, bottom = ui.Hex("#dfe0e2"), ui.Hex("#eeeeef")
 		case buttonGhost:
-			top, bottom = ui.Hex("#dfebfa"), ui.Hex("#edf4ff")
-			edge = ui.RGBA(60, 72, 110, .10)
+			top, bottom = ui.RGBA(0, 0, 0, .09), ui.RGBA(0, 0, 0, .07)
+			edge = ui.RGBA(0, 0, 0, .06)
 		}
 	}
 	if disabled {

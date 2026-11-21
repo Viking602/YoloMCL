@@ -102,12 +102,12 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 	primary, secondary := a.itemNames(it)
 	ui.Box(c.Key("addon-card-" + it.key)).Label("资源卡片 " + primary).Grow(1).Basis(0).MinWidth(0).FillHeight().Children(func() {
 		b := ui.ButtonBase(c.Key("toggle-"+it.key)).Label(a.L("addons_cards.toggle")+it.name).Description(it.file).Absolute().Left(0).Top(0).Right(0).Bottom(0).Radius(radiusCard*s).Clip().Padding(16*s, 16*s, 12*s).Gap(12 * s).Column()
-		bg, edge := panel, ui.RGBA(60, 70, 110, .08)
+		bg, edge := panel, line
 		if b.Hovered() {
-			bg, edge = ui.Hex("#f2f5fb"), ui.RGBA(60, 70, 110, .16)
+			bg, edge = raised, lineStrong
 		}
 		if !it.enabled {
-			bg = mixColor(bg, ui.Hex("#eef0f4"), .7)
+			bg = mixColor(bg, fieldColor, .7)
 		}
 		b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(1, b.AnimateColor("edge", edge, fastAnim))
 		{
@@ -184,9 +184,9 @@ func (a *App) addonCard(c *ui.Context, it addonItem, onToggle func(), actions fu
 				if !it.enabled {
 					quietTag(c, a.L("addon_filter.disabled"), muted)
 				}
-				if logo := sourceLogo(it.source); logo != nil {
-					ui.Row(c).Shrink(0).Height(18 * s).PaddingX(4 * s).Radius(radiusChip * s).Background(ui.RGBA(120, 130, 160, .10)).Center().Children(func() {
-						ui.Icon(c, logo).Size(11*s, 11*s).Label(sourceName(it.source))
+				if hasSourceLogo(it.source) {
+					ui.Row(c).Label(sourceName(it.source)).Shrink(0).Height(18 * s).PaddingX(4 * s).Radius(radiusChip * s).Background(ui.RGBA(120, 130, 160, .10)).Center().Children(func() {
+						renderSourceLogo(c, it.source, 11*s)
 					})
 				}
 				if it.version != "" {

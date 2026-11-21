@@ -103,6 +103,9 @@ func (a *App) projectVersionFits(v launcher.ProjectVersion) bool {
 	if a.project.Type == "mod" {
 		return g.Loader != "" && g.Loader != "vanilla" && hasLoader(v, g.Loader)
 	}
+	if a.project.Type == "shader" && hasLoader(v, "horizon") {
+		return strings.EqualFold(g.Loader, "horizon")
+	}
 	return true
 }
 

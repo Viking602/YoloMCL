@@ -134,7 +134,7 @@ func readOverviewInputs(ctx context.Context, dir string) (overviewInputs, error)
 		binary.LittleEndian.PutUint64(buf[16:], uint64(st.mode))
 		h.Write(buf[:])
 	}
-	for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", "saves", "screenshots", "logs", "crash-reports", "backups"} {
+	for _, sub := range []string{"mods", "horizon-mods", "resourcepacks", "shaderpacks", "saves", "screenshots", "logs", "crash-reports", "backups"} {
 		if err := ctx.Err(); err != nil {
 			return overviewInputs{}, err
 		}
@@ -158,7 +158,7 @@ func readOverviewInputs(ctx context.Context, dir string) (overviewInputs, error)
 			// These counters depend on names and file types, not JAR/ZIP
 			// contents, sizes or modification times.
 			st := fileStamp{mode: en.Type()}
-			if sub != "mods" && sub != "resourcepacks" && sub != "shaderpacks" {
+			if sub != "mods" && sub != "horizon-mods" && sub != "resourcepacks" && sub != "shaderpacks" {
 				if info, err := en.Info(); err == nil {
 					st = fileStamp{size: info.Size(), modified: info.ModTime().UnixNano(), mode: info.Mode()}
 				}
@@ -171,6 +171,7 @@ func readOverviewInputs(ctx context.Context, dir string) (overviewInputs, error)
 		}
 	}
 	addStamp(stampFile(playStatsPath(dir)))
+	addStamp(stampFile(filepath.Join(dir, "horizon-mods.txt")))
 	if err := ctx.Err(); err != nil {
 		return overviewInputs{}, err
 	}

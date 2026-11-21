@@ -22,6 +22,7 @@ func TestInstanceLoaderSelectsDescriptor(t *testing.T) {
 		{"neoforge", "1.21.1", "META-INF/neoforge.mods.toml"},
 		{"neoforge", "26.3", "META-INF/neoforge.mods.toml"},
 		{"vanilla", "1.21.1", ""},
+		{"horizon", "26.3", ""},
 	} {
 		t.Run(tc.loader+"/"+tc.mc, func(t *testing.T) {
 			p, err := SelectLoader(tc.loader, tc.mc, "")
@@ -46,7 +47,7 @@ func TestInstanceLoaderSelectsDescriptor(t *testing.T) {
 		t.Fatal("unknown loader accepted")
 	}
 	foreign := fixtureArchive(t, map[string][]byte{"fabric.mod.json": {}})
-	for _, loader := range []string{"forge", "neoforge", "vanilla"} {
+	for _, loader := range []string{"forge", "neoforge", "vanilla", "horizon"} {
 		p, _ := SelectLoader(loader, "1.21.1", "")
 		if f, err := p.Descriptor(foreign); err != nil || f != nil {
 			t.Fatalf("%s activated foreign descriptor", loader)

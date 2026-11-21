@@ -8,7 +8,7 @@
 - [MicrosoftOAuthClient.ts](https://github.com/Voxelum/x-minecraft-launcher/blob/75a52faa73faca04a24e49c58c3afaf79b5bce16/xmcl-runtime/user/accountSystems/MicrosoftOAuthClient.ts) 使用 MSAL 公共客户端，包含缓存 / 静默登录、设备码授权、Windows WAM，以及交互式授权的后备路径。其嵌入式 WebView 授权路径不适用于本项目的无 WebView 要求。
 - [MicrosoftAccountSystem.ts](https://github.com/Voxelum/x-minecraft-launcher/blob/75a52faa73faca04a24e49c58c3afaf79b5bce16/xmcl-runtime/user/accountSystems/MicrosoftAccountSystem.ts) 继续完成 Xbox / XSTS、Minecraft 令牌、游戏所有权与档案读取，并区分缺少 Xbox 档案、家庭账号、地区等错误。
 
-MCL：发行时内置自己的公开应用身份；使用原生设备授权界面配合系统浏览器。令牌在 Windows 下通过 DPAPI 保存，启动时刷新。当前没有移植 MSAL / WAM，也没有复制 XMCL 的应用身份。开发构建缺少发行方身份时会明确标示服务尚未启用。
+MCL：发行时内置自己的公开应用身份；使用原生设备授权界面配合系统浏览器。Windows 用 DPAPI、macOS 用系统钥匙串密钥加密令牌文件；Linux 用当前用户专属的本地密钥文件加密令牌，不依赖 Secret Service，启动时刷新。当前没有移植 MSAL / WAM，也没有复制 XMCL 的应用身份。开发构建缺少发行方身份时会明确标示服务尚未启用。
 
 ## CurseForge 检索与下载
 

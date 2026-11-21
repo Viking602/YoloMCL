@@ -92,9 +92,15 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 		if pack := readPack(r.Path); pack != nil && len(pack.Manual) > 0 {
 			return errors.New("整合包还有手动下载文件，请完成后在整合包页面重新检查")
 		}
+		if localVer, err := readVersion(r.Path, r.SelectedVersion); err == nil && localVer.Horizon != nil {
+			return s.launchHorizon(ctx, r, a, localVer, p)
+		}
 		v, e := s.resolveVersion(ctx, r.Path, r.SelectedVersion, p)
 		if e != nil {
 			return e
+		}
+		if v.Horizon != nil {
+			return s.launchHorizon(ctx, r, a, v, p)
 		}
 		major := v.JavaVersion.MajorVersion
 		if major == 0 {
