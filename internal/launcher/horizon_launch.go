@@ -185,19 +185,19 @@ func (s *Service) launchHorizon(ctx context.Context, r Root, a Account, v gameVe
 			message = "游戏退出: " + waitErr.Error()
 		}
 		_, _ = logs.Write([]byte(message + "\n"))
-		s.endSession(gs, waitErr)
 		logs.mu.Lock()
 		if logs.file != nil {
 			_ = logs.file.Close()
 			logs.file = nil
 		}
 		logs.mu.Unlock()
+		_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
 		s.mu.Lock()
 		if s.running[key] == rg {
 			delete(s.running, key)
 		}
 		s.mu.Unlock()
-		_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
+		s.endSession(gs, waitErr)
 	}()
 
 	p("游戏进程已启动", 1, 1)

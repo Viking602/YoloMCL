@@ -245,7 +245,6 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 				message = "游戏退出: " + e.Error()
 			}
 			_, _ = logs.Write([]byte(message + "\n"))
-			s.endSession(gs, e)
 			logs.mu.Lock()
 			if logs.file != nil {
 				_ = logs.file.Close()
@@ -253,12 +252,13 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 			}
 			logs.mu.Unlock()
 			_ = os.RemoveAll(natives)
+			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
 			s.mu.Lock()
 			if s.running[key] == rg {
 				delete(s.running, key)
 			}
 			s.mu.Unlock()
-			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
+			s.endSession(gs, e)
 		}()
 		p("游戏进程已启动", 1, 1)
 		return nil
