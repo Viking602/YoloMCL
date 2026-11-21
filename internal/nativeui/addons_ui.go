@@ -225,8 +225,10 @@ func (a *App) addonRow(c *ui.Context, it addonItem, compact bool, onToggle func(
 			if len(it.missing) > 0 {
 				tooltip(c, ui.Box(c).Shrink(0), a.L("addons_cards.missing_dependencies")+strings.Join(it.missing, ", ")).Children(func() { quietTag(c, a.L("addons_cards.missing_deps"), danger) })
 			}
-			if logo := sourceLogo(it.source); logo != nil {
-				tooltip(c, ui.Icon(c, logo).Size(14*s, 14*s), sourceName(it.source)).Label(sourceName(it.source)).Shrink(0)
+			if hasSourceLogo(it.source) {
+				tooltip(c, ui.Box(c).Size(14*s, 14*s).Center().Shrink(0), sourceName(it.source)).Label(sourceName(it.source)).Children(func() {
+					renderSourceLogo(c, it.source, 14*s)
+				})
 			}
 			if it.size != "" {
 				ui.Text(c, it.size).Width(64 * s).TextAlign(ui.End).FontFeatures("tnum").FontSize(typeCaption * s).TextColor(muted).NoWrap()
@@ -248,12 +250,42 @@ func sourceLogo(src string) *ui.SVG {
 	return nil
 }
 
+func hasSourceLogo(src string) bool {
+	switch strings.ToLower(src) {
+	case "curseforge", "modrinth":
+		return sourceLogo(src) != nil
+	case "horizon":
+		return loaderLogos["horizon"] != nil
+	}
+	return false
+}
+
+func renderSourceLogo(c *ui.Context, src string, size float32) bool {
+	switch strings.ToLower(src) {
+	case "curseforge", "modrinth":
+		if logo := sourceLogo(src); logo != nil {
+			ui.Image(c, logo).Size(size, size).Fit(ui.Contain).Shrink(0)
+			return true
+		}
+	case "horizon":
+		if bmp := loaderLogos["horizon"]; bmp != nil {
+			ui.Box(c).Size(size, size).Radius(max(2, size*.24)).Clip().Shrink(0).Center().Children(func() {
+				ui.Image(c, bmp).Size(size, size).Fit(ui.Contain)
+			})
+			return true
+		}
+	}
+	return false
+}
+
 func sourceName(src string) string {
 	switch strings.ToLower(src) {
 	case "curseforge":
 		return "CurseForge"
 	case "modrinth":
 		return "Modrinth"
+	case "horizon":
+		return "Horizon"
 	}
 	return ""
 }
@@ -312,15 +344,33 @@ func (a *App) applyToggle(tab, from, to string) bool {
 		return false
 	}
 	hit := false
+	var flippedMods map[*launcher.Mod]bool
+	var flippedPacks map[*launcher.AssetPack]bool
 	flip := func(mods []launcher.Mod, packs []launcher.AssetPack) {
 		for i := range mods {
-			if mods[i].File == from {
-				mods[i].File, mods[i].Enabled, hit = to, !strings.HasSuffix(to, ".disabled"), true
+			if mods[i].File == from && !flippedMods[&mods[i]] {
+				if flippedMods == nil {
+					flippedMods = map[*launcher.Mod]bool{}
+				}
+				flippedMods[&mods[i]] = true
+				enabled := !strings.HasSuffix(to, ".disabled")
+				if from == to {
+					enabled = !mods[i].Enabled
+				}
+				mods[i].File, mods[i].Enabled, hit = to, enabled, true
 			}
 		}
 		for i := range packs {
-			if packs[i].File == from {
-				packs[i].File, packs[i].Enabled, hit = to, !strings.HasSuffix(to, ".disabled"), true
+			if packs[i].File == from && !flippedPacks[&packs[i]] {
+				if flippedPacks == nil {
+					flippedPacks = map[*launcher.AssetPack]bool{}
+				}
+				flippedPacks[&packs[i]] = true
+				enabled := !strings.HasSuffix(to, ".disabled")
+				if from == to {
+					enabled = !packs[i].Enabled
+				}
+				packs[i].File, packs[i].Enabled, hit = to, enabled, true
 			}
 		}
 	}
@@ -338,7 +388,10 @@ func (a *App) applyToggle(tab, from, to string) bool {
 // toggleAsync renames in the background, one at a time, after the row has
 // already flipped; a failure flips it back and says why.
 func (a *App) toggleAsync(tab, file string, run func() error) {
-	to := toggledName(file)
+	a.toggleAsyncTo(tab, file, toggledName(file), run)
+}
+
+func (a *App) toggleAsyncTo(tab, file, to string, run func() error) {
 	if !a.applyToggle(tab, file, to) {
 		return
 	}

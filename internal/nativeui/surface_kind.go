@@ -41,8 +41,12 @@ func (a *App) taskPage(c *ui.Context) bool {
 	}
 	s := uiScale(c)
 	a.dialogShown = a.dialog
+	if a.dialog == "install" {
+		a.gameInstallWorkspace(c)
+		return true
+	}
 	_, h := c.Size()
-	contentPanel(ui.Column(c.Key("task-page-"+a.dialog)).Lang(a.lang()).Fill().Margin(0, 10*s, 10*s, 10*s), s).Children(func() {
+	fullContentPanel(ui.Column(c.Key("task-page-"+a.dialog)).Lang(a.lang()).Fill(), s).Children(func() {
 		ui.Column(c).Fill().MaxWidth(1160 * s).AlignSelf(ui.Center).Padding(24 * s).Children(func() {
 			box := ui.Column(c).Fill().MinHeight(0)
 			box.Children(func() { a.surfacePanel(c, ui.Element{}, box, 1, s, h-24*s, surfacePage) })

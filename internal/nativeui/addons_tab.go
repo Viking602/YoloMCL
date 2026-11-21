@@ -11,6 +11,11 @@ import (
 	"github.com/Viking602/YoloMCL/internal/launcher"
 )
 
+func (a *App) isHorizonVersion() bool {
+	v := a.gameVersion()
+	return v != nil && strings.EqualFold(v.Loader, "horizon")
+}
+
 func (a *App) goDiscover(kind, query string) {
 	if a.launcherUpdateRequired() {
 		return
@@ -23,6 +28,15 @@ func (a *App) goDiscover(kind, query string) {
 		a.resourceType = t.DiscoverTypeShader
 	default:
 		a.resourceType = t.DiscoverTypeMod
+	}
+	if v := a.gameVersion(); v != nil && strings.EqualFold(v.Loader, "horizon") {
+		a.provider = "horizon"
+		if v.Minecraft != "" {
+			a.filterMC = v.Minecraft
+			a.discoverMCText = v.Minecraft
+		}
+	} else if a.provider == "horizon" && kind != "resourcepack" && kind != "shader" {
+		a.provider = "modrinth"
 	}
 	a.query = query
 	a.searchResult = launcher.SearchResult{}
@@ -37,22 +51,33 @@ func (a *App) importAddons(kind string) {
 	}
 	id := r.ID
 	if kind == "mods" {
-		a.chooseFiles("mods", func(paths []string) {
+		picker := "mods"
+		if a.isHorizonVersion() {
+			picker = "hmods"
+		}
+		a.chooseFiles(picker, func(paths []string) {
 			a.execute("addLocalMods", map[string]any{"rootId": id, "paths": paths}, func(json.RawMessage) { a.loadMods() })
 		})
 		return
 	}
-	a.chooseFiles("zip", func(paths []string) {
+	picker := "zip"
+	if kind == "shader" && a.isHorizonVersion() {
+		picker = "shader"
+	}
+	a.chooseFiles(picker, func(paths []string) {
 		a.execute("addLocalAssetPacks", map[string]any{"rootId": id, "kind": kind, "paths": paths}, func(json.RawMessage) { a.loadMods() })
 	})
 }
 
-func addonFolder(kind string) string {
+func (a *App) addonFolder(kind string) string {
 	switch kind {
 	case "resourcepack":
 		return "resourcepacks"
 	case "shader":
 		return "shaderpacks"
+	}
+	if a.isHorizonVersion() {
+		return "horizon-mods"
 	}
 	return "mods"
 }
@@ -77,28 +102,28 @@ func (a *App) addonToolbar(c *ui.Context, all []addonEntry) {
 					a.addonSortKey = "size"
 				}
 			}
-			ui.Row(c.Key("addon-view")).Label(a.L("addons_tab.view")).Padding(4 * s).Gap(4 * s).Radius(radiusControl * s).Background(fieldColor).Shrink(0).Children(func() {
+			ui.Row(c.Key("addon-view")).Label(a.L("addons_tab.view")).Padding(3*s).Gap(3*s).Radius(radiusControl*s).Background(lobeLight.FillSecondary).Border(1, lobeLight.FillQuaternary).Shrink(0).Children(func() {
 				for _, v := range []struct {
 					list       bool
 					icon, text string
 				}{{false, "mods", a.L("addons_tab.cards")}, {true, "list", a.L("addons_tab.list")}} {
 					sel := a.addonListMode == v.list
 					b := tooltip(c, ui.ButtonBase(c.Key("addon-view-"+v.icon)).Label(v.text), v.text).Size(btnSm*s, btnSm*s-4*s).Radius(radiusChip * s).Center()
-					bg, fg := ui.Transparent, muted
+					bg, edge, fg := ui.Transparent, ui.Transparent, muted
 					if sel {
-						bg, fg = panel, ink
+						bg, edge, fg = panel, lineStrong, ink
 					} else if b.Hovered() {
 						fg = inkSecondary
 					}
-					b.Background(b.AnimateColor("bg", bg, fastAnim))
+					b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(1, b.AnimateColor("edge", edge, fastAnim))
 					list := v.list
-					if b.Children(func() { ui.Icon(c, icons[v.icon]).Size(12*s, 12*s).TextColor(fg) }).Clicked() {
+					if b.Children(func() { ui.Icon(c, icons[v.icon]).Size(13*s, 13*s).TextColor(fg) }).Clicked() {
 						a.addonListMode = list
 					}
 				}
 			})
 			if iconOnlyButton(c, "addon-open-folder", "folder", a.L("addons_tab.open_folder"), btnMd*s, false) {
-				a.openSub(addonFolder(kind))
+				a.openSub(a.addonFolder(kind))
 			}
 			if kind == "mods" {
 				if a.modChecking {
@@ -152,7 +177,7 @@ func (a *App) addonEmpty(c *ui.Context) {
 			a.importAddons(kind)
 		}
 		if fixedButton(c, "empty-folder", a.L("addons_tab.open_folder"), "folder", 0, btnMd*s, false, false) {
-			a.openSub(addonFolder(kind))
+			a.openSub(a.addonFolder(kind))
 		}
 	})
 }
@@ -179,7 +204,7 @@ func (a *App) shaderStatusCard(c *ui.Context) {
 				case !stOK:
 					cur = a.L("addons_tab.reading")
 				case st.ShadersOn:
-					cur, fg = strings.TrimSuffix(st.ShaderPack, ".zip"), ink
+					cur, fg = strings.TrimSuffix(strings.TrimSuffix(st.ShaderPack, ".zip"), ".hshader"), ink
 				case st.ShaderConfig != "" && st.ShaderPack != "":
 					cur = a.L("addons_tab.shaders_are_off")
 				}

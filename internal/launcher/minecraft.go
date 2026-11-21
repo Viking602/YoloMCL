@@ -98,6 +98,7 @@ type gameVersion struct {
 			File     artifact `json:"file"`
 		} `json:"client"`
 	} `json:"logging"`
+	Horizon *horizonVersionMeta `json:"horizon,omitempty"`
 }
 
 func osName() string {
@@ -180,7 +181,11 @@ func libraryArtifact(l library) (artifact, error) {
 
 func (s *Service) Manifest(ctx context.Context) (gameManifest, error) {
 	var m gameManifest
-	e := s.getJSON(ctx, manifestURL, &m)
+	rawURL := manifestURL
+	if s.horizonTest != nil && s.horizonTest.manifestURL != "" {
+		rawURL = s.horizonTest.manifestURL
+	}
+	e := s.getJSON(ctx, rawURL, &m)
 	return m, e
 }
 
@@ -239,6 +244,10 @@ func mergeVersion(base, child gameVersion) gameVersion {
 	}
 	if child.Jar != "" {
 		base.Jar = child.Jar
+	}
+	if child.Horizon != nil {
+		cp := *child.Horizon
+		base.Horizon = &cp
 	}
 	base.Arguments.Game = append(base.Arguments.Game, child.Arguments.Game...)
 	base.Arguments.JVM = append(base.Arguments.JVM, child.Arguments.JVM...)

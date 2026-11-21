@@ -29,6 +29,9 @@ function inspect(line, name, first, group, dep) {
   if ((name == "github.com/egoist/mygo" || index(name, "github.com/egoist/mygo/") == 1) && pkg !~ /^internal\/(app|nativeui)$/) {
     print FILENAME ": UI dependency is not allowed here" > "/dev/stderr"; failed = 1
   }
+  if ((name == "github.com/lobehub/lobe-mygo" || index(name, "github.com/lobehub/lobe-mygo/") == 1) && pkg != "internal/nativeui") {
+    print FILENAME ": UI component dependency is not allowed here" > "/dev/stderr"; failed = 1
+  }
   if (group == 2) {
     dep = substr(name, length(module) + 2)
     if (!allowed(pkg, dep)) {

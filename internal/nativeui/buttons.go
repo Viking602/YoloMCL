@@ -72,6 +72,36 @@ func iconOnlyButton(c *ui.Context, key, icon, label string, size float32, disabl
 	return iconButtonElement(c, key, icon, label, size, disabled).Clicked() && !disabled
 }
 
+// iconOnlyButtonActive is an ActionIcon-style square button with an explicit
+// toggled/active surface (used e.g. for the title-bar Settings button).
+func iconOnlyButtonActive(c *ui.Context, key, icon, label string, size float32, active, disabled bool) bool {
+	s := uiScale(c)
+	bs := buttonSizeFor(size / s)
+	fg := inkSecondary
+	bg := ui.Transparent
+	edge := ui.Transparent
+	if disabled {
+		fg = disabledInk
+	} else if active {
+		fg = ink
+		bg = panel
+		edge = lineStrong
+	}
+	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(bs.height*s, bs.height*s).Shrink(0).Radius(radiusControl * s).AlignItems(ui.Center).Justify(ui.Center)
+	if !disabled && !active && b.Hovered() {
+		bg = fieldHover
+		fg = ink
+	}
+	b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(s, b.AnimateColor("edge", edge, fastAnim))
+	if active && !disabled {
+		b.Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .05))
+	}
+	if disabled {
+		b.Cursor(ui.CursorDefault)
+	}
+	return b.Children(func() { ui.Icon(c, icons[icon]).Size(bs.icon*s, bs.icon*s).TextColor(fg) }).Clicked() && !disabled
+}
+
 func iconButtonElement(c *ui.Context, key, icon, label string, size float32, disabled bool) ui.Element {
 	s := uiScale(c)
 	bs := buttonSizeFor(size / s)
@@ -84,9 +114,9 @@ func iconButtonElement(c *ui.Context, key, icon, label string, size float32, dis
 // Disabled controls keep a readable label (about 5:1 on their fill)
 // instead of the toolkit's 50% fade.
 var (
-	disabledFill = ui.Hex("#e9ebee")
-	disabledEdge = ui.RGBA(15, 23, 42, .10)
-	disabledInk  = ui.Hex("#59616e")
+	disabledFill = ui.Hex("#f2f2f3")
+	disabledEdge = ui.Hex("#e5e5e7")
+	disabledInk  = ui.Hex("#6b6b70")
 )
 
 // buttonWhy[key] is the reason a button is disabled, set by buttonWhy for
@@ -140,9 +170,6 @@ func finishSizedButton(c *ui.Context, b ui.Element, key, text, icon string, bs b
 	}
 	clicked := b.Children(func() {
 		label := buttonContent(c, key, text, icon, font, iconSize, fg)
-		if variant == buttonPrimary && !disabled {
-			slateLabelShadow(label, text, font)
-		}
 		if variant == buttonText {
 			label.Underline()
 			ui.Icon(c, icons["arrow"]).Size(iconSize, iconSize).TextColor(fg).Shrink(0).Translate(arrow, 0)
@@ -153,12 +180,6 @@ func finishSizedButton(c *ui.Context, b ui.Element, key, text, icon string, bs b
 		return true
 	}
 	return clicked && !disabled
-}
-
-func slateLabelShadow(label ui.Element, text string, font float32) {
-	label.Draw(func(p *ui.Painter, r ui.Rect) {
-		p.RichText(r.X, r.Y-font/14, 0, ui.Span{Text: text, Font: uiSansFamily(), Size: font, Weight: 600, Color: ui.RGBA(0, 0, 0, .28)})
-	})
 }
 
 var pendingWhy string

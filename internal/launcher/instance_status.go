@@ -91,19 +91,27 @@ func (s *Service) InstanceOverviewContext(ctx context.Context, rootID, versionID
 		n := strings.ToLower(en.Name())
 		return en.IsDir() || strings.HasSuffix(n, ".zip") || strings.HasSuffix(n, ".zip.disabled")
 	}
-	st.Mods = count("mods", func(en os.DirEntry) bool {
-		name := strings.ToLower(en.Name())
-		if en.IsDir() {
-			return false
-		}
-		if strings.HasSuffix(name, ".jar") {
-			st.EnabledMods++
-			return true
-		}
-		return strings.HasSuffix(name, ".jar.disabled")
-	})
+	shaderPack := func(en os.DirEntry) bool {
+		n := strings.ToLower(en.Name())
+		return pack(en) || strings.HasSuffix(n, ".hshader") || strings.HasSuffix(n, ".hshader.disabled")
+	}
+	if isHorizonRootVersion(r) {
+		st.Mods, st.EnabledMods = horizonModOverviewCounts(ctx, dir, inputs.entries["horizon-mods"])
+	} else {
+		st.Mods = count("mods", func(en os.DirEntry) bool {
+			name := strings.ToLower(en.Name())
+			if en.IsDir() {
+				return false
+			}
+			if strings.HasSuffix(name, ".jar") {
+				st.EnabledMods++
+				return true
+			}
+			return strings.HasSuffix(name, ".jar.disabled")
+		})
+	}
 	st.ResourcePacks = count("resourcepacks", pack)
-	st.Shaders = count("shaderpacks", pack)
+	st.Shaders = count("shaderpacks", shaderPack)
 	st.Saves = count("saves", func(en os.DirEntry) bool {
 		if !en.IsDir() || ctx.Err() != nil {
 			return false
@@ -227,8 +235,12 @@ func (s *Service) CompleteInstanceStorage(ctx context.Context, st InstanceStatus
 						continue
 					}
 					st.Total += info.Size()
-					if _, ok := st.Sizes[sub]; ok {
-						st.Sizes[sub] += info.Size()
+					sizeKey := sub
+					if sizeKey == "horizon-mods" {
+						sizeKey = "mods"
+					}
+					if _, ok := st.Sizes[sizeKey]; ok {
+						st.Sizes[sizeKey] += info.Size()
 					}
 					if sub == "saves" && st.RecentWorld != nil && save == st.RecentWorld.Dir {
 						st.RecentWorld.Size += info.Size()
@@ -272,17 +284,17 @@ func (s *Service) CompleteInstanceStorage(ctx context.Context, st InstanceStatus
 }
 
 var instanceStorageDirectories = []string{
-	"mods", "resourcepacks", "shaderpacks", "saves", "screenshots",
+	"mods", "horizon-mods", "resourcepacks", "shaderpacks", "saves", "screenshots",
 	"config", "defaultconfigs", "kubejs", "scripts", "logs", "crash-reports",
 	"backups", ".mcl/backups",
 }
 
 var instanceStorageFiles = []string{
-	"options.txt", "optionsof.txt", "optionsshaders.txt", "servers.dat", "servers.dat_old",
+	"options.txt", "optionsof.txt", "optionsshaders.txt", "horizon-mods.txt", "servers.dat", "servers.dat_old",
 	"usercache.json", "usernamecache.json", "icon.png", "pack.mcmeta", "manifest.json", "modrinth.index.json",
 	".mcl/mods.json", ".mcl/mod-checks.json", ".mcl/" + modCacheFile,
 	".mcl/playstats.json", ".mcl/pack-lock.json", ".mcl/pack-update.json", ".mcl/icon.png",
-	".mcl/last-log.json", ".mcl/loader-install-log.json",
+	".mcl/last-log.json", ".mcl/loader-install-log.json", ".mcl/horizon-prepare-log.json",
 }
 
 func instanceToolDirectory(name string) bool {

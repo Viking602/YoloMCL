@@ -141,6 +141,25 @@ func (s *Service) AddonRemoteInfo(ctx context.Context, rootID, versionID, kind s
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	var horizonInfo map[string]RemoteInfo
+	if r, err := s.rootAt(rootID, versionID); err == nil && isHorizonRootVersion(r) && (kind == "mod" || kind == "shader") {
+		horizonInfo = s.horizonAddonRemoteInfo(ctx, r, kind, items)
+		if kind == "mod" {
+			return horizonInfo, nil
+		}
+		if len(horizonInfo) > 0 {
+			var rest []AddonRef
+			for _, it := range items {
+				if _, ok := horizonInfo[it.SHA1]; !ok {
+					rest = append(rest, it)
+				}
+			}
+			if len(rest) == 0 {
+				return horizonInfo, nil
+			}
+			items = rest
+		}
+	}
 	modIconMu.Lock()
 	defer modIconMu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -148,6 +167,9 @@ func (s *Service) AddonRemoteInfo(ctx context.Context, rootID, versionID, kind s
 	}
 	idx := s.loadModIconIndex()
 	out := map[string]RemoteInfo{}
+	for k, v := range horizonInfo {
+		out[k] = v
+	}
 	now := time.Now().Unix()
 	var todo []AddonRef
 	for _, m := range items {

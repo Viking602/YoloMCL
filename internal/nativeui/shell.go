@@ -57,7 +57,7 @@ func (a *App) View(c *ui.Context) {
 							return
 						}
 						if a.page == "settings" {
-							contentPanel(ui.Column(c.Key("content-panel")), s).Grow(1).MinHeight(0).Margin(0, 10*s, 10*s, 10*s).Children(func() { a.preferences(c) })
+							fullContentPanel(ui.Column(c.Key("content-panel")), s).Grow(1).MinHeight(0).Children(func() { a.preferences(c) })
 							return
 						}
 						if a.page == "home" {
@@ -68,7 +68,7 @@ func (a *App) View(c *ui.Context) {
 							a.discoverView(c)
 							return
 						}
-						contentPanel(ui.Column(c.Key("content-panel")), s).Grow(1).MinHeight(0).Children(func() {
+						fullContentPanel(ui.Column(c.Key("content-panel")), s).Grow(1).MinHeight(0).Children(func() {
 							scrollArea(c, "page-scroll-"+a.page).Grow(1).MinHeight(0).Padding(pageTop*s, pageGutter*s, a.scrollEndPad(s)).Children(func() {
 								ui.Column(c).FillWidth().MaxWidth(1160 * s).AlignSelf(ui.Center).Gap(pageHeaderGap * s).Children(func() {
 									switch a.page {
@@ -88,9 +88,11 @@ func (a *App) View(c *ui.Context) {
 		})
 		if draggingFiles {
 			t := a.tr()
-			popover(ui.Box(c).Absolute().Left(18*s).Right(18*s).Top(56*s).Bottom(18*s), radiusDialog*s, s).BorderLinearGradient(ui.LinearGradient{From: accent, To: accentViolet, Angle: 120}).Border(2, accent).Center().Children(func() {
+			popover(ui.Box(c).Absolute().Left(18*s).Right(18*s).Top(56*s).Bottom(18*s), radiusDialog*s, s).Border(2, lobePrimary).BorderStyle(ui.BorderDashed).Center().Children(func() {
 				ui.Column(c).AlignItems(ui.Center).Gap(16 * s).Padding(36 * s).Children(func() {
-					appleSoftIconBox(c, 68*s, "tasks", accent, accentIndigo, panel)
+					ui.Box(c).Size(64*s, 64*s).Radius(radiusCard*s).Background(raised).Border(1, lineStrong).Center().Children(func() {
+						ui.Icon(c, icons["download"]).Size(28*s, 28*s).TextColor(ink)
+					})
 					ui.Text(c, t.DropOverlayTitle).FontSize(typeTitle1 * s).Bold().TextColor(ink)
 					label(c, t.DropOverlayDesc).FontSize(typeBody * s)
 				})
@@ -120,16 +122,24 @@ func (a *App) windowBar(c *ui.Context) {
 		a.navBar(c)
 		ui.Spacer(c).Grow(1)
 		a.jobPill(c)
-		langBtn := tooltip(c, ui.ButtonBase(c.Key("lang-toggle")).Label(t.LangToggleLabel), t.LangToggleTooltip).Height(btnMd * s).PaddingX(btnPad * s).Gap(btnGap * s).Font(uiSansFamily()).AlignItems(ui.Center)
+		langBtn := tooltip(c, ui.ButtonBase(c.Key("lang-toggle")).Label(t.LangToggleLabel), t.LangToggleTooltip).Height(btnSm * s).PaddingX(10 * s).Gap(6 * s).Font(uiSansFamily()).AlignItems(ui.Center)
 		styleButtonMaterial(langBtn, s, buttonGhost, false)
 		if langBtn.Children(func() {
-			ui.Icon(c, icons["globe"]).Size(16*s, 16*s).TextColor(inkSecondary)
-			ui.Text(c, t.LangToggleLabel).FontSize(typeCallout * s).FontWeight(600).TextColor(inkSecondary).NoWrap()
+			ui.Icon(c, icons["globe"]).Size(14*s, 14*s).TextColor(inkSecondary)
+			ui.Text(c, t.LangToggleLabel).FontSize(typeFootnote * s).FontWeight(600).TextColor(inkSecondary).NoWrap()
 		}).Clicked() {
 			a.toggleLanguage()
 		}
-		if iconOnlyButton(c, "title-settings", "settings", t.NavSettings, btnSm*s, false) {
-			a.goPage("settings")
+		if iconOnlyButtonActive(c, "title-settings", "settings", t.NavSettings, btnSm*s, a.page == "settings", false) {
+			if a.page == "settings" {
+				prev := a.prevPage
+				if prev == "" || prev == "settings" {
+					prev = "home"
+				}
+				a.goPage(prev)
+			} else {
+				a.goPage("settings")
+			}
 		}
 		a.accountEntry(c)
 		if tb.CustomControls {
@@ -230,13 +240,19 @@ func (a *App) scrollEndPad(s float32) float32 {
 	return pad
 }
 
-// chromeBg is the shared title bar + sidebar material.
-var chromeBg = ui.Hex("#f0f1f3")
+// chromeBg is the shared title bar + sidebar Lobe layout canvas.
+var chromeBg = lobeLight.BgLayout
 
-var contentBackground = ui.Hex("#fafafb")
+var contentBackground = lobeLight.BgContainerSecondary
 
-// contentPanel is the lighter, inset content surface: one hairline, one
-// radius, the same 10-DIP margin to the window edges everywhere.
+// contentPanel is the inset content surface for split-pane workspaces
+// (flush against the left rail, 8-DIP outer margin on right and bottom).
 func contentPanel(e ui.Element, s float32) ui.Element {
-	return e.Margin(0, 8*s, 8*s, 0).Radius(radiusChrome*s).Background(contentBackground).Border(s, line).Clip().Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
+	return e.Margin(0, 8*s, 8*s, 0).Radius(radiusChrome*s).Background(contentBackground).Border(s, line).Clip().Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .03))
+}
+
+// fullContentPanel is the inset content surface for full-width pages without a
+// left rail, keeping a uniform 8-DIP outer margin on left, right and bottom.
+func fullContentPanel(e ui.Element, s float32) ui.Element {
+	return contentPanel(e, s).Margin(0, 8*s, 8*s, 8*s)
 }

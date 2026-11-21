@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -123,25 +124,74 @@ func (s *Service) LoaderVersions(ctx context.Context, loader, mc string) ([]stri
 		}
 		return out, nil
 	case "neoforge":
+		prefix, ok := neoforgeVersionPrefix(mc)
+		if !ok {
+			return out, nil
+		}
 		var r struct {
 			Versions []string `json:"versions"`
 		}
 		if e := s.getJSON(ctx, "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge", &r); e != nil {
 			return nil, e
 		}
-		parts := strings.Split(mc, ".")
-		if len(parts) < 3 {
-			return nil, errors.New("NeoForge 需要 Minecraft 1.20.1 或更高版本")
-		}
-		prefix := parts[1] + "." + parts[2] + "."
 		for i := len(r.Versions) - 1; i >= 0; i-- {
 			if strings.HasPrefix(r.Versions[i], prefix) {
 				out = append(out, r.Versions[i])
 			}
 		}
 		return out, nil
+	case "horizon":
+		releases, e := s.horizonReleases(ctx, false)
+		if e != nil {
+			return nil, e
+		}
+		for _, rel := range releases {
+			if mc == "" || rel.Minecraft == mc {
+				out = append(out, rel.BuildID)
+			}
+		}
+		return out, nil
 	}
 	return nil, errors.New("未知加载器")
+}
+
+// neoforgeVersionPrefix maps a Minecraft release version to its NeoForge Maven
+// prefix: legacy 1.X(.Y) maps to X.(Y|0). (1.20.2+), and Mojang's year-based
+// YY.M(.P) releases (26.1+) map to YY.M.(P|0).
+func neoforgeVersionPrefix(mc string) (string, bool) {
+	parts := strings.Split(strings.TrimSpace(mc), ".")
+	if len(parts) < 2 || len(parts) > 3 {
+		return "", false
+	}
+	nums := make([]int, len(parts))
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 0 {
+			return "", false
+		}
+		nums[i] = n
+	}
+	if nums[0] == 1 {
+		if nums[1] < 20 {
+			return "", false
+		}
+		patch := 0
+		if len(nums) == 3 {
+			patch = nums[2]
+		}
+		if nums[1] == 20 && patch < 2 {
+			return "", false
+		}
+		return fmt.Sprintf("%d.%d.", nums[1], patch), true
+	}
+	if nums[0] < 26 {
+		return "", false
+	}
+	patch := 0
+	if len(nums) == 3 {
+		patch = nums[2]
+	}
+	return fmt.Sprintf("%d.%d.%d.", nums[0], nums[1], patch), true
 }
 func (s *Service) installLoader(ctx context.Context, root, mc, loader, version string, p progress) (string, error) {
 	if loader == "" || loader == "vanilla" {
@@ -234,7 +284,15 @@ func (s *Service) InstallGame(rootID, parent, name, mc, loader, loaderVersion st
 			return "", e
 		}
 	}
-	return s.startJob("安装 Minecraft "+mc, rootID, func(ctx context.Context, p progress) error {
+	title := "安装 Minecraft " + mc
+	if loader == "horizon" {
+		arg := loaderVersion
+		if arg == "" {
+			arg = mc
+		}
+		title = "安装 Horizon " + arg
+	}
+	return s.startJob(title, rootID, func(ctx context.Context, p progress) error {
 		if rootID == "" && r.ID == "" { // a retry keeps the folder it made
 			r, e = s.createEmptyRoot(parent, name)
 			if e != nil {
@@ -251,6 +309,16 @@ func (s *Service) InstallGame(rootID, parent, name, mc, loader, loaderVersion st
 			s.rootLocks[r.ID] = true
 			s.mu.Unlock()
 			defer func() { s.mu.Lock(); delete(s.rootLocks, r.ID); s.mu.Unlock() }()
+		}
+		if loader == "horizon" {
+			id, e := s.installHorizon(ctx, r, mc, loaderVersion, p)
+			if e != nil {
+				return e
+			}
+			if rootID == "" {
+				s.setJobResultRoot(ctx, r.ID)
+			}
+			return s.Select(r.ID, "", id)
 		}
 		if _, e = s.installVanilla(ctx, r.Path, mc, p); e != nil {
 			return e

@@ -131,6 +131,8 @@ func (a *App) loaderDisplay(loader string) string {
 		return t.LoaderForge
 	case "neoforge":
 		return t.LoaderNeoForge
+	case "horizon":
+		return t.LoaderHorizon
 	}
 	return t.LoaderVanilla
 }
@@ -175,12 +177,6 @@ func (a *App) formatJavaScanSummary(count int, elapsedMS int64) string {
 
 func (a *App) formatJavaScanProgress(phase string, visited, found int) string {
 	return fmt.Sprintf(a.L("java.scanProgress"), a.translatePhase(phase), visited, found)
-}
-
-func (a *App) formatVersionTotal(total int) string { return fmt.Sprintf(a.L("version.total"), total) }
-
-func (a *App) formatFilteredVersionSummary(detail string, count int) string {
-	return fmt.Sprintf(a.L("version.filtered"), detail, count)
 }
 
 func normalizeResourceType(s string) string {
@@ -328,6 +324,8 @@ func (a *App) normalizeStateValues() {
 		a.form.Loader = t.LoaderNeoForge
 	case "quilt":
 		a.form.Loader = t.LoaderQuilt
+	case "horizon":
+		a.form.Loader = t.LoaderHorizon
 	default:
 		a.form.Loader = t.LoaderVanilla
 	}

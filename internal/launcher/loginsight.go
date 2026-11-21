@@ -122,7 +122,7 @@ func DiagnoseCrash(text string) CrashInsight {
 			c.Mod = m
 		}
 		return c
-	case has("Failed to create GL context", "Pixel format not accelerated", "GLFW error 65542", "WGL: The driver does not appear to support OpenGL", "EXCEPTION_ACCESS_VIOLATION"):
+	case has("Failed to create GL context", "Pixel format not accelerated", "GLFW error 65542", "WGL: The driver does not appear to support OpenGL", "EXCEPTION_ACCESS_VIOLATION", "wgpu", "No suitable graphics adapter", "Failed to find an appropriate adapter"):
 		c := newCrashInsight("graphics")
 		if has("EXCEPTION_ACCESS_VIOLATION") {
 			c.Cause, c.CauseEn = crashText("crash.graphics.nativeCause")
@@ -174,16 +174,31 @@ func diagnoseSession(gs *gameSession) {
 	if gs.GameDir != "" {
 		gs.CrashReport = findCrashReport(gs.GameDir, gs.Started)
 	}
+	var lines []string
+	if gs.log != nil {
+		lines, _ = gs.log.snapshot()
+		if len(lines) > 3000 {
+			lines = lines[len(lines)-3000:]
+		}
+		if gs.CrashReport == "" {
+			const prefix = "Horizon: crash report saved to "
+			for i := len(lines) - 1; i >= 0; i-- {
+				if p, ok := strings.CutPrefix(strings.TrimSpace(lines[i]), prefix); ok {
+					p = strings.TrimSpace(p)
+					if st, err := os.Stat(p); err == nil && !st.IsDir() {
+						gs.CrashReport = p
+						break
+					}
+				}
+			}
+		}
+	}
 	var b strings.Builder
 	if gs.CrashReport != "" {
 		b.WriteString(readHead(gs.CrashReport, 512<<10))
 		b.WriteByte('\n')
 	}
-	if gs.log != nil {
-		lines, _ := gs.log.snapshot()
-		if len(lines) > 3000 {
-			lines = lines[len(lines)-3000:]
-		}
+	if len(lines) > 0 {
 		b.WriteString(strings.Join(lines, "\n"))
 	}
 	in := DiagnoseCrash(b.String())

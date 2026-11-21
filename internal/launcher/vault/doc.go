@@ -1,3 +1,3 @@
-// Package vault protects persisted credentials with Windows DPAPI.
-// Unsupported platforms return an error rather than storing plaintext secrets.
+// Package vault protects account credential files with Windows DPAPI or AES-GCM.
+// macOS stores its key in Keychain; Linux uses an owner-only local key file.
 package vault

@@ -92,9 +92,15 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 		if pack := readPack(r.Path); pack != nil && len(pack.Manual) > 0 {
 			return errors.New("整合包还有手动下载文件，请完成后在整合包页面重新检查")
 		}
+		if localVer, err := readVersion(r.Path, r.SelectedVersion); err == nil && localVer.Horizon != nil {
+			return s.launchHorizon(ctx, r, a, localVer, p)
+		}
 		v, e := s.resolveVersion(ctx, r.Path, r.SelectedVersion, p)
 		if e != nil {
 			return e
+		}
+		if v.Horizon != nil {
+			return s.launchHorizon(ctx, r, a, v, p)
 		}
 		major := v.JavaVersion.MajorVersion
 		if major == 0 {
@@ -239,7 +245,6 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 				message = "游戏退出: " + e.Error()
 			}
 			_, _ = logs.Write([]byte(message + "\n"))
-			s.endSession(gs, e)
 			logs.mu.Lock()
 			if logs.file != nil {
 				_ = logs.file.Close()
@@ -247,12 +252,13 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 			}
 			logs.mu.Unlock()
 			_ = os.RemoveAll(natives)
+			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
 			s.mu.Lock()
 			if s.running[key] == rg {
 				delete(s.running, key)
 			}
 			s.mu.Unlock()
-			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
+			s.endSession(gs, e)
 		}()
 		p("游戏进程已启动", 1, 1)
 		return nil

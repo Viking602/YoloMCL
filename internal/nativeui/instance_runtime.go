@@ -25,6 +25,10 @@ func loaderVersionOf(v launcher.VersionSummary) string {
 		if strings.HasPrefix(id, mc+"-forge-") {
 			return strings.TrimPrefix(id, mc+"-forge-")
 		}
+	case "horizon":
+		if strings.HasPrefix(id, "horizon-") {
+			return strings.TrimPrefix(id, "horizon-")
+		}
 	}
 	return ""
 }

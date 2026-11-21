@@ -12,6 +12,7 @@ var jobTitleKeys = []struct{ prefix, key string }{
 	{"更新整合包：", "pack.update"},
 	{"回滚整合包：", "pack.rollback"},
 	{"安装 Minecraft ", "game.install"},
+	{"安装 Horizon ", "horizon.install"},
 	{"下载 Java ", "java.download"},
 	{"启动 ", "game.launch"},
 	{"还原存档 ", "world.restore"},

@@ -72,6 +72,9 @@ func (s *Service) ListModsAt(rootID, versionID string) ([]Mod, error) {
 	if e != nil {
 		return nil, e
 	}
+	if isHorizonRootVersion(r) {
+		return scanHorizonMods(context.Background(), r.VersionDir())
+	}
 	return s.scanModDirectory(context.Background(), r.VersionDir(), nil)
 }
 
@@ -86,6 +89,13 @@ func (s *Service) ListModsStreamContext(ctx context.Context, rootID, versionID s
 	r, e := s.rootAt(rootID, versionID)
 	if e != nil {
 		return nil, e
+	}
+	if isHorizonRootVersion(r) {
+		mods, err := scanHorizonMods(ctx, r.VersionDir())
+		if err == nil && partial != nil {
+			partial(mods)
+		}
+		return mods, err
 	}
 	return s.scanModDirectory(ctx, r.VersionDir(), partial)
 }
@@ -134,6 +144,9 @@ func (s *Service) ToggleMod(rootID, name string) error {
 }
 
 func (s *Service) toggleModIn(r Root, name string) error {
+	if isHorizonRootVersion(r) {
+		return s.toggleHorizonModIn(r, name)
+	}
 	{
 		if filepath.Base(name) != name || (!strings.HasSuffix(name, ".jar") && !strings.HasSuffix(name, ".jar.disabled")) {
 			return errors.New("无效的模组文件名")
@@ -160,6 +173,9 @@ func (s *Service) toggleModIn(r Root, name string) error {
 
 func (s *Service) RemoveMod(rootID, name string) error {
 	return s.mutateRoot(rootID, func(r Root) error {
+		if isHorizonRootVersion(r) {
+			return s.removeHorizonModIn(r, name)
+		}
 		if filepath.Base(name) != name || (!strings.HasSuffix(name, ".jar") && !strings.HasSuffix(name, ".jar.disabled")) {
 			return errors.New("无效的模组文件名")
 		}
@@ -181,6 +197,9 @@ func (s *Service) RemoveMod(rootID, name string) error {
 
 func (s *Service) AddLocalMods(rootID string, paths []string) error {
 	return s.mutateRoot(rootID, func(r Root) error {
+		if isHorizonRootVersion(r) {
+			return s.addLocalHorizonModsIn(r, paths)
+		}
 		for _, src := range paths {
 			if !strings.EqualFold(filepath.Ext(src), ".jar") {
 				return errors.New("只能导入 .jar 模组")

@@ -101,7 +101,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 	t := a.tr()
 	p := a.preview
 	stage := ui.ButtonBase(c.Key("skin-orbit")).Label(t.WardrobeOrbitAria).Grow(1).Basis(0).MinWidth(300*s).MaxWidth(440*s).Height(h).Radius(radiusCard*s).Clip().
-		LinearGradient(ui.LinearGradient{From: ui.RGBA(236, 241, 252, 1), To: ui.RGBA(214, 224, 244, 1), Angle: 180}).Border(1, glassEdge).Column().AlignItems(ui.Center).Justify(ui.Center).
+		LinearGradient(ui.LinearGradient{From: ui.Hex("#f7f7f8"), To: ui.Hex("#eceef1"), Angle: 180}).Border(1, lineStrong).Column().AlignItems(ui.Center).Justify(ui.Center).
 		HandleInput(func(ev ui.InputEvent) bool {
 			if ev.Kind != ui.InputScroll || ev.DY == 0 || ev.Mods&ui.Shift != 0 {
 				return false
@@ -168,7 +168,7 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 	stage.Children(func() {
 		ui.Image(c, p.bitmap).Size(imgH*440/520, imgH).Fit(ui.Contain)
 		ui.Row(c).Absolute().Left(0).Right(0).Bottom(16 * s).Justify(ui.Center).Children(func() {
-			ui.Row(c).Height(40*s).PaddingX(8*s).Gap(4*s).Radius(radiusPill).Background(ui.RGBA(255, 255, 255, .86)).Border(1, glassEdge).Shadow(0, 4*s, 16*s, -4*s, ui.RGBA(30, 40, 90, .18)).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Height(40*s).PaddingX(6*s).Gap(4*s).Radius(radiusPanel*s).Background(panel).Border(1, lineStrong).Shadow(0, 4*s, 14*s, -4*s, ui.RGBA(0, 0, 0, .10)).AlignItems(ui.Center).Children(func() {
 				if stageIcon(c, "stage-front", "account", t.WardrobeFrontBtn, false) {
 					p.turnTo(-.35)
 				}
@@ -226,15 +226,15 @@ func (a *App) wardrobeStage(c *ui.Context, h float32) {
 
 func stageIcon(c *ui.Context, key, icon, label string, on bool) bool {
 	s := uiScale(c)
-	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(32*s, 32*s).Radius(radiusPill).AlignItems(ui.Center).Justify(ui.Center)
+	b := tooltip(c, ui.ButtonBase(c.Key(key)).Label(label), label).Size(30*s, 30*s).Radius(radiusControl * s).AlignItems(ui.Center).Justify(ui.Center)
 	bg, fg := ui.Transparent, inkSecondary
 	if on {
-		bg, fg = accentSoft, accent
+		bg, fg = lobeLight.FillSecondary, ink
 	} else if b.Hovered() {
-		bg = ui.RGBA(120, 130, 160, .12)
+		bg, fg = lobeLight.FillTertiary, ink
 	}
 	b.Background(b.AnimateColor("bg", bg, fastAnim))
-	return b.Children(func() { ui.Icon(c, icons[icon]).Size(14*s, 14*s).TextColor(fg) }).Clicked()
+	return b.Children(func() { ui.Icon(c, icons[icon]).Size(15*s, 15*s).TextColor(fg) }).Clicked()
 }
 
 func wardrobeCard(c *ui.Context, key string, body func()) {

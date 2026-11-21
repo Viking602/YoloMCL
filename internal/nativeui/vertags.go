@@ -27,10 +27,13 @@ func (a *App) versionTags(r launcher.Instance, v launcher.VersionSummary, featur
 	if featured && slices.Contains(r.RunningVersions, v.ID) {
 		tags = append(tags, verTag{t.HomeHeroBadgeRunning, "", successInk})
 	}
-	if j := javaFor(r, v); j > 0 {
+	isHorizon := loaderKey(v.Loader) == "horizon"
+	if isHorizon {
+		tags = append(tags, verTag{a.L("vertags.native_rust"), "Horizon Native", loaderTone("horizon")})
+	} else if j := javaFor(r, v); j > 0 {
 		tags = append(tags, verTag{fmt.Sprintf("Java %d", j), fmt.Sprintf("Java 标签 %d", j), accent})
 	}
-	if v.JavaPath != "" || v.MemoryMB > 0 || v.JVMArgs != "" {
+	if v.JavaPath != "" || (!isHorizon && (v.MemoryMB > 0 || v.JVMArgs != "")) {
 		tags = append(tags, verTag{t.HomeBadgeCustomized, "", tagNeutral})
 	}
 	if packHasUpdate(r, v.ID) && (featured || r.Pack.GameVersion != "") {
@@ -116,7 +119,7 @@ func isAutoID(v launcher.VersionSummary) bool {
 	switch {
 	case id == mc:
 		return true
-	case strings.HasPrefix(id, "neoforge-") || strings.HasPrefix(id, "forge-"+mc):
+	case strings.HasPrefix(id, "neoforge-") || strings.HasPrefix(id, "forge-"+mc) || strings.HasPrefix(id, "horizon-"):
 		return true
 	}
 	if m := autoFabricRe.FindStringSubmatch(id); m != nil && (mc == "" || strings.HasSuffix(id, "-"+mc)) {
@@ -246,6 +249,8 @@ func loaderIconName(loader string) string {
 		return "loader-neoforge"
 	case "quilt":
 		return "loader-quilt"
+	case "horizon":
+		return "loader-horizon"
 	case "all", "all loaders", "全部加载器":
 		return "layers"
 	default:
@@ -263,6 +268,8 @@ func loaderTone(loader string) ui.Color {
 		return ui.Hex("#ea580c")
 	case "quilt":
 		return ui.Hex("#7c3aed")
+	case "horizon":
+		return ui.Hex("#6366f1")
 	default:
 		return successInk
 	}
@@ -287,7 +294,7 @@ func loaderLogo(c *ui.Context, loader string, size float32) bool {
 	}
 	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Shrink(0).Background(panel).Border(1, line).Clip().Center().Children(func() {
 		inner := size * .8
-		if k == "forge" || k == "vanilla" {
+		if k == "forge" || k == "vanilla" || k == "horizon" {
 			inner = size // full-bleed app-icon style logos
 		}
 		ui.Image(c, loaderLogos[k]).Size(inner, inner).Fit(ui.Contain).Label(k + " logo")

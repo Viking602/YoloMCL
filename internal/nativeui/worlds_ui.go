@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
 
 	"github.com/Viking602/YoloMCL/internal/i18n"
 	"github.com/Viking602/YoloMCL/internal/launcher"
@@ -262,7 +263,7 @@ func (a *App) worldCard(c *ui.Context, r launcher.Instance, w launcher.World, ru
 		})
 		if job != nil && job.BytesTotal > 0 {
 			ui.Box(c).FillWidth().PaddingX(16*s).Padding(0, 16*s, 12*s, 16*s).Children(func() {
-				ui.Progress(c, float64(job.BytesDone)/float64(job.BytesTotal))
+				progressBar(c, float64(job.BytesDone)/float64(job.BytesTotal), feedback.ProgressActive)
 			})
 		}
 		if open {

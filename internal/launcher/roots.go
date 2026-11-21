@@ -142,7 +142,7 @@ func (r Root) VersionDir() string {
 	}
 	if r.SelectedVersion != "" {
 		if vDir, err := safeJoin(r.Path, "versions/"+r.SelectedVersion); err == nil && isDir(vDir) {
-			for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", "saves", "config", "options.txt"} {
+			for _, sub := range []string{"mods", "horizon-mods", "resourcepacks", "shaderpacks", "saves", "config", "options.txt"} {
 				if _, e := os.Stat(filepath.Join(vDir, sub)); e == nil {
 					return vDir
 				}
@@ -245,7 +245,7 @@ func (s *Service) InstanceFolder(rootID, versionID, sub string) (string, error) 
 		return "", e
 	}
 	switch sub {
-	case "", "mods", "saves", "screenshots", "resourcepacks", "shaderpacks", "logs", "crash-reports", "config":
+	case "", "mods", "horizon-mods", "saves", "screenshots", "resourcepacks", "shaderpacks", "logs", "crash-reports", "config":
 	default:
 		return "", errors.New("unsupported folder")
 	}

@@ -42,7 +42,7 @@ func findVersionJSON(root, dirName string) (string, gameVersion, error) {
 		if err != nil {
 			continue
 		}
-		if gv, err := parse(cand); err == nil && (gv.MainClass != "" || gv.InheritsFrom != "" || len(gv.Libraries) > 0) {
+		if gv, err := parse(cand); err == nil && (gv.MainClass != "" || gv.InheritsFrom != "" || len(gv.Libraries) > 0 || gv.Horizon != nil) {
 			return cand, gv, nil
 		}
 	}
@@ -109,6 +109,9 @@ func scanVersionsWithFiles(root string) ([]VersionSummary, []string) {
 // priority rather than order: NeoForge versions also ship helper libraries
 // under net.minecraftforge (e.g. srgutils), so NeoForge must win over Forge.
 func installedLoader(v gameVersion) string {
+	if v.Horizon != nil {
+		return "horizon"
+	}
 	switch {
 	case strings.HasPrefix(v.MainClass, "org.quiltmc."):
 		return "quilt"
@@ -147,6 +150,9 @@ func detectLoader(v gameVersion) string {
 	loader := installedLoader(v)
 	if loader != "vanilla" || v.MainClass != "" || len(v.Libraries) != 0 {
 		return loader
+	}
+	if strings.HasPrefix(strings.ToLower(v.ID), "horizon-") {
+		return "horizon"
 	}
 	low := strings.ToLower(v.ID + " " + v.InheritsFrom)
 	for _, l := range []string{"neoforge", "forge", "fabric", "quilt"} {

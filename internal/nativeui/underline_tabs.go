@@ -46,18 +46,22 @@ func underlineTabs(c *ui.Context, key string, tabs []underlineTab, selected stri
 			b := buttons[i]
 			fg := inkSecondary
 			if i == active {
-				fg = accent
+				fg = lobePrimary
 			} else if b.Hovered() {
 				fg = ink
 			}
 			if !c.Preferences().ReduceMotion {
 				fg = b.AnimateColor("fg", fg, motionFast)
 			}
+			weight := 500
+			if i == active {
+				weight = 650
+			}
 			b.Children(func() {
-				ui.Text(c, tab.text).FontSize(typeCallout * s).FontWeight(600).TextColor(fg).NoWrap()
+				ui.Text(c, tab.text).FontSize(typeCallout * s).FontWeight(weight).TextColor(fg).NoWrap()
 			})
 		}
-		indicator := ui.Box(c.Key("indicator")).Label(style.indicator).Absolute().Bottom(0).Height(2 * s).Radius(radiusPill).Background(accent)
+		indicator := ui.Box(c.Key("indicator")).Label(style.indicator).Absolute().Bottom(0).Height(2 * s).Radius(radiusPill).Background(lobePrimary).IgnoreInput(true)
 		if style.expanded {
 			// Percent offsets also follow resizes on the first layout pass. The
 			// margins account for the gaps between equal-width flex children.

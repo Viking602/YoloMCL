@@ -22,6 +22,10 @@ func (a *App) storageBar(c *ui.Context, st launcher.InstanceStatus, highlighted 
 			tooltip(c, bar, a.L("overview_storage.empty"))
 			return
 		}
+		barLeft := bar.LayoutBounds().X
+		bar.Draw(func(_ *ui.Painter, r ui.Rect) {
+			barLeft = r.X
+		})
 		bar.Children(func() {
 			for _, part := range dirParts {
 				size := storageBytes(st, part.sub)
@@ -39,7 +43,7 @@ func (a *App) storageBar(c *ui.Context, st launcher.InstanceStatus, highlighted 
 						tone = tone.Alpha(.45)
 					}
 					p.Fill(r, tone, 0)
-					if r.X > bar.LayoutBounds().X+.5 && r.W > 2*s {
+					if r.X > barLeft+.5 && r.W > 2*s {
 						p.Fill(ui.Rect{X: r.X, Y: r.Y, W: s, H: r.H}, fieldColor, 0)
 					}
 				})

@@ -3,7 +3,10 @@
 package vault
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -38,5 +41,55 @@ func cryptBlob(b []byte, decrypt bool) ([]byte, error) {
 	return append([]byte(nil), unsafe.Slice(out.Data, int(out.Size))...), nil
 }
 
-func Seal(b []byte) ([]byte, error)   { return cryptBlob(b, false) }
-func Unseal(b []byte) ([]byte, error) { return cryptBlob(b, true) }
+func secretPath(dir, id string) string {
+	return filepath.Join(dir, "credentials", id+".bin")
+}
+
+// Store preserves the existing DPAPI-protected credential file format.
+func Store(dir, id string, secret []byte) error {
+	b, err := cryptBlob(secret, false)
+	if err != nil {
+		return err
+	}
+	path := secretPath(dir, id)
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".mcl-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if err := f.Chmod(0600); err != nil {
+		f.Close()
+		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), path)
+}
+
+func Load(dir, id string) ([]byte, error) {
+	b, err := os.ReadFile(secretPath(dir, id))
+	if err != nil {
+		return nil, errors.New("登录凭据不可用，请重新登录")
+	}
+	return cryptBlob(b, true)
+}
+
+func Delete(dir, id string) error {
+	err := os.Remove(secretPath(dir, id))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}

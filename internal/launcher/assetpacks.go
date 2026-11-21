@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+func isPackArchive(kind, low string) bool {
+	if strings.HasSuffix(low, ".zip") || strings.HasSuffix(low, ".zip.disabled") {
+		return true
+	}
+	return kind == "shader" && (strings.HasSuffix(low, ".hshader") || strings.HasSuffix(low, ".hshader.disabled"))
+}
+
 func packFolder(kind string) (string, error) {
 	switch kind {
 	case "resourcepack":
@@ -155,14 +162,22 @@ func (s *Service) ListAssetPacksAt(rootID, versionID, kind string) ([]AssetPack,
 			continue
 		}
 		if entry.IsDir() {
-			// Folder resource packs (pack.mcmeta at root). Shader packs stay zip-only.
-			if kind != "resourcepack" {
+			// Folder resource packs (pack.mcmeta at root) or Horizon folder shaders (horizon-shaders.toml).
+			var desc string
+			switch kind {
+			case "resourcepack":
+				if _, err := os.Stat(filepath.Join(full, "pack.mcmeta")); err != nil {
+					continue
+				}
+				desc = readPackMcmeta(full)
+			case "shader":
+				if _, err := os.Stat(filepath.Join(full, "horizon-shaders.toml")); err != nil {
+					continue
+				}
+				desc = readHorizonShaderDescription(full)
+			default:
 				continue
 			}
-			if _, err := os.Stat(filepath.Join(full, "pack.mcmeta")); err != nil {
-				continue
-			}
-			desc := readPackMcmeta(full)
 			out = append(out, AssetPack{
 				File:        name,
 				Name:        name,
@@ -174,13 +189,16 @@ func (s *Service) ListAssetPacksAt(rootID, versionID, kind string) ([]AssetPack,
 			continue
 		}
 		low := strings.ToLower(name)
-		if !strings.HasSuffix(low, ".zip") && !strings.HasSuffix(low, ".zip.disabled") {
+		if !isPackArchive(kind, low) {
 			continue
 		}
-		clean := strings.TrimSuffix(strings.TrimSuffix(name, ".disabled"), ".zip")
+		base := strings.TrimSuffix(name, ".disabled")
+		clean := strings.TrimSuffix(base, filepath.Ext(base))
 		desc := ""
 		if kind == "resourcepack" {
 			desc = readPackMcmeta(full)
+		} else if kind == "shader" && strings.HasSuffix(strings.ToLower(base), ".hshader") {
+			desc = readHorizonShaderDescription(full)
 		}
 		out = append(out, AssetPack{
 			File:        name,
@@ -202,7 +220,7 @@ func (s *Service) ToggleAssetPack(rootID, kind, name string) error {
 	}
 	return s.mutateRoot(rootID, func(r Root) error {
 		low := strings.ToLower(name)
-		if filepath.Base(name) != name || (!strings.HasSuffix(low, ".zip") && !strings.HasSuffix(low, ".zip.disabled")) {
+		if filepath.Base(name) != name || !isPackArchive(kind, low) {
 			return errors.New("无效的资源包文件名")
 		}
 		target := name + ".disabled"
@@ -232,7 +250,7 @@ func (s *Service) RemoveAssetPack(rootID, kind, name string) error {
 	}
 	return s.mutateRoot(rootID, func(r Root) error {
 		low := strings.ToLower(name)
-		if filepath.Base(name) != name || (!strings.HasSuffix(low, ".zip") && !strings.HasSuffix(low, ".zip.disabled")) {
+		if filepath.Base(name) != name || !isPackArchive(kind, low) {
 			return errors.New("无效的资源包文件名")
 		}
 		vDir := r.VersionDir()
@@ -258,8 +276,20 @@ func (s *Service) AddLocalAssetPacks(rootID, kind string, paths []string) error 
 	}
 	return s.mutateRoot(rootID, func(r Root) error {
 		vDir := r.VersionDir()
+		isHorizon := isHorizonRootVersion(r)
 		for _, src := range paths {
-			if !strings.EqualFold(filepath.Ext(src), ".zip") {
+			ext := strings.ToLower(filepath.Ext(src))
+			if ext == ".hshader" {
+				if kind != "shader" {
+					return errors.New("只能导入 .zip 格式的材质包或光影包")
+				}
+				if !isHorizon {
+					return horizonErr("Horizon 光影（.hshader）仅适用于 Horizon 实例", "Horizon shaders (.hshader) can only be installed into a Horizon instance")
+				}
+			} else if ext != ".zip" {
+				if kind == "shader" && isHorizon {
+					return errors.New("只能导入 .zip 或 .hshader 格式的光影包")
+				}
 				return errors.New("只能导入 .zip 格式的材质包或光影包")
 			}
 			dst, e := safeJoin(vDir, folder+"/"+filepath.Base(src))
@@ -288,6 +318,60 @@ func (s *Service) InstallAssetPack(rootID, kind, source, project, id string) (st
 		title = "安装光影包"
 	}
 	return s.startJob(title, rootID, func(ctx context.Context, p progress) error {
+		if source == "horizon" {
+			_, proj, ver, err := s.horizonLookup(ctx, project, id)
+			if err != nil {
+				return err
+			}
+			if horizonDiscoverType(proj.Kind) != kind {
+				return horizonErr("所选 Horizon 资源类型与目标分类不匹配", "Selected Horizon asset kind does not match target category")
+			}
+			exts := []string{".zip"}
+			if kind == "shader" {
+				exts = []string{".hshader", ".zip"}
+			}
+			f, err := s.verifyHorizonRegistryDownload(proj, ver, exts...)
+			if err != nil {
+				return err
+			}
+			if strings.HasSuffix(strings.ToLower(f.Name), ".hshader") && !isHorizonRootVersion(r) {
+				return horizonErr("Horizon 光影（.hshader）仅适用于 Horizon 实例", "Horizon shaders (.hshader) can only be installed into a Horizon instance")
+			}
+			vDir := r.VersionDir()
+			dest, err := safeJoin(vDir, folder+"/"+f.Name)
+			if err != nil {
+				return err
+			}
+			stage, err := safeJoin(r.Path, ".mcl/staging/"+newID())
+			if err != nil {
+				return err
+			}
+			if err := os.MkdirAll(stage, 0o755); err != nil {
+				return err
+			}
+			defer os.RemoveAll(stage)
+			staged, err := safeJoin(stage, f.Name)
+			if err != nil {
+				return err
+			}
+			p("正在下载 "+f.Name, 0, 1)
+			if err := s.download(ctx, f, staged); err != nil {
+				return err
+			}
+			if err := s.verifyDownloadedMinisign(proj.Key, ver.File.Signature, staged); err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+				return err
+			}
+			_ = os.Remove(dest)
+			if err := os.Rename(staged, dest); err != nil {
+				return err
+			}
+			s.invalidateStatus(vDir)
+			p("已安装 "+f.Name, 1, 1)
+			return nil
+		}
 		version, e := s.projectVersion(ctx, source, project, id)
 		if e != nil {
 			return e

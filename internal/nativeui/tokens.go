@@ -18,18 +18,17 @@ const (
 	space6 float32 = 24
 	space8 float32 = 32
 
-	// Corner radii on a 4-DIP grid. Nest with nestedRadius(outer, pad):
-	// an inner box flush to outer padding p inside radius R gets R−p
-	// (floored at radiusMin). Same-level boxes share one token.
+	// Corner radii aligned with Lobe UI's crisp architectural geometry.
+	// Nest with nestedRadius(outer, pad) floored at radiusMin.
 	radiusMin     float32 = 4  // floor; never go below
-	radiusChip    float32 = 8  // chips, tags, small nested
-	radiusControl float32 = 12 // buttons, inputs; independent of label font size
-	radiusRow     float32 = 12 // list / selectable rows (same level as controls)
-	radiusPanel   float32 = 16 // raised inner panels / sections
-	radiusCard    float32 = 16 // cards (same level as panel)
-	radiusChrome  float32 = 24 // floating chrome / large overlays
-	radiusDialog  float32 = 32 // modal dialogs
-	previewPad    float32 = 12 // preview frame: radiusChrome - previewPad = radiusControl
+	radiusChip    float32 = 6  // chips, tags, small nested (Lobe BorderRadiusSM)
+	radiusControl float32 = 8  // buttons, inputs (Lobe BorderRadius)
+	radiusRow     float32 = 8  // list / selectable rows (same level as controls)
+	radiusPanel   float32 = 12 // raised inner panels / popovers (Lobe BorderRadiusLG)
+	radiusCard    float32 = 12 // cards (same level as panel)
+	radiusChrome  float32 = 16 // inset content panels / workspaces
+	radiusDialog  float32 = 16 // modal dialogs & drawers
+	previewPad    float32 = 8  // preview frame: radiusChrome - previewPad = radiusControl
 
 	// Type scale: crisp desktop hierarchy that leaves room around controls.
 	typeHero     float32 = 26
@@ -72,18 +71,18 @@ func nestedRadius(outer, pad float32) float32 {
 // iconRadius gives square artwork and icon tiles one shared set of radii,
 // instead of a different percentage for each screen. Size is already scaled.
 func iconRadius(size, s float32) float32 {
-	r := radiusDialog
+	r := float32(24)
 	switch {
 	case size <= 24*s:
-		r = radiusMin
+		r = 4
 	case size <= 36*s:
-		r = radiusChip
+		r = 8
 	case size <= 56*s:
-		r = radiusControl
+		r = 12
 	case size <= 80*s:
-		r = radiusCard
+		r = 16
 	case size <= 112*s:
-		r = radiusChrome
+		r = 20
 	}
 	return r * s
 }

@@ -71,14 +71,21 @@ func (a *App) openDialog(name string) {
 	a.message = ""
 	switch name {
 	case "install":
-		if a.root() != nil {
+		a.ensureJavaScan()
+		if r := a.root(); r != nil {
 			a.form.Target = t.InstallTargetCurrent
+			p := r.Path
+			if strings.EqualFold(filepath.Base(p), ".minecraft") {
+				p = filepath.Dir(p)
+			}
+			a.form.Parent = filepath.Dir(p)
 		}
 		a.versionQuery = ""
 		a.versionKind = t.InstallKindRelease
 		if a.settings.ShowSnapshots {
 			a.versionKind = t.InstallKindAll
 		}
+		a.installVerScrollPending = true
 		a.loadManifest()
 	case "import":
 		if r := a.root(); r != nil {
@@ -175,6 +182,12 @@ func (a *App) chooseFiles(kind string, done func([]string)) {
 	switch kind {
 	case "mods":
 		filters = []mygo.FileFilter{{Name: t.DiscoverTypeMod, Extensions: []string{"jar"}}}
+		multiple = true
+	case "hmods":
+		filters = []mygo.FileFilter{{Name: t.DiscoverTypeMod, Extensions: []string{"hmod"}}}
+		multiple = true
+	case "shader":
+		filters = []mygo.FileFilter{{Name: t.DiscoverTypeShader, Extensions: []string{"zip", "hshader"}}}
 		multiple = true
 	case "zip":
 		filters = []mygo.FileFilter{{Name: "ZIP Archive", Extensions: []string{"zip"}}}

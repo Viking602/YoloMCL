@@ -363,7 +363,7 @@ func scanInventoryFrom(r Root, previous *inventoryData) *inventoryData {
 		dir := base
 		if sharedModsPresent {
 			isolated := false
-			for _, sub := range []string{"mods", "resourcepacks", "shaderpacks", "saves", "config", "options.txt"} {
+			for _, sub := range []string{"mods", "horizon-mods", "resourcepacks", "shaderpacks", "saves", "config", "options.txt"} {
 				if _, err := root.Lstat(filepath.Join(base, sub)); err == nil {
 					isolated = true
 					break

@@ -241,29 +241,44 @@ func (a *App) saveVersionConfig(rootID string) {
 
 func (a *App) saveVersionConfigThen(rootID string, done func()) {
 	t := a.tr()
-	verMemStr := strings.TrimSpace(a.form.VerMemory)
-	if verMemStr == "" {
-		verMemStr = "0"
-	}
-	vn, ve := strconv.Atoi(verMemStr)
-	if a.form.VerMemAuto {
-		vn, ve = 0, nil
-		if r := a.root(); r != nil {
-			probe := *r
-			probe.VersionConfigs = nil
-			if inherited, _ := probe.MemoryPlan(a.form.ConfigVersion, a.settings); !inherited {
-				vn = -1 // directory/global is manual: pin auto on this version
+	ver, name := strings.TrimSpace(a.form.ConfigVersion), strings.TrimSpace(a.form.VerName)
+	isHorizon := false
+	if r := a.root(); r != nil {
+		for _, v := range r.Versions {
+			if v.ID == ver {
+				isHorizon = loaderKey(v.Loader) == "horizon"
+				break
 			}
 		}
 	}
-	if ve != nil || (vn > 0 && (vn < 512 || vn > 65536)) || (!a.form.VerMemAuto && vn == 0) {
-		a.message = t.RootCfgMemErr
-		a.errorMessage = true
-		return
+	vn, jvmArgs := 0, strings.TrimSpace(a.form.VerJVM)
+	if isHorizon {
+		jvmArgs = ""
+	} else {
+		verMemStr := strings.TrimSpace(a.form.VerMemory)
+		if verMemStr == "" {
+			verMemStr = "0"
+		}
+		var ve error
+		vn, ve = strconv.Atoi(verMemStr)
+		if a.form.VerMemAuto {
+			vn, ve = 0, nil
+			if r := a.root(); r != nil {
+				probe := *r
+				probe.VersionConfigs = nil
+				if inherited, _ := probe.MemoryPlan(a.form.ConfigVersion, a.settings); !inherited {
+					vn = -1 // directory/global is manual: pin auto on this version
+				}
+			}
+		}
+		if ve != nil || (vn > 0 && (vn < 512 || vn > 65536)) || (!a.form.VerMemAuto && vn == 0) {
+			a.message = t.RootCfgMemErr
+			a.errorMessage = true
+			return
+		}
 	}
-	ver, name := strings.TrimSpace(a.form.ConfigVersion), strings.TrimSpace(a.form.VerName)
 	saved := a.form
-	a.execute("updateVersion", map[string]any{"rootId": rootID, "version": ver, "javaPath": strings.TrimSpace(a.form.VerJava), "memoryMB": vn, "jvmArgs": strings.TrimSpace(a.form.VerJVM), "displayName": name}, func(b json.RawMessage) {
+	a.execute("updateVersion", map[string]any{"rootId": rootID, "version": ver, "javaPath": strings.TrimSpace(a.form.VerJava), "memoryMB": vn, "jvmArgs": jvmArgs, "displayName": name}, func(b json.RawMessage) {
 		a.versionInitial = saved
 		a.finished(t.RootCfgSaved)(b)
 		if done != nil {

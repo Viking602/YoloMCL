@@ -45,7 +45,14 @@ type installedIndex struct {
 
 func (s *Service) installedIndexFor(ctx context.Context, r Root) (installedIndex, error) {
 	idx := installedIndex{byKey: map[string]Mod{}, byModID: map[string]Mod{}}
-	mods, e := s.scanModDirectory(ctx, r.VersionDir(), nil)
+	isHorizon := isHorizonRootVersion(r)
+	var mods []Mod
+	var e error
+	if isHorizon {
+		mods, e = scanHorizonMods(ctx, r.VersionDir())
+	} else {
+		mods, e = s.scanModDirectory(ctx, r.VersionDir(), nil)
+	}
 	if err := ctx.Err(); err != nil {
 		return idx, err
 	}
@@ -55,13 +62,16 @@ func (s *Service) installedIndexFor(ctx context.Context, r Root) (installedIndex
 		idx.degraded = true
 		mods = nil
 	}
-	refs := make([]AddonRef, 0, len(mods))
-	for _, m := range mods {
-		refs = append(refs, AddonRef{SHA1: m.SHA1, File: m.File, Fingerprint: m.Fingerprint})
-	}
-	info, _ := s.AddonRemoteInfo(ctx, r.ID, r.SelectedVersion, "mod", refs)
-	if err := ctx.Err(); err != nil {
-		return idx, err
+	var info map[string]RemoteInfo
+	if !isHorizon {
+		refs := make([]AddonRef, 0, len(mods))
+		for _, m := range mods {
+			refs = append(refs, AddonRef{SHA1: m.SHA1, File: m.File, Fingerprint: m.Fingerprint})
+		}
+		info, _ = s.AddonRemoteInfo(ctx, r.ID, r.SelectedVersion, "mod", refs)
+		if err := ctx.Err(); err != nil {
+			return idx, err
+		}
 	}
 	put := func(k string, m Mod) {
 		if old, ok := idx.byKey[k]; !ok || (!old.Enabled && m.Enabled) {
@@ -118,6 +128,9 @@ func (s *Service) projectMetas(ctx context.Context, source string, ids []string)
 	out := map[string]projectMeta{}
 	if len(ids) == 0 {
 		return out
+	}
+	if source == "horizon" {
+		return s.horizonProjectMetas(ctx, ids)
 	}
 	if source == "curseforge" {
 		nums := []int{}

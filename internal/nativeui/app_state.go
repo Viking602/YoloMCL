@@ -198,10 +198,13 @@ type App struct {
 	manifestLoading           bool
 	manifestError             string
 	manifestRevision          int
+	installVerList            ui.ListState
+	installVerScrollPending   bool
 	loaders                   []string
 	loaderLoading             bool
 	loaderError               string
 	loaderRevision            int
+	horizonTargetMC           string
 	packChecked               map[string]bool
 	packErr                   string
 	packPlan                  *launcher.PackUpdatePlan

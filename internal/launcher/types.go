@@ -208,6 +208,11 @@ type Service struct {
 	sessions         []*gameSession
 	rootLocks        map[string]bool
 	devices          map[string]*deviceSession
+	horizonMu        sync.Mutex
+	horizonCache     *horizonReleaseCache
+	horizonModCache  *horizonModIndexCache
+	horizonPrepMu    map[string]*sync.Mutex
+	horizonTest      *horizonTestConfig
 }
 type Mod struct {
 	File        string          `json:"file"`

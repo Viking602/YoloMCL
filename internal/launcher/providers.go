@@ -176,6 +176,9 @@ func (s *Service) Search(ctx context.Context, q SearchQuery) (SearchResult, erro
 	}
 	q.Limit = min(q.Limit, 50)
 	out := SearchResult{Projects: []Project{}, Offset: q.Offset, Limit: q.Limit}
+	if q.Source == "horizon" {
+		return s.searchHorizon(ctx, q)
+	}
 	if q.Source == "curseforge" {
 		sort := "2"
 		switch q.Sort {
@@ -307,6 +310,9 @@ func (s *Service) Versions(ctx context.Context, source, project, mc, loader stri
 	if project == "" {
 		return out, errors.New("项目 ID 不能为空")
 	}
+	if source == "horizon" {
+		return s.horizonVersions(ctx, project, mc, loader)
+	}
 	if source == "curseforge" {
 		v := url.Values{"pageSize": {"50"}}
 		if mc != "" {
@@ -364,6 +370,9 @@ func (s *Service) Versions(ctx context.Context, source, project, mc, loader stri
 	return out, nil
 }
 func (s *Service) projectVersion(ctx context.Context, source, project, id string) (ProjectVersion, error) {
+	if source == "horizon" {
+		return s.horizonProjectVersion(ctx, project, id)
+	}
 	if source == "curseforge" {
 		var r struct {
 			Data cfFile `json:"data"`

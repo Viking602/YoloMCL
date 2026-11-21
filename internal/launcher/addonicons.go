@@ -22,7 +22,9 @@ func (s *Service) AddonIcon(rootID, versionID, kind, file string) ([]byte, error
 		return nil, e
 	}
 	sub := "mods"
-	if kind != "mod" {
+	if kind == "mod" && isHorizonRootVersion(r) {
+		sub = "horizon-mods"
+	} else if kind != "mod" {
 		if sub, e = packFolder(kind); e != nil {
 			return nil, e
 		}

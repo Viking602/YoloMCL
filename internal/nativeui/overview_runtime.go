@@ -59,6 +59,10 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 		label(c, a.tr().HomeHeroNoVersion)
 		return
 	}
+	if loaderKey(v.Loader) == "horizon" {
+		a.ovHorizonRuntime(c, r, *v, st)
+		return
+	}
 	j, need := a.ovJava(r, *v)
 	kvRow(c, "Java", func() {
 		text := a.L("overview_runtime.automatic")
@@ -108,6 +112,62 @@ func (a *App) ovRuntime(c *ui.Context, r launcher.Instance, v *launcher.VersionS
 		text = swappedContent(a, c, "runtime-jvm", text, text)
 		a.contentBody(c, "runtime-jvm").Children(func() { valueText(c, text) })
 	})
+	a.ovIsolationRow(c, r, st)
+}
+
+func (a *App) ovHorizonRuntime(c *ui.Context, r launcher.Instance, v launcher.VersionSummary, st launcher.InstanceStatus) {
+	s := uiScale(c)
+	if a.memoryInfo.TotalMB == 0 {
+		a.refreshMemory()
+	}
+	kvRow(c, a.L("overview_runtime.engine"), func() {
+		engine := a.L("overview_runtime.horizon_engine")
+		shown := swappedContent(a, c, "runtime-java", engine, engine)
+		a.contentBody(c, "runtime-java").Grow(1).Basis(0).MinWidth(0).Children(func() {
+			ui.Text(c, shown).FontSize(typeCallout * s).FontWeight(600).TextColor(ink).SingleLine().FillWidth()
+		})
+		quietTag(c, a.L("overview_runtime.native_badge"), loaderTone("horizon"))
+	})
+	kvRow(c, a.L("instance_settings.memory"), func() {
+		valueText(c, a.L("overview_runtime.native_memory"))
+		numText(c, a.L("overview_runtime.no_jvm_heap"), typeFootnote*s, muted)
+		if a.memoryInfo.TotalMB > 0 {
+			ui.Spacer(c).Grow(1)
+			numText(c, fmt.Sprintf(a.L("overview_runtime.of_gb"), float64(a.memoryInfo.TotalMB)/1024), typeFootnote*s, muted)
+		}
+	})
+	j, need := a.ovJava(r, v)
+	kvRow(c, a.L("overview_runtime.resource_prep"), func() {
+		text := a.L("overview_runtime.automatic")
+		if need > 0 {
+			text = fmt.Sprintf("Java %d", need)
+		}
+		if j.Version != "" {
+			text = "Java " + j.Version
+			if j.Vendor != "" {
+				text += "  " + j.Vendor
+			}
+		} else if j.Path != "" {
+			text = midPath(j.Path, 64)
+		}
+		shown := swappedContent(a, c, "runtime-jvm", text, text)
+		a.contentBody(c, "runtime-jvm").Grow(1).Basis(0).MinWidth(0).Children(func() {
+			tooltip(c, ui.Text(c, shown).FontSize(typeCallout*s).FontWeight(600).TextColor(ink).SingleLine().FillWidth(), j.Path)
+		})
+		switch {
+		case j.Major > 0 && j.Major == need:
+			quietTag(c, a.L("overview_runtime.prep_only_hint"), success)
+		case j.Major > 0 && need > 0:
+			quietTag(c, fmt.Sprintf(a.L("overview_runtime.java_advised"), need), warning)
+		case j.Path == "" && need > 0:
+			quietTag(c, a.L("overview_runtime.downloads_on_launch"), muted)
+		}
+	})
+	a.ovIsolationRow(c, r, st)
+}
+
+func (a *App) ovIsolationRow(c *ui.Context, r launcher.Instance, st launcher.InstanceStatus) {
+	s := uiScale(c)
 	if d := st.Dir; d != "" {
 		kvRow(c, a.L("overview_runtime.isolation"), func() {
 			if !strings.EqualFold(filepath.Clean(d), filepath.Clean(r.Path)) {

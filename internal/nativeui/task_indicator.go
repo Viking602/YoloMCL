@@ -73,26 +73,26 @@ func (a *App) jobPill(c *ui.Context) {
 	} else if len(run) == 1 {
 		mid = jobStep(message)
 	}
-	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("task_indicator.view_downloads")), strings.TrimSpace(tip)).Width(300 * s).Height(btnSm * s).Shrink(0).Radius(radiusPill).Clip().Background(accentSoft)
+	b := tooltip(c, ui.ButtonBase(c.Key("title-job")).Label(a.L("task_indicator.view_downloads")), strings.TrimSpace(tip)).Width(300*s).Height(btnSm*s).Shrink(0).Radius(radiusControl*s).Clip().Background(panel).Border(1, lineStrong)
 	if b.Hovered() {
-		b.Background(accent.Alpha(.16))
+		b.Background(raised)
 	}
 	if b.Children(func() {
 		ui.Column(c).Fill().Gap(0).Children(func() {
-			ui.Row(c).FillWidth().Grow(1).PaddingX(12 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, icons["download"]).Size(12*s, 12*s).TextColor(accent).Shrink(0)
-				ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).SingleLine().Grow(1).Basis(0).MinWidth(0)
+			ui.Row(c).FillWidth().Grow(1).PaddingX(10 * s).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+				ui.Icon(c, icons["download"]).Size(13*s, 13*s).TextColor(ink).Shrink(0)
+				ui.Text(c, name).FontSize(typeFootnote * s).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Basis(0).MinWidth(0)
 				ui.Box(c).Width(70 * s).Shrink(0).Clip().Children(func() {
 					// Constrain the text itself so long filenames ellipsize instead
 					// of extending left over the task name from an end-aligned box.
-					ui.Text(c, mid).Font(uiSansFamily()).FontFeatures("tnum").FontSize(typeCaption * s).TextColor(inkSecondary).FillWidth().MinWidth(0).TextAlign(ui.End).SingleLine()
+					ui.Text(c, mid).Font(uiSansFamily()).FontFeatures("tnum").FontSize(typeCaption * s).TextColor(muted).FillWidth().MinWidth(0).TextAlign(ui.End).SingleLine()
 				})
 				ui.Box(c).Width(32 * s).Shrink(0).AlignItems(ui.End).Children(func() {
-					numText(c, right, typeCaption*s, accent).FontWeight(650)
+					numText(c, right, typeCaption*s, ink).FontWeight(650)
 				})
 			})
-			ui.Row(c).FillWidth().Height(3 * s).Shrink(0).Background(accent.Alpha(.12)).Children(func() {
-				ui.Box(c).FillHeight().Width(0).Grow(float32(frac)).Background(accent)
+			ui.Row(c).FillWidth().Height(2.5 * s).Shrink(0).Background(lobeLight.FillTertiary).Children(func() {
+				ui.Box(c).FillHeight().Width(0).Grow(float32(frac)).Background(lobePrimary)
 				ui.Box(c).FillHeight().Width(0).Grow(float32(1 - frac))
 			})
 		})

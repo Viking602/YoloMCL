@@ -9,9 +9,9 @@ import (
 )
 
 // instIcon draws a version's own icon (modpack icon on disk) or its loader
-// logo, on a white tile.
+// logo, on a crisp white tile with a quiet hairline border.
 func (a *App) instIcon(c *ui.Context, r launcher.Instance, v *launcher.VersionSummary, size float32) {
-	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Background(panel).Center().Shrink(0).Clip().Children(func() {
+	ui.Box(c).Size(size, size).Radius(iconRadius(size, uiScale(c))).Background(panel).Border(1, line).Center().Shrink(0).Clip().Children(func() {
 		if v != nil {
 			if img := a.versionIcon(r.ID, v.ID); img != nil {
 				ui.Image(c, img).Size(size, size).Fit(ui.Contain)
@@ -25,24 +25,24 @@ func (a *App) instIcon(c *ui.Context, r launcher.Instance, v *launcher.VersionSu
 		if v != nil {
 			name = loaderIconName(v.Loader)
 		}
-		ui.Icon(c, icons[name]).Size(size*.48, size*.48).TextColor(accent)
+		ui.Icon(c, icons[name]).Size(size*.48, size*.48).TextColor(inkSecondary)
 	})
 }
 
 // heroChip is one hero meta chip; every chip shares height, radius, border
-// and type. Strong chips use the accent tint.
+// and type. Strong chips use Lobe's soft info tint.
 func heroChip(c *ui.Context, icon, text string, strong bool) ui.Element {
 	s := uiScale(c)
-	bg, fg, edge := panel, inkSecondary, line
+	bg, fg, edge := raised, inkSecondary, line
 	if strong {
-		bg, fg, edge = accent.Alpha(.10), accent, accent.Alpha(.18)
+		bg, fg, edge = lobeLight.InfoBg, lobeLight.InfoText, lobeLight.InfoBorder
 	}
 	// Optional metadata gives way to the complete loader build and history.
 	return tooltip(c, ui.Row(c).Shrink(1).MinWidth(0).Height(24*s).PaddingX(8*s).Gap(4*s).Radius(radiusChip*s).Background(bg).Border(1, edge).AlignItems(ui.Center), text).Children(func() {
 		if icon != "" && icons[icon] != nil {
 			ui.Icon(c, icons[icon]).Size(12*s, 12*s).TextColor(fg).Shrink(0)
 		}
-		ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(600).TextColor(fg).SingleLine().Shrink(1).MinWidth(0)
+		ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(550).TextColor(fg).SingleLine().Shrink(1).MinWidth(0)
 	})
 }
 
@@ -53,10 +53,9 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 	t := a.tr()
 	v := a.gameVersion()
 	ui.Box(c).FillWidth().Padding(20*s, 24*s, 0, 24*s).Shrink(0).Children(func() {
-		ui.Row(c.Key("inst-hero")).Label("主版本卡").FillWidth().Padding(24*s, 24*s).Gap(20*s).Radius(radiusCard*s).AlignItems(ui.Center).Clip().
-			LinearGradient(ui.LinearGradient{From: panel, To: ui.Hex("#f5f6f8"), Angle: 180}).
-			Border(s, line).Children(func() {
-			ui.Box(c.Key("hero-icon-slot")).Label("版本图标").Size(68*s, 68*s).Shrink(0).Shadow(0, 4*s, 10*s, -3*s, ui.RGBA(0, 0, 0, .09)).Radius(radiusCard * s).Background(panel).Children(func() {
+		ui.Row(c.Key("inst-hero")).Label("主版本卡").FillWidth().Padding(22*s, 24*s).Gap(20*s).Radius(radiusCard*s).AlignItems(ui.Center).Clip().
+			Background(panel).Border(s, line).Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .03)).Children(func() {
+			ui.Box(c.Key("hero-icon-slot")).Label("版本图标").Size(68*s, 68*s).Shrink(0).Shadow(0, 2*s, 8*s, -2*s, ui.RGBA(0, 0, 0, .06)).Radius(radiusCard * s).Background(panel).Children(func() {
 				ui.Box(c.Key("hero-icon-" + a.versionSwapKey())).Fill().Transition(heroSwap(c)).Children(func() {
 					a.instIcon(c, r, v, 68*s)
 				})

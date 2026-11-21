@@ -70,6 +70,12 @@ func (a *App) projectInstallDialog(c *ui.Context, maxH float32) {
 				if p.Type == "mod" && a.form.VersionID != "" {
 					a.installDeps(c)
 				}
+				if p.Type == "shader" && p.Source == "horizon" && a.form.VersionID != "" && !a.selectedProjectVersionFits() {
+					ui.Row(c.Key("shader-incompatible")).FillWidth().MinHeight(54 * s).Padding(12 * s).Radius(radiusControl * s).Background(ui.RGBA(255, 149, 0, .08)).Gap(8 * s).AlignItems(ui.Center).Children(func() {
+						ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(warningInk).Shrink(0)
+						ui.Text(c, a.L("project_dependencies.this_version_does_not_match_the_instance_choose")).FontSize(typeFootnote * s).TextColor(inkSecondary).Grow(1).Basis(0).MinWidth(0)
+					})
+				}
 				if p.Type == "modpack" {
 					a.packDestFields(c)
 				}
@@ -106,9 +112,9 @@ func (a *App) installHeader(c *ui.Context) {
 				textTooltip(c, e, desc, "", ui.Font{Family: uiSansFamily(), Size: typeFootnote * s}, 2)
 			}
 			ui.Row(c).FillWidth().Gap(8 * s).AlignItems(ui.Center).Children(func() {
-				if logo := sourceLogo(p.Source); logo != nil {
+				if hasSourceLogo(p.Source) {
 					ui.Row(c).Height(20 * s).PaddingX(8 * s).Gap(4 * s).Radius(radiusChip * s).Background(ui.RGBA(120, 130, 160, .10)).AlignItems(ui.Center).Shrink(0).Children(func() {
-						ui.Icon(c, logo).Size(11*s, 11*s)
+						renderSourceLogo(c, p.Source, 11*s)
 						ui.Text(c, sourceName(p.Source)).FontSize(typeCaption2 * s).FontWeight(600).TextColor(inkSecondary).NoWrap()
 					})
 				}
@@ -276,7 +282,8 @@ func (a *App) installAction() (string, bool, func()) {
 		}
 	case "resourcepack", "shader":
 		lbl := a.L("install_dialog.install")
-		return lbl, noVer || r == nil, func() {
+		incompatible := p.Type == "shader" && p.Source == "horizon" && !a.selectedProjectVersionFits()
+		return lbl, noVer || r == nil || incompatible, func() {
 			a.execute("installAssetPack", map[string]string{"rootId": r.ID, "kind": p.Type, "source": p.Source, "projectId": p.ID, "versionId": a.form.VersionID}, a.taskAdded)
 		}
 	}

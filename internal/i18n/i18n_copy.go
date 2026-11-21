@@ -453,6 +453,7 @@ type Copy struct {
 	InstallLoaderForgeSub     string
 	InstallLoaderNeoSub       string
 	InstallLoaderQuiltSub     string
+	InstallLoaderHorizonSub   string
 	InstallLoaderVerLabel     string
 	InstallFetchingLoader     string
 	InstallNoLoaderVer        string
@@ -560,4 +561,5 @@ type Copy struct {
 	LoaderQuilt    string
 	LoaderForge    string
 	LoaderNeoForge string
+	LoaderHorizon  string
 }

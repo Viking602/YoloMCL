@@ -35,37 +35,39 @@ func (a *App) discoverRail(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
 	ui.Column(c.Key("discover-rail")).Label("发现筛选").Width(instListWidth*s).Shrink(0).FillHeight().Padding(20*s, 16*s, 16*s, 16*s).Gap(20 * s).Children(func() {
-		// Source: one segmented control with the providers' own logos.
-		ui.Row(c.Key("discover-source")).Label("来源").FillWidth().Padding(4 * s).Gap(4 * s).Radius(radiusControl * s).Background(fieldColor).Children(func() {
+		// Source: Lobe Segmented-styled control with the providers' own logos.
+		ui.Row(c.Key("discover-source")).Label("来源").FillWidth().Padding(3*s).Gap(3*s).Radius(radiusPanel*s).Background(lobeLight.FillSecondary).Border(1, lobeLight.FillQuaternary).Children(func() {
 			for _, src := range []struct {
 				key, name string
-				logo      *ui.SVG
-			}{{"modrinth", "Modrinth", modrinthLogo}, {"curseforge", "CurseForge", curseforgeLogo}} {
+			}{{"modrinth", "Modrinth"}, {"curseforge", "CurseForge"}, {"horizon", "Horizon"}} {
 				it := src
 				sel := a.provider == it.key
-				b := ui.ButtonBase(c.Key("brand-" + it.key)).Label(it.name).Grow(1).Basis(0).Height(30 * s).Gap(8 * s).Radius(radiusChip * s).Justify(ui.Center).AlignItems(ui.Center)
-				bg := ui.Transparent
+				b := ui.ButtonBase(c.Key("brand-" + it.key)).Label(it.name).Grow(1).Basis(0).Height(30 * s).Gap(5 * s).Radius(radiusControl * s).Justify(ui.Center).AlignItems(ui.Center)
+				bg, edge := ui.Transparent, ui.Transparent
 				if sel {
-					bg = panel
-					b.Shadow(0, 1*s, 4*s, 0, ui.RGBA(15, 23, 42, .08))
+					bg, edge = panel, lineStrong
+					b.Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .05))
 				} else if b.Hovered() {
-					bg = ui.RGBA(255, 255, 255, .55)
+					bg = lobeLight.FillTertiary
 				}
-				b.Background(b.AnimateColor("bg", bg, fastAnim))
+				b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(1, b.AnimateColor("edge", edge, fastAnim))
 				fg := inkSecondary
-				if sel {
+				if sel || b.Hovered() {
 					fg = ink
 				}
 				if b.Children(func() {
-					ui.Image(c, it.logo).Size(15*s, 15*s).Fit(ui.Contain).Shrink(0)
-					ui.Text(c, it.name).FontSize(typeFootnote * s).FontWeight(600).TextColor(fg).NoWrap()
+					renderSourceLogo(c, it.key, 13*s)
+					ui.Text(c, it.name).FontSize(typeCaption * s).FontWeight(600).TextColor(fg).NoWrap()
 				}).Clicked() && !sel {
 					a.provider = it.key
+					if it.key == "horizon" && normalizeResourceType(a.resourceType) == "modpack" {
+						a.resourceType = t.DiscoverTypeMod
+					}
 					a.search()
 				}
 			}
 		})
-		// Type: rows like the instance list.
+		// Type: unified Lobe elevated rail rows matching the instance and install rails.
 		ui.Column(c).FillWidth().Gap(4 * s).Children(func() {
 			railTitle(c, a.L("discover.type"))
 			for _, ty := range []struct{ label, key, icon string }{
@@ -74,19 +76,31 @@ func (a *App) discoverRail(c *ui.Context) {
 				{t.DiscoverTypeRP, "resourcepack", "cube"},
 				{t.DiscoverTypeShader, "shader", "sun"},
 			} {
+				if a.provider == "horizon" && ty.key == "modpack" {
+					continue
+				}
 				it := ty
 				sel := normalizeResourceType(a.resourceType) == it.key
-				b := ui.ButtonBase(c.Key("discover-type-" + it.key)).Label(it.label).FillWidth().Height(40 * s).PaddingX(12 * s).Gap(12 * s).Radius(radiusRow * s).AlignItems(ui.Center)
-				bg, fg := ui.Transparent, ink
+				b := ui.ButtonBase(c.Key("discover-type-"+it.key)).Label(it.label).FillWidth().Height(38*s).Padding(0, 12*s, 0, 14*s).Gap(10 * s).Radius(radiusRow * s).AlignItems(ui.Center)
+				bg, edge, fg, ic := ui.Transparent, ui.Transparent, inkSecondary, muted
 				if sel {
-					bg, fg = accent, panel
+					bg, edge, fg, ic = panel, lineStrong, ink, lobePrimary
+					b.Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
+					b.Draw(func(p *ui.Painter, rect ui.Rect) {
+						barH := rect.H * .44
+						p.Fill(ui.Rect{X: rect.X + 3*s, Y: rect.Y + (rect.H-barH)/2, W: 2.5 * s, H: barH}, lobePrimary, 1.25*s)
+					})
 				} else if b.Hovered() {
-					bg = ui.RGBA(255, 255, 255, .8)
+					bg, fg, ic = lobeLight.FillTertiary, ink, inkSecondary
 				}
-				b.Background(b.AnimateColor("bg", bg, fastAnim))
+				b.Background(b.AnimateColor("bg", bg, fastAnim)).Border(1, b.AnimateColor("edge", edge, fastAnim))
+				weight := 500
+				if sel {
+					weight = 650
+				}
 				if b.Children(func() {
-					ui.Icon(c, icons[it.icon]).Size(15*s, 15*s).TextColor(fg).Shrink(0)
-					ui.Text(c, it.label).FontSize(typeBody * s).FontWeight(600).TextColor(fg).SingleLine()
+					ui.Icon(c, icons[it.icon]).Size(15*s, 15*s).TextColor(ic).Shrink(0)
+					ui.Text(c, it.label).FontSize(typeCallout * s).FontWeight(weight).TextColor(fg).SingleLine()
 					ui.Spacer(c).Grow(1)
 				}).Clicked() && !sel {
 					a.resourceType = it.label
@@ -98,7 +112,7 @@ func (a *App) discoverRail(c *ui.Context) {
 			railTitle(c, a.L("discover.filters"))
 			a.discoverVersionFilter(c)
 			kind := normalizeResourceType(a.resourceType)
-			if kind == "mod" || kind == "modpack" {
+			if a.provider != "horizon" && (kind == "mod" || kind == "modpack") {
 				if loaderSelectBox(c, "discover-loader", t.DiscoverFilterLoader, &a.filterLoader, []string{t.LoaderAll, t.LoaderFabric, t.LoaderForge, t.LoaderNeoForge, t.LoaderQuilt}).FillWidth().Changed() {
 					a.search()
 				}
@@ -106,32 +120,42 @@ func (a *App) discoverRail(c *ui.Context) {
 			if selectBox(c, "discover-sort", t.DiscoverSortRelevance, &a.searchSort, []string{t.DiscoverSortRelevance, t.DiscoverSortDownloads, t.DiscoverSortUpdated}).FillWidth().Changed() {
 				a.search()
 			}
-			if v := a.gameVersion(); v != nil && kind != "modpack" && a.filterMC != v.Minecraft {
-				b := ui.ButtonBase(c.Key("discover-use-inst")).Label(a.L("discover.use_this_instance_s_version")).Height(28 * s).PaddingX(8 * s).Radius(radiusChip * s).Gap(8 * s).AlignItems(ui.Center)
-				bg := ui.Transparent
-				if b.Hovered() {
-					bg = accentSoft
-				}
-				b.Background(b.AnimateColor("bg", bg, fastAnim))
-				if b.Children(func() {
-					ui.Icon(c, icons["refresh"]).Size(11*s, 11*s).TextColor(accent)
-					ui.Text(c, fmt.Sprintf(a.L("discover.use_this_instance_s"), v.Minecraft)).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
-				}).Clicked() {
-					a.filterMC = v.Minecraft
-					a.discoverMCText = v.Minecraft
-					if kind == "mod" {
-						a.filterLoader = a.loaderDisplay(v.Loader)
+			if v := a.gameVersion(); v != nil && kind != "modpack" {
+				wantHorizon := strings.EqualFold(v.Loader, "horizon") && kind == "mod" && a.provider != "horizon"
+				if a.filterMC != v.Minecraft || wantHorizon {
+					b := ui.ButtonBase(c.Key("discover-use-inst")).Label(a.L("discover.use_this_instance_s_version")).Height(28 * s).PaddingX(8 * s).Radius(radiusChip * s).Gap(8 * s).AlignItems(ui.Center)
+					bg := ui.Transparent
+					if b.Hovered() {
+						bg = accentSoft
 					}
-					a.search()
+					b.Background(b.AnimateColor("bg", bg, fastAnim))
+					if b.Children(func() {
+						ui.Icon(c, icons["refresh"]).Size(11*s, 11*s).TextColor(accent)
+						ui.Text(c, fmt.Sprintf(a.L("discover.use_this_instance_s"), v.Minecraft)).FontSize(typeFootnote * s).FontWeight(600).TextColor(accent).NoWrap()
+					}).Clicked() {
+						a.filterMC = v.Minecraft
+						a.discoverMCText = v.Minecraft
+						if strings.EqualFold(v.Loader, "horizon") {
+							if kind == "mod" || kind == "shader" {
+								a.provider = "horizon"
+							}
+						} else if kind == "mod" {
+							if a.provider == "horizon" {
+								a.provider = "modrinth"
+							}
+							a.filterLoader = a.loaderDisplay(v.Loader)
+						}
+						a.search()
+					}
 				}
 			}
 		})
 		a.discoverCatsRail(c)
 		ui.Spacer(c).Grow(1)
 		if r := a.root(); r != nil && normalizeResourceType(a.resourceType) != "modpack" {
-			ui.Row(c).FillWidth().Padding(12*s, 12*s).Radius(radiusControl * s).Background(ui.RGBA(120, 130, 160, .07)).Gap(12 * s).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).FillWidth().Padding(10*s, 12*s).Radius(radiusControl*s).Background(panel).Border(1, line).Gap(10 * s).AlignItems(ui.Center).Children(func() {
 				a.instIcon(c, *r, a.gameVersion(), 26*s)
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4 * s).Children(func() {
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2 * s).Children(func() {
 					label(c, a.L("discover.installs_to")).FontSize(typeCaption * s)
 					name := r.Name
 					if v := a.gameVersion(); v != nil {
@@ -146,46 +170,49 @@ func (a *App) discoverRail(c *ui.Context) {
 
 func railTitle(c *ui.Context, text string) {
 	s := uiScale(c)
-	ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(650).TextColor(muted).PaddingX(12 * s).PaddingY(4 * s).SingleLine()
+	ui.Text(c, text).FontSize(typeFootnote * s).FontWeight(600).TextColor(muted).PaddingX(10 * s).PaddingY(4 * s).SingleLine()
 }
 
 func (a *App) discoverToolbar(c *ui.Context) {
 	s := uiScale(c)
 	t := a.tr()
-	ui.Row(c.Key("discover-toolbar")).Label("搜索栏").FillWidth().Padding(20*s, pageGutter*s, 12*s).Gap(12 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
-		in := textField(c.Key("discover-query"), &a.query).Placeholder(t.DiscoverSearchHint).Label(t.DiscoverSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
-		submit := in.Submitted()
-		if in.Shortcut(0, ui.KeyEnter) {
-			submit = true
-		}
-		if strings.TrimSpace(a.query) != "" {
-			cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("discover.clear_search")).Size(24*s, 24*s).Radius(radiusPill).Center().Shrink(0)
-			if cb.Hovered() {
-				cb.Background(ui.RGBA(120, 130, 160, .14))
-			}
-			if cb.Children(func() {
-				ui.Icon(c, icons["cross"]).Size(10*s, 10*s).TextColor(muted)
-			}).Clicked() {
-				a.query = ""
+	ui.Column(c).FillWidth().Shrink(0).Background(panel).Children(func() {
+		ui.Row(c.Key("discover-toolbar")).Label("搜索栏").FillWidth().Padding(16*s, pageGutter*s, 14*s).Gap(10 * s).AlignItems(ui.Center).Shrink(0).Children(func() {
+			in := textField(c.Key("discover-query"), &a.query).Placeholder(t.DiscoverSearchHint).Label(t.DiscoverSearchAria).Grow(1).Basis(0).MinWidth(160 * s)
+			submit := in.Submitted()
+			if in.Shortcut(0, ui.KeyEnter) {
 				submit = true
 			}
-		}
-		if fixedButton(c, "search-now", t.DiscoverSearchBtn, "search", 0, btnMd*s, true, false) {
-			submit = true
-		}
-		if submit {
-			a.search()
-		}
-		ui.Box(c.Key("search-activity")).Label("搜索加载指示").Size(14*s, 14*s).Shrink(0).Children(func() {
-			if a.searchLoading {
-				ui.Spinner(c).Size(14*s, 14*s)
+			if strings.TrimSpace(a.query) != "" {
+				cb := ui.ButtonBase(c.Key("discover-query-clear")).Label(a.L("discover.clear_search")).Size(24*s, 24*s).Radius(radiusPill).Center().Shrink(0)
+				if cb.Hovered() {
+					cb.Background(lobeLight.FillSecondary)
+				}
+				if cb.Children(func() {
+					ui.Icon(c, icons["cross"]).Size(12*s, 12*s).TextColor(muted)
+				}).Clicked() {
+					a.query = ""
+					submit = true
+				}
 			}
+			if fixedButton(c, "search-now", t.DiscoverSearchBtn, "search", 0, btnMd*s, true, false) {
+				submit = true
+			}
+			if submit {
+				a.search()
+			}
+			ui.Box(c.Key("search-activity")).Label("搜索加载指示").Size(14*s, 14*s).Shrink(0).Children(func() {
+				if a.searchLoading {
+					statusSpinner(c, 14*s)
+				}
+			})
+			count := "—"
+			if len(a.searchResult.Projects) > 0 || (!a.searchLoading && a.searchError == "") {
+				count = a.formatResultCount(int64(a.searchResult.Total))
+			}
+			a.fadeNumber(c, "discover-total", count, typeFootnote*s, 400, muted, true).Width(98 * s).Shrink(0)
 		})
-		count := "—"
-		if len(a.searchResult.Projects) > 0 || (!a.searchLoading && a.searchError == "") {
-			count = a.formatResultCount(int64(a.searchResult.Total))
-		}
-		a.fadeNumber(c, "discover-total", count, typeFootnote*s, 400, muted, true).Width(98 * s).Shrink(0)
+		ui.Box(c).FillWidth().Height(1).Background(line)
 	})
 }
 

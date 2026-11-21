@@ -10,6 +10,9 @@ import (
 
 // loaderVersion reads the loader build from the version JSON's libraries.
 func loaderVersion(v gameVersion, loader, mc string) string {
+	if loader == "horizon" && v.Horizon != nil {
+		return v.Horizon.BuildID
+	}
 	for _, lib := range v.Libraries {
 		parts := strings.Split(lib.Name, ":")
 		if len(parts) < 3 {
@@ -81,6 +84,9 @@ func versionArgument(v gameVersion, names ...string) string {
 }
 
 func minecraftVersionOf(v gameVersion) string {
+	if v.Horizon != nil && v.Horizon.Minecraft != "" {
+		return v.Horizon.Minecraft
+	}
 	if mc := versionArgument(v, "--fml.mcVersion", "--fml.minecraftVersion", "-Dfml.mcVersion"); mc != "" {
 		return mc
 	}

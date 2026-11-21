@@ -81,18 +81,19 @@ func selectBoxImpl(c *ui.Context, key, labelText string, selected *string, optio
 	return sel.Trigger
 }
 
-// Choice fields share a quiet paper surface and blue focus edge across
-// settings and filters. Their bounds stay still while the pointer presses.
+// Choice fields share Lobe UI's crisp container surface and hairline borders
+// with textField. Their bounds stay still while the pointer presses.
 func styleSelectField(field ui.Element, s float32, active bool) {
-	fill, edge := panel, line
+	fill, edge := panel, lineStrong
 	if field.Hovered() {
-		fill, edge = raised, lineStrong
+		fill, edge = panel, ui.Hex("#cfcfcf")
 	}
 	if active || field.Focused() {
-		fill, edge = panel, accent.Alpha(.4)
+		fill, edge = panel, lobePrimary
+		field.Shadow(0, 0, 0, 2*s, lobeLight.PrimaryBg)
 	}
 	if field.Pressed() {
-		fill = fieldColor
+		fill = raised
 	}
 	field.Radius(radiusControl*s).
 		Background(field.AnimateColor("select-surface", fill, fastAnim)).
@@ -145,15 +146,15 @@ func selectCheck(c *ui.Context, selected bool, color ui.Color, s float32) {
 func selectOptionStyle(item ui.Element, selected bool, s float32) (ui.Element, ui.Color) {
 	bg, fg, edge := ui.Transparent, ink, ui.Transparent
 	if selected {
-		bg, fg = accentSoft, accent
+		bg, fg = lobeLight.FillSecondary, ink
 	} else if item.Highlighted() {
-		bg = accent.Alpha(.05)
+		bg = lobeLight.FillTertiary
 	}
 	if item.Highlighted() {
-		edge = accent.Alpha(.20)
+		edge = line
 	}
 	return item.FillWidth().MinWidth(0).Height(selectRowHeight*s).Padding(0, space2*s).
-		Font(uiSansFamily()).Radius(nestedRadius(radiusPanel, space2)*s).AlignItems(ui.Center).Gap(space2*s).
+		Font(uiSansFamily()).Radius(radiusChip*s).AlignItems(ui.Center).Gap(space2*s).
 		Background(item.AnimateColor("choice-bg", bg, motionFast)).Border(s, edge), fg
 }
 

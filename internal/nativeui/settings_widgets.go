@@ -2,8 +2,11 @@ package nativeui
 
 import (
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/choice"
+	"github.com/lobehub/lobe-mygo/pkg/motion"
 )
 
 const (
@@ -81,66 +84,76 @@ func rowIcon(c *ui.Context, icon string, tone [2]ui.Color) func() {
 	return nil
 }
 
-// segmented is a macOS segmented control; it returns the clicked option.
+type lobeSegMatch struct{ selected *int }
+
+var lobeSegPress = ui.Animation{Duration: 120 * time.Millisecond, Ease: motion.EaseOut}
+
+// segmented renders a scaled Lobe UI segmented control (matching lobe-mygo
+// action.Segmented's SegmentedBase + FLIP sliding thumb + press scale, with
+// high-contrast neutral track and elevated white active pill that stay crisp
+// on pure-white cards across all window scales).
 func segmented(c *ui.Context, key string, options []string, selected string, height float32) (string, bool) {
+	if len(options) == 0 {
+		return selected, false
+	}
 	s := uiScale(c)
 	clicked, changed := selected, false
-	innerRadius := nestedRadius(radiusControl, space1) * s
-	track := ui.Row(c.Key(key)).Shrink(0).Padding(space1 * s).Radius(radiusControl * s).Background(fieldColor)
-	track.Children(func() {
-		var index float32
-		for i, option := range options {
-			if option == selected {
-				index = float32(i)
-			}
+	host := ui.Box(c.Key(key)).Shrink(0)
+	idx := ui.Local(host, "seg-idx", func() int { return -1 })
+	cur := -1
+	for i, opt := range options {
+		if opt == selected {
+			cur = i
+			break
 		}
-		slide := track.AnimateTo("thumb", index, motionMove)
-		track.Draw(func(p *ui.Painter, r ui.Rect) {
-			if len(options) == 0 {
-				return
+	}
+	*idx = cur
+	innerRadius := radiusControl * s
+	outerRadius := (radiusControl + 2) * s
+	padX := space3 * s
+	fontSize := min(typeFootnote*s, height*.52)
+	slide := ui.ElementTransition{Duration: 220 * time.Millisecond, Ease: motion.EaseOut, Match: lobeSegMatch{idx}}
+	host.Children(func() {
+		parts := ui.SegmentedBase(c, idx, len(options))
+		track := parts.Track.Padding(3*s).Gap(2*s).Radius(outerRadius).Background(lobeLight.FillSecondary).Border(1, lobeLight.FillQuaternary)
+		track.Children(func() {
+			for i, option := range options {
+				active := i == *idx
+				seg := parts.Segment(i).Height(height).PaddingX(padX).Radius(innerRadius).
+					FontSize(fontSize).FontWeight(550).Cursor(ui.CursorPointer)
+				fg := inkSecondary
+				if active {
+					fg = ink
+					seg.FontWeight(650)
+				} else if seg.Hovered() {
+					fg = ink
+				}
+				pose := ui.Pose{}
+				if seg.Pressed() {
+					pose.Scale = 0.98
+				}
+				seg.TextColor(fg).AnimatePose(pose, lobeSegPress)
+				seg.Children(func() {
+					if active {
+						ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).
+							Radius(innerRadius).Background(panel).Border(1, lineStrong).
+							Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .06)).
+							ZIndex(-1).IgnoreInput(true).Transition(slide)
+					}
+					ui.Text(c, option).SingleLine()
+				})
 			}
-			inner := r.W - 2*space1*s
-			cell := inner / float32(len(options))
-			thumb := ui.Rect{X: r.X + space1*s + cell*slide, Y: r.Y + space1*s, W: cell, H: r.H - 2*space1*s}
-			p.Shadow(thumb, innerRadius, 0, 1*s, 3*s, 0, ui.RGBA(40, 52, 110, .14))
-			p.Fill(thumb, panel, innerRadius)
 		})
-		for _, option := range options {
-			opt := option
-			active := opt == selected
-			b := ui.ButtonBase(c.Key(key + "-" + opt)).Label(opt).Height(height).PaddingX(space3 * s).Radius(innerRadius).AlignItems(ui.Center).Justify(ui.Center)
-			fg := inkSecondary
-			if active {
-				fg = ink
-			} else if b.Hovered() {
-				b.Background(ui.RGBA(255, 255, 255, .4))
-			}
-			if b.Children(func() {
-				ui.Text(c, opt).FontSize(min(typeFootnote*s, height*.48)).FontWeight(600).TextColor(fg).NoWrap()
-			}).Clicked() {
-				clicked, changed = opt, true
-			}
+		if track.Changed() && *idx >= 0 && *idx < len(options) {
+			clicked, changed = options[*idx], true
 		}
 	})
 	return clicked, changed
 }
 
+// nativeToggle renders Lobe UI's spring-stretching choice.Switch.
 func nativeToggle(c *ui.Context, key, label string, on *bool) ui.Element {
-	s := uiScale(c)
-	toggle := ui.SwitchBase(c.Key(key), on).Label(label).Size(44*s, 28*s).Shrink(0)
-	targetFill := ui.RGBA(120, 120, 128, .2)
-	targetOffset := space1
-	if *on {
-		targetFill = success
-		targetOffset = 20
-	}
-	animOffset := toggle.AnimateTo("knob", targetOffset, motionMove)
-	toggle.Radius(radiusPill).Background(toggle.AnimateColor("bg", targetFill, fastAnim)).Draw(func(p *ui.Painter, r ui.Rect) {
-		knob := ui.Rect{X: r.X + animOffset*s, Y: r.Y + space1*s, W: 20 * s, H: 20 * s}
-		p.Shadow(knob, radiusPill, 0, 1.5*s, 4*s, 0, ui.RGBA(0, 0, 0, .18))
-		p.Fill(knob, panel, radiusPill)
-	})
-	return toggle
+	return choice.Switch(c.Key(key), on, choice.SwitchProps{}).Label(label).Shrink(0)
 }
 
 func jvmAdviceText(raw string, t *Copy) string {
@@ -170,21 +183,22 @@ func renderJVMPresetBar(c *ui.Context, keyPrefix string, target *string, t *Copy
 		} {
 			preset := item
 			active := strings.TrimSpace(*target) == preset.args
-			bgCol := ui.RGBA(255, 255, 255, .7)
+			bgCol := panel
 			fgCol := inkSecondary
 			borderCol := lineStrong
 			if active {
-				bgCol = accentSoft
-				fgCol = accent
-				borderCol = ui.RGBA(0, 122, 255, .35)
+				bgCol = lobePrimary
+				fgCol = lobeLight.PrimaryForeground
+				borderCol = lobePrimary
 			}
-			chip := ui.ButtonBase(c.Key(keyPrefix+"-"+preset.id)).Label(preset.label).Height(btnSm*s).PaddingX(12*s).Radius(radiusPill).Border(1, borderCol).AlignItems(ui.Center)
+			chip := ui.ButtonBase(c.Key(keyPrefix+"-"+preset.id)).Label(preset.label).Height(btnSm*s).PaddingX(12*s).Radius(radiusControl*s).Border(1, borderCol).AlignItems(ui.Center)
 			if chip.Hovered() && !active {
-				bgCol = panel
+				bgCol = raised
+				fgCol = ink
 			}
 			chip.Background(chip.AnimateColor("bg", bgCol, fastAnim))
 			if chip.Children(func() {
-				ui.Text(c, preset.label).FontSize(typeFootnote * s).FontWeight(600).TextColor(fgCol).NoWrap()
+				ui.Text(c, preset.label).FontSize(typeFootnote * s).FontWeight(550).TextColor(fgCol).NoWrap()
 			}).Clicked() {
 				*target = preset.args
 				if changed != nil {
@@ -193,9 +207,9 @@ func renderJVMPresetBar(c *ui.Context, keyPrefix string, target *string, t *Copy
 			}
 		}
 		if strings.TrimSpace(*target) != "" {
-			clearChip := ui.ButtonBase(c.Key(keyPrefix + "-clear")).Label(t.JVMPresetClear).Height(btnSm * s).PaddingX(12 * s).Radius(radiusPill).Background(fieldColor).AlignItems(ui.Center)
+			clearChip := ui.ButtonBase(c.Key(keyPrefix + "-clear")).Label(t.JVMPresetClear).Height(btnSm * s).PaddingX(12 * s).Radius(radiusControl * s).Background(fieldColor).AlignItems(ui.Center)
 			if clearChip.Children(func() {
-				ui.Text(c, t.JVMPresetClear).FontSize(typeFootnote * s).TextColor(muted).NoWrap()
+				ui.Text(c, t.JVMPresetClear).FontSize(typeFootnote * s).TextColor(inkSecondary).NoWrap()
 			}).Clicked() {
 				*target = ""
 				if changed != nil {
@@ -204,10 +218,7 @@ func renderJVMPresetBar(c *ui.Context, keyPrefix string, target *string, t *Copy
 			}
 		}
 	})
-	ui.Row(c).FillWidth().Clip().Padding(8*s, 12*s).Radius(radiusControl * s).LinearGradient(ui.LinearGradient{From: ui.RGBA(10, 132, 255, .08), To: ui.RGBA(175, 82, 222, .07), Angle: 90}).Gap(8 * s).AlignItems(ui.Center).Children(func() {
-		ui.Icon(c, icons["info"]).Size(14*s, 14*s).TextColor(accent).Shrink(0)
-		label(c, jvmAdviceText(*target, t)).Grow(1).MinWidth(0).FontSize(typeFootnote * s)
-	})
+	lobeAlert(c, "info", jvmAdviceText(*target, t))
 }
 
 // Keep navigation and reset in a fixed toolbar above the grouped settings.

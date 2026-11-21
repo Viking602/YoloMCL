@@ -64,11 +64,14 @@ func (s *Service) ModChecksAge(rootID, versionID string) time.Duration {
 // a bounded pool. A failing step is recorded and the others still run; an
 // error is returned only when nothing could be checked.
 func (s *Service) checkModsIn(ctx context.Context, r Root, vDir string, p progress, partial func(map[string]Mod)) error {
-	mods, e := s.scanModDirectory(ctx, vDir, nil)
+	mc, loader, e := instanceCompatibility(r)
 	if e != nil {
 		return e
 	}
-	mc, loader, e := instanceCompatibility(r)
+	if loader == "horizon" {
+		return s.checkHorizonModsIn(ctx, r, vDir, mc, p, partial)
+	}
+	mods, e := s.scanModDirectory(ctx, vDir, nil)
 	if e != nil {
 		return e
 	}

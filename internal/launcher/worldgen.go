@@ -190,17 +190,23 @@ func (s *Service) seedMapWorldgenEra(ctx context.Context, rootID, versionID, wor
 			input.SavedDimensions = seedMapLegacySavedDimensions(input.Minecraft, level)
 		}
 	}
-	mods, err := seedMapPackEntries(ctx, gameDir, "mods")
-	if err != nil {
-		input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", "mods"})
-	}
-	for _, en := range mods {
-		if !en.IsDir() && strings.HasSuffix(strings.ToLower(en.Name()), ".jar") {
-			input.HasMods = true
-			if p, e := safeJoin(gameDir, "mods/"+en.Name()); e == nil {
-				input.Sources = append(input.Sources, WorldgenSource{p, "mod:" + en.Name()})
-			} else {
-				input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", en.Name()})
+	if input.Loader == "horizon" {
+		if hMods := seedMapHorizonMods(ctx, gameDir, &input.Issues); len(hMods) > 0 {
+			input.Sources = append(input.Sources, hMods...)
+		}
+	} else {
+		mods, err := seedMapPackEntries(ctx, gameDir, "mods")
+		if err != nil {
+			input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", "mods"})
+		}
+		for _, en := range mods {
+			if !en.IsDir() && strings.HasSuffix(strings.ToLower(en.Name()), ".jar") {
+				input.HasMods = true
+				if p, e := safeJoin(gameDir, "mods/"+en.Name()); e == nil {
+					input.Sources = append(input.Sources, WorldgenSource{p, "mod:" + en.Name()})
+				} else {
+					input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", en.Name()})
+				}
 			}
 		}
 	}
@@ -220,20 +226,39 @@ func (s *Service) seedMapWorldgenEra(ctx context.Context, rootID, versionID, wor
 			ordered = append(ordered, en.Name())
 		}
 	}
-	if level.HasDataPacks {
-		ordered = nil
-		for _, name := range level.EnabledDataPacks {
-			if strings.HasPrefix(name, "file/") {
-				n := strings.TrimPrefix(name, "file/")
-				if _, ok := available[n]; ok {
-					ordered = append(ordered, n)
-				} else {
-					input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", name})
-				}
+	horizonPacksApplied := false
+	if input.Loader == "horizon" && world != "" {
+		cfg, ok, derr := readHorizonDatapacksJSON(ctx, gameDir, world)
+		if derr != nil {
+			input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", "saves/" + world + "/datapacks.json"})
+		} else if ok {
+			horizonPacksApplied = true
+			var missing []string
+			ordered, missing = resolveHorizonWorldDatapacks(available, cfg)
+			for _, id := range missing {
+				input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", id})
+			}
+			if len(input.EnabledPacks) == 0 {
+				input.EnabledPacks = append([]string{}, cfg.Enabled...)
 			}
 		}
-	} else if len(ordered) > 0 {
-		input.Issues = append(input.Issues, WorldgenIssue{"pack_order", packDir})
+	}
+	if !horizonPacksApplied {
+		if level.HasDataPacks {
+			ordered = nil
+			for _, name := range level.EnabledDataPacks {
+				if strings.HasPrefix(name, "file/") {
+					n := strings.TrimPrefix(name, "file/")
+					if _, ok := available[n]; ok {
+						ordered = append(ordered, n)
+					} else {
+						input.Issues = append(input.Issues, WorldgenIssue{"source_unreadable", name})
+					}
+				}
+			}
+		} else if len(ordered) > 0 {
+			input.Issues = append(input.Issues, WorldgenIssue{"pack_order", packDir})
+		}
 	}
 	for _, name := range ordered {
 		p, e := safeJoin(gameDir, packDir+"/"+name)
@@ -254,8 +279,14 @@ func (s *Service) seedMapWorldgenEra(ctx context.Context, rootID, versionID, wor
 		return readSeedMapModConfig(ctx, gameDir, world, name)
 	}
 	statRoots := []string{filepath.Join(gameDir, "config"), filepath.Join(gameDir, "defaultconfigs"), filepath.Join(r.Path, "versions", r.SelectedVersion)}
+	if input.Loader == "horizon" {
+		statRoots = append(statRoots, filepath.Join(gameDir, "horizon-mods.txt"))
+	}
 	if world != "" {
 		statRoots = append(statRoots, filepath.Join(gameDir, "saves", world, "serverconfig"))
+		if input.Loader == "horizon" {
+			statRoots = append(statRoots, filepath.Join(gameDir, "saves", world, "datapacks.json"))
+		}
 	}
 	pre("")
 	fpStage := seedMapStage("open.fingerprint")

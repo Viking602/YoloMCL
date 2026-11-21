@@ -1,10 +1,12 @@
 package nativeui
 
 import (
-	"math"
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	lobetheme "github.com/lobehub/lobe-mygo/pkg/theme"
 )
 
 func heading(c *ui.Context, _, text, description string, actions func()) {
@@ -40,33 +42,28 @@ func appleSoftIconBox(c *ui.Context, size float32, iconName string, from, to, fg
 	})
 }
 
-// Apple Pill Badge with soft gradient fill
+// Lobe UI soft-tinted status pill badge.
 func badge(c *ui.Context, s string, color ui.Color) {
 	scale := uiScale(c)
-	from, to := ui.Hex("#f3f4f6"), ui.Hex("#e7e9ec")
-	fg := color
+	fill, edge, fg := raised, line, inkSecondary
 	switch color {
 	case accent, blue:
-		from, to = ui.Hex("#f1f2f4"), ui.Hex("#e4e7eb")
-		fg = accent
+		fill, edge, fg = lobeLight.InfoBg, lobeLight.InfoBorder, lobeLight.InfoText
 	case success, successInk:
-		from, to = ui.Hex("#e8faed"), ui.Hex("#d3f5dd")
-		fg = successInk
+		fill, edge, fg = lobeLight.SuccessBg, lobeLight.SuccessBorder, lobeLight.SuccessText
 	case danger:
-		from, to = ui.Hex("#ffeceb"), ui.Hex("#ffdfdd")
-		fg = danger
+		fill, edge, fg = lobeLight.ErrorBg, lobeLight.ErrorBorder, lobeLight.ErrorText
 	case warning, warningInk:
-		from, to = ui.Hex("#fff6e5"), ui.Hex("#ffebcc")
-		fg = warningInk
+		fill, edge, fg = lobeLight.WarningBg, lobeLight.WarningBorder, lobeLight.WarningText
 	}
-	ui.Row(c).Shrink(0).Padding(space1*scale, space2*scale).Radius(radiusPill).LinearGradient(tintGradient(from, to)).Border(1, ui.RGBA(255, 255, 255, .7)).Children(func() {
-		ui.Text(c, s).FontSize(typeCaption * scale).FontWeight(600).TextColor(fg).NoWrap().Shrink(0)
+	ui.Row(c).Shrink(0).Padding(3*scale, space2*scale).Radius(radiusChip*scale).Background(fill).Border(1, edge).Children(func() {
+		ui.Text(c, s).FontSize(typeCaption * scale).FontWeight(550).TextColor(fg).NoWrap().Shrink(0)
 	})
 }
 
 func tagChip(c *ui.Context, s string) {
 	scale := uiScale(c)
-	ui.Row(c).Shrink(0).Padding(space1*scale, space2*scale).Radius(radiusPill).Background(fieldColor).Children(func() {
+	ui.Row(c).Shrink(0).Padding(3*scale, space2*scale).Radius(radiusChip*scale).Background(raised).Border(1, line).Children(func() {
 		ui.Text(c, s).FontSize(typeCaption2 * scale).FontWeight(500).TextColor(inkSecondary).NoWrap().Shrink(0)
 	})
 }
@@ -76,12 +73,20 @@ func card(c *ui.Context, key string, fn func()) {
 	glass(ui.Column(c.Key(key)).FillWidth().Clip().Gap(16*s).Padding(20*s, 24*s), radiusCard*s, s).Children(fn)
 }
 
-// textField is the one single-line input: a fixed control height with no
-// vertical padding, so the toolkit centers the line box and mono/CJK text
-// sit on the same middle line in every field; 13-DIP side insets.
+// textField is the one single-line input styled to match Lobe UI InputOutlined:
+// pure container surface, hairline border that deepens on hover and sharpens to
+// primary on focus with a quiet focus halo.
 func textField(c *ui.Context, value *string) ui.Element {
 	s := uiScale(c)
-	e := ui.TextInput(c, value).Height(btnMd*s).Padding(0, 12*s).FontSize(typeCallout*s).Radius(radiusControl*s).Background(panel).InsetShadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
+	e := ui.TextInput(c, value).Height(btnMd*s).Padding(0, 12*s).FontSize(typeCallout * s).Radius(radiusControl * s).Background(panel)
+	edge := lineStrong
+	if e.Focused() {
+		edge = lobePrimary
+		e.Shadow(0, 0, 0, 2*s, lobeLight.PrimaryBg)
+	} else if e.Hovered() {
+		edge = ui.Hex("#cfcfcf")
+	}
+	e.Border(s, e.AnimateColor("input-edge", edge, fastAnim))
 	if inDialog && e.Shortcut(0, ui.KeyEnter) && lastDialogPrimary != "" {
 		enterFired = lastDialogPrimary
 	}
@@ -92,7 +97,7 @@ func empty(c *ui.Context, titleText, description string) {
 	emptyState(c, "empty", "folder", titleText, description, nil)
 }
 
-// loadingState is the shared in-progress placeholder: a frosted card whose
+// loadingState is the shared in-progress placeholder: a Lobe card whose
 // icon and message are centered on both axes, so loading text never hugs a
 // corner of its container.
 func loadingState(c *ui.Context, key, text string) {
@@ -106,7 +111,7 @@ func loadingState(c *ui.Context, key, text string) {
 // statusLine centers a short status message inside a form or dialog body.
 func statusLine(c *ui.Context, text string, color ui.Color, busy bool) {
 	s := uiScale(c)
-	ui.Row(c).FillWidth().MinHeight(44*s).Padding(space2*s, space4*s).Radius(radiusControl * s).Background(fieldColor.Alpha(.6)).AlignItems(ui.Center).Justify(ui.Center).Gap(space2 * s).Children(func() {
+	ui.Row(c).FillWidth().MinHeight(44*s).Padding(space2*s, space4*s).Radius(radiusControl*s).Background(raised).Border(1, line).AlignItems(ui.Center).Justify(ui.Center).Gap(space2 * s).Children(func() {
 		if busy {
 			statusSpinner(c, 16*s)
 		}
@@ -114,24 +119,25 @@ func statusLine(c *ui.Context, text string, color ui.Color, busy bool) {
 	})
 }
 
-// statusSpinner draws a ring with an accent arc that advances with the clock.
+// statusSpinner renders Lobe UI's Lucide loader ring rotated on a quiet timer
+// so idle frame-pending checks for unrelated controls stay deterministic.
 func statusSpinner(c *ui.Context, size float32) {
-	phase := float32(0)
+	angle := float32(0)
 	if !c.Preferences().ReduceMotion {
-		phase = float32(c.Now().UnixMilli()%1200) / 1200
-		c.After(40 * time.Millisecond)
+		angle = float32(c.Now().UnixMilli()%900) / 900 * 360
+		c.After(33 * time.Millisecond)
 	}
-	ui.Box(c).Size(size, size).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
-		cx, cy := r.X+r.W/2, r.Y+r.H/2
-		rad := min(r.W, r.H) / 2
-		dots := 8
-		for i := 0; i < dots; i++ {
-			ang := (float64(i)/float64(dots) + float64(phase)) * 2 * math.Pi
-			x := cx + float32(math.Cos(ang))*rad*.72
-			y := cy + float32(math.Sin(ang))*rad*.72
-			alpha := .15 + .85*float32(i)/float32(dots-1)
-			d := rad * .32
-			p.Fill(ui.Rect{X: x - d/2, Y: y - d/2, W: d, H: d}, accent.Alpha(alpha), d/2)
-		}
+	ui.Icon(c, lucide.LoaderCircle()).Size(size, size).TextColor(inkSecondary).Shrink(0).Rotate(angle)
+}
+
+// progressBar renders Lobe UI's feedback.Progress line bar.
+func progressBar(c *ui.Context, frac float64, status feedback.ProgressStatus) {
+	if c.Preferences().ReduceMotion && status == feedback.ProgressActive {
+		status = feedback.ProgressNormal
+	}
+	pct := float32(min(max(frac, 0), 1) * 100)
+	feedback.Progress(c, pct, feedback.ProgressProps{
+		Status: status,
+		Size:   lobetheme.Middle,
 	})
 }

@@ -1,85 +1,84 @@
 package nativeui
 
-import "github.com/egoist/mygo/ui"
+import (
+	"github.com/egoist/mygo/ui"
+	lobetheme "github.com/lobehub/lobe-mygo/pkg/theme"
+)
 
-// Light desktop chrome: paper surfaces, blue accents and quiet separators.
+// Lobe UI light design tokens: crisp neutral surfaces, hairline borders,
+// monochrome primary actions, and restrained semantic accents.
 var (
-	bg            = ui.Hex("#f3f4f6")
-	panel         = ui.Hex("#ffffff")
-	raised        = ui.Hex("#f8f9fa")
-	line          = ui.RGBA(15, 23, 42, .10)
-	lineStrong    = ui.RGBA(15, 23, 42, .18)
-	glassEdge     = ui.RGBA(255, 255, 255, .9)
-	ink           = ui.Hex("#222833")
-	inkSecondary  = ui.Hex("#424956")
-	muted         = ui.Hex("#626b78")
-	accent        = ui.Hex("#007aff") // Apple System Blue
-	accentIndigo  = ui.Hex("#5e5ce6") // Apple System Indigo
-	accentViolet  = ui.Hex("#af52de") // Apple System Purple
-	accentHover   = ui.Hex("#0066d6")
-	accentSoft    = ui.RGBA(0, 122, 255, .10)
-	blue          = ui.Hex("#0a84ff")
-	danger        = ui.Hex("#ff3b30") // Apple System Red
-	dangerSoft    = ui.RGBA(255, 59, 48, .10)
-	fieldColor    = ui.Hex("#f0f1f3")
-	fieldHover    = ui.Hex("#e7e9ed")
-	selectedColor = ui.RGBA(0, 122, 255, .14)
-	success       = ui.Hex("#34c759") // Apple System Green
-	successInk    = ui.Hex("#15803d")
-	successSoft   = ui.RGBA(52, 199, 89, .12)
-	warning       = ui.Hex("#ff9500") // Apple System Orange
-	warningInk    = ui.Hex("#b45309")
+	lobeLight = lobetheme.Light()
+
+	bg            = lobeLight.BgLayout
+	panel         = lobeLight.BgContainer
+	raised        = lobeLight.PrimaryBg
+	line          = lobeLight.BorderSecondary
+	lineStrong    = lobeLight.Border
+	glassEdge     = lobeLight.BorderSecondary
+	ink           = lobeLight.Text
+	inkSecondary  = lobeLight.TextSecondary
+	muted         = lobeLight.TextTertiary
+	lobePrimary   = lobeLight.Primary
+	accent        = lobeLight.Info
+	accentIndigo  = ui.Hex("#4f46e5")
+	accentViolet  = ui.Hex("#9333ea")
+	accentSoft    = lobeLight.InfoFillTertiary
+	blue          = lobeLight.Info
+	danger        = lobeLight.Error
+	dangerSoft    = lobeLight.ErrorFillTertiary
+	fieldColor    = ui.Hex("#f1f1f2")
+	fieldHover    = ui.Hex("#e7e7e9")
+	selectedColor = lobeLight.FillSecondary
+	success       = lobeLight.Success
+	successInk    = lobeLight.SuccessText
+	successSoft   = lobeLight.SuccessFillTertiary
+	warning       = lobeLight.Warning
+	warningInk    = lobeLight.WarningText
 	theme         *ui.Theme
 	fastAnim      = motionFast
 )
 
 // newTheme is called with asset initialization, after fonts are registered.
 func newTheme() *ui.Theme {
-	theme := ui.LightTheme()
-	theme.Background = bg
-	theme.Surface = fieldColor
-	theme.SurfaceHover = fieldHover
-	theme.SurfacePressed = selectedColor
-	theme.Border = line
-	theme.Text = ink
-	theme.TextMuted = muted
-	theme.Accent = accent
-	theme.AccentHover = accentHover
-	theme.AccentPressed = ui.Hex("#0051a8")
-	theme.AccentText = ui.Hex("#ffffff")
-	theme.Danger = danger
-	theme.Success = successInk
-	theme.Warning = warningInk
-	theme.Font = uiFontFamily(titlebarOS())
-	theme.FontSize = 14.5
-	theme.Radius = radiusControl
-	theme.Spacing = space2
-	theme.Focus = accent.Alpha(.25)
-	theme.Selection = selectedColor
-	return theme
+	t := lobeLight.Theme()
+	t.Background = bg
+	t.Surface = fieldColor
+	t.SurfaceHover = fieldHover
+	t.SurfacePressed = selectedColor
+	t.Border = lineStrong
+	t.Text = ink
+	t.TextMuted = muted
+	t.Accent = lobePrimary
+	t.AccentHover = lobeLight.PrimaryHover
+	t.AccentPressed = lobeLight.PrimaryActive
+	t.AccentText = lobeLight.PrimaryForeground
+	t.Danger = danger
+	t.Success = successInk
+	t.Warning = warningInk
+	t.Font = uiFontFamily(titlebarOS())
+	t.FontSize = 14.5
+	t.Radius = radiusControl
+	t.Spacing = space2
+	t.Focus = accent
+	t.Selection = accentSoft
+	return t
 }
 
-// Shared blue-to-indigo accent for primary actions and selected items.
-func appleAccentGradient(hovered bool) ui.LinearGradient {
-	if hovered {
-		return ui.LinearGradient{From: buttonMaterials[buttonPrimary].hoverTop, To: buttonMaterials[buttonPrimary].hoverBottom, Angle: 120}
-	}
-	return ui.LinearGradient{From: buttonMaterials[buttonPrimary].top, To: buttonMaterials[buttonPrimary].bottom, Angle: 120}
-}
-
-// tintGradient is the two-tone squircle fill of a colored row or header icon.
+// tintGradient is a subtle two-tone fill for square badges or icon tiles.
 func tintGradient(from, to ui.Color) ui.LinearGradient {
 	return ui.LinearGradient{From: from, To: to, Angle: 135}
 }
 
-// Existing surface helper uses opaque paper with a quiet contact edge.
+// glass styles elevated paper cards using Lobe UI's crisp container surface.
 func glass(e ui.Element, radius, s float32) ui.Element {
-	return e.Radius(radius).Background(panel).Border(s, line).Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .04))
+	return e.Radius(radius).Background(panel).Border(s, line).Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .03))
 }
 
-// popover styles floating layers (dialogs, menus) that sit above content
-// and must stay legible over anything.
+// popover styles floating layers (dialogs, menus, dropdowns) above content
+// with Lobe UI's crisp hairline border and layered neutral elevation.
 func popover(e ui.Element, radius, s float32) ui.Element {
 	return e.Radius(radius).Background(panel).Border(s, lineStrong).
-		Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .08)).Shadow(0, 8*s, 16*s, -5*s, ui.RGBA(0, 0, 0, .14))
+		Shadow(0, s, 2*s, 0, ui.RGBA(0, 0, 0, .05)).
+		Shadow(0, 8*s, 20*s, -4*s, ui.RGBA(0, 0, 0, .10))
 }

@@ -44,10 +44,7 @@ func (a *App) wardrobeSkinCard(c *ui.Context) {
 			})
 		})
 		if w.pendingSkin != nil {
-			ui.Row(c).FillWidth().Padding(12*s, 12*s).Radius(radiusControl * s).Background(accentSoft).Gap(12 * s).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, icons["info"]).Size(13*s, 13*s).TextColor(accent).Shrink(0)
-				ui.Text(c, a.L("wardrobe_skin.previewing")+w.pendingName).FontSize(typeFootnote * s).TextColor(inkSecondary).SingleLine().Grow(1).MinWidth(0)
-			})
+			lobeAlert(c, "info", a.L("wardrobe_skin.previewing")+w.pendingName)
 		}
 		ui.Row(c).FillWidth().Gap(8 * s).Children(func() {
 			why := whyOf(a.texturePending("skin"), t.WhyBusy, !a.appearance.CanSkin, a.skinWhy())
