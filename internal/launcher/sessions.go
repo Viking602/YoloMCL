@@ -76,7 +76,17 @@ func (s *Service) newSessionLocked(r Root, log *gameLog, g *runningGame) *gameSe
 
 // endSession records how a session ended and trims old exited ones.
 func (s *Service) endSession(gs *gameSession, err error) {
+	s.finishSession("", nil, gs, err)
+}
+
+// finishSession atomically clears the running-game entry (when provided) and
+// marks the session ended under s.mu, then persists play stats and invalidates
+// cached instance status outside the lock.
+func (s *Service) finishSession(runMapKey string, rg *runningGame, gs *gameSession, err error) {
 	s.mu.Lock()
+	if runMapKey != "" && s.running[runMapKey] == rg {
+		delete(s.running, runMapKey)
+	}
 	gs.Ended = time.Now()
 	gs.game = nil
 	gs.State = "exited"
@@ -103,7 +113,9 @@ func (s *Service) endSession(gs *gameSession, err error) {
 			s.sessions = append(s.sessions[:i], s.sessions[i+1:]...)
 		}
 	}
+	s.exitWG.Add(1)
 	s.mu.Unlock()
+	defer s.exitWG.Done()
 	recordPlay(snapshot, stopped)
 	s.invalidateStatus(gameDir)
 }

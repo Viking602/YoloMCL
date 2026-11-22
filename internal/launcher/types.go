@@ -208,6 +208,7 @@ type Service struct {
 	jobs             map[string]*jobState
 	running          map[string]*runningGame
 	sessions         []*gameSession
+	exitWG           sync.WaitGroup
 	rootLocks        map[string]bool
 	devices          map[string]*deviceSession
 	horizonMu        sync.Mutex
