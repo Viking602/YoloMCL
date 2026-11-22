@@ -435,7 +435,7 @@ func (s *Service) InstallPlanned(rootID string, items []PlanInstall, enable []st
 	if len(items) == 0 && len(enable) == 0 {
 		return "", errors.New("没有要安装的项目")
 	}
-	return s.startJob("安装模组及前置", rootID, func(ctx context.Context, p progress) error {
+	return s.startJobAllowRunning("安装模组及前置", rootID, func(ctx context.Context, p progress) error {
 		total := len(items) + len(enable)
 		done := 0
 		var failed []string

@@ -23,7 +23,7 @@ var commandNoSnapshot = map[string]bool{
 	"logs": true, "versions": true, "fetchAuthServerName": true,
 	"checkPack": true, "packUpdateReport": true, "planPackUpdate": true,
 	"inspectPack": true, "previewRemotePack": true, "startMicrosoft": true,
-	"previewPackExport": true,
+	"previewPackExport": true, "checkHorizonUpdate": true,
 }
 
 func (a *App) pendingOp(methods ...string) bool {
@@ -93,7 +93,7 @@ func (a *App) texturePending(kind string) bool {
 
 func requestFields(payload any) map[string]string {
 	fields := map[string]string{}
-	for _, key := range []string{"rootId", "version", "name", "path", "accountId", "id", "kind", "source", "projectId", "versionId"} {
+	for _, key := range []string{"rootId", "version", "loaderVersion", "name", "path", "accountId", "id", "kind", "source", "projectId", "versionId"} {
 		switch p := payload.(type) {
 		case map[string]string:
 			fields[key] = p[key]

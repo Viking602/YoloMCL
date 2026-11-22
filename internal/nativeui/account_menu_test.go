@@ -211,9 +211,10 @@ func TestAccountMenuEnterExitAndReopen(t *testing.T) {
 	for i, v := range reopenedPixels {
 		difference += int(math.Abs(float64(int(v) - int(closingPixels[i]))))
 	}
-	// Ghost and live glyph edges can round differently by a pixel (allow 1%
-	// of the color range). Opacity and scale must continue rather than restart.
-	if reopened.W <= .99*end.W || reopened.W >= end.W || difference*100 > len(closingPixels)*255 {
+	// Ghost and live glyph edges can round differently by a pixel under moving
+	// text pixel-phase pinning (allow 2% of the color range). Opacity and scale
+	// must continue rather than restart.
+	if reopened.W <= .99*end.W || reopened.W >= end.W || difference*50 > len(closingPixels)*255 {
 		t.Fatalf("reopening snapped the menu: rect=%+v mean pixel change=%.2f", reopened, float64(difference)/float64(len(closingPixels)))
 	}
 	snapshotUI(t, tt, "account-menu-reopened")

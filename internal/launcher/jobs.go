@@ -11,8 +11,59 @@ import (
 
 type progress func(message string, done, total int)
 
+type bilingualError struct {
+	zh, en string
+}
+
+func (e bilingualError) Error() string { return e.zh }
+
+func (e bilingualError) LocalizedMessage(en bool) string {
+	if en && e.en != "" {
+		return e.en
+	}
+	return e.zh
+}
+
+func (s *Service) checkRootJobBusyLocked(rootID, launchVersion string, allowRunning bool) error {
+	if rootID == "" {
+		return nil
+	}
+	if s.rootLocks[rootID] {
+		return bilingualError{
+			zh: "此目录正在执行其他任务，请完成后再操作",
+			en: "Another task is running in this folder; wait for it to finish",
+		}
+	}
+	switch {
+	case allowRunning:
+		return nil
+	case launchVersion != "":
+		if s.running[runKey(rootID, launchVersion)] != nil {
+			return bilingualError{
+				zh: "此版本正在运行游戏，请先关闭后再操作",
+				en: "This version is already running; close the game first",
+			}
+		}
+	default:
+		if s.rootRunningLocked(rootID) {
+			return bilingualError{
+				zh: "此目录正在运行游戏，请先关闭游戏后再操作",
+				en: "A game is running in this folder; close the game first",
+			}
+		}
+	}
+	return nil
+}
+
 func (s *Service) startJob(title, rootID string, fn func(context.Context, progress) error) (string, error) {
 	return s.startJobFor(title, rootID, "", fn)
+}
+
+// startJobAllowRunning starts a job that only waits for other tasks in the
+// folder, not for running games (e.g. installing mods, resource packs,
+// shaders, or game versions while an instance is running).
+func (s *Service) startJobAllowRunning(title, rootID string, fn func(context.Context, progress) error) (string, error) {
+	return s.startJobForMode(title, rootID, "", true, fn)
 }
 
 // startJobFor with a launchVersion only refuses when that same version is
@@ -21,30 +72,25 @@ func (s *Service) startJobFor(title, rootID, launchVersion string, fn func(conte
 	return s.startJobForMode(title, rootID, launchVersion, false, fn)
 }
 
-// startJobForMode with again only waits for other jobs in the folder, not
-// for running games: it starts another copy alongside them.
-func (s *Service) startJobForMode(title, rootID, launchVersion string, again bool, fn func(context.Context, progress) error) (string, error) {
+// startJobForMode with allowRunning only waits for other jobs in the folder,
+// not for running games.
+func (s *Service) startJobForMode(title, rootID, launchVersion string, allowRunning bool, fn func(context.Context, progress) error) (string, error) {
 	s.mu.Lock()
-	busy := false
-	if rootID != "" {
-		busy = s.rootLocks[rootID]
-		switch {
-		case again: // another copy alongside the running game
-		case launchVersion != "":
-			busy = busy || s.running[runKey(rootID, launchVersion)] != nil
-		default:
-			busy = busy || s.rootRunningLocked(rootID)
-		}
-	}
-	if busy {
+	if err := s.checkRootJobBusyLocked(rootID, launchVersion, allowRunning); err != nil {
 		s.mu.Unlock()
-		return "", errors.New("此目录正在运行游戏或执行任务，请完成后再操作")
+		return "", err
 	}
 	if rootID != "" {
 		s.rootLocks[rootID] = true
 	}
 	id := newID()
-	j := &jobState{Job: Job{ID: id, Title: title, TargetRootID: rootID, State: "running", Message: "正在准备", Started: time.Now()}, fn: fn, rootID: rootID}
+	j := &jobState{
+		Job:           Job{ID: id, Title: title, TargetRootID: rootID, State: "running", Message: "正在准备", Started: time.Now()},
+		fn:            fn,
+		rootID:        rootID,
+		launchVersion: launchVersion,
+		allowRunning:  allowRunning,
+	}
 	j.TitleKey, j.TitleArg, _ = JobTitleKey(title)
 	s.jobs[id] = j
 	s.runJobLocked(j)
@@ -209,10 +255,10 @@ func (s *Service) RetryJob(id string) error {
 	if j == nil || j.State != "failed" || j.fn == nil {
 		return errors.New("这个任务不能重试")
 	}
+	if err := s.checkRootJobBusyLocked(j.rootID, j.launchVersion, j.allowRunning); err != nil {
+		return err
+	}
 	if j.rootID != "" {
-		if s.rootLocks[j.rootID] || s.rootRunningLocked(j.rootID) {
-			return errors.New("此目录正在运行游戏或执行任务，请完成后再操作")
-		}
 		s.rootLocks[j.rootID] = true
 	}
 	j.Attempt++

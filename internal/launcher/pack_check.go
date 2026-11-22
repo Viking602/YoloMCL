@@ -93,7 +93,7 @@ func (s *Service) CheckPack(ctx context.Context, rootID string) (PackReport, err
 	}
 	if changed {
 		lock.Manual = remaining
-		if e = s.mutateRoot(rootID, func(r Root) error { return atomicJSON(filepath.Join(r.Path, ".mcl", "pack-lock.json"), lock) }); e != nil {
+		if e = s.mutateRootAllowRunning(rootID, func(r Root) error { return atomicJSON(filepath.Join(r.Path, ".mcl", "pack-lock.json"), lock) }); e != nil {
 			return out, e
 		}
 	}

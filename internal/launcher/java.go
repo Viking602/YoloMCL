@@ -292,7 +292,7 @@ func (s *Service) InstallGame(rootID, parent, name, mc, loader, loaderVersion st
 		}
 		title = "安装 Horizon " + arg
 	}
-	return s.startJob(title, rootID, func(ctx context.Context, p progress) error {
+	return s.startJobAllowRunning(title, rootID, func(ctx context.Context, p progress) error {
 		if rootID == "" && r.ID == "" { // a retry keeps the folder it made
 			r, e = s.createEmptyRoot(parent, name)
 			if e != nil {

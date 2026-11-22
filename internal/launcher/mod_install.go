@@ -17,7 +17,7 @@ func (s *Service) InstallMod(rootID, source, project, id, replace string) (strin
 	if e != nil {
 		return "", e
 	}
-	return s.startJob("安装模组及依赖", rootID, func(ctx context.Context, p progress) error {
+	return s.startJobAllowRunning("安装模组及依赖", rootID, func(ctx context.Context, p progress) error {
 		return s.installModIn(ctx, p, r, source, project, id, replace, nil)
 	})
 }

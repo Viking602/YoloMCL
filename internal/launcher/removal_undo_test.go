@@ -168,3 +168,146 @@ func TestAssetAndAuthServerUndo(t *testing.T) {
 		}
 	}
 }
+
+func TestHorizonModAndShaderRemovalUndo(t *testing.T) {
+	s, r, path := undoFixture(t)
+	hVer := "horizon-nightly-2026-11-20-0a875da"
+	hDir := filepath.Join(path, "versions", hVer)
+	writeTestFile(t, filepath.Join(hDir, hVer+".json"), jsonBytes(t, map[string]any{
+		"id":            hVer,
+		"clientVersion": "26.3",
+		"type":          "release",
+		"horizon": map[string]any{
+			"buildId":   "nightly-2026-11-20-0a875da",
+			"minecraft": "26.3",
+		},
+	}))
+
+	// 1. Horizon .hmod file with horizon-mods.txt state and .mcl/mods.json record.
+	hmodName := "crate_delight-26.07.01-horizon.3.hmod"
+	hmodPath := filepath.Join(hDir, "horizon-mods", hmodName)
+	writeTestFile(t, hmodPath, zipBytes(t, map[string][]byte{
+		"horizon-mod.toml": []byte("id = \"crate_delight\"\nname = \"Crate Delight\"\nversion = \"26.07.01-horizon.3\"\n"),
+	}))
+	writeTestFile(t, filepath.Join(hDir, "horizon-mods.txt"), []byte("mod.crate_delight:true\nmod.other:false\n"))
+	writeTestFile(t, filepath.Join(hDir, ".mcl", "mods.json"), jsonBytes(t, map[string]modRecord{
+		hmodName: {SHA1: "abc123", Source: "horizon", ProjectID: "crate_delight", VersionID: "26.07.01-horizon.3"},
+	}))
+
+	// Keep selected version on v2 to verify explicit version parameter selects Horizon properly.
+	if err := s.Select(r.ID, "", "v2"); err != nil {
+		t.Fatal(err)
+	}
+
+	receipt, err := s.RemoveModUndo(r.ID, hVer, hmodName)
+	if err != nil {
+		t.Fatalf("RemoveModUndo(.hmod): %v", err)
+	}
+	if _, err := os.Stat(hmodPath); !os.IsNotExist(err) {
+		t.Fatal(".hmod was not removed")
+	}
+	enabledAfterRemove, err := readHorizonEnabledMods(t.Context(), hDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := enabledAfterRemove["crate_delight"]; ok {
+		t.Fatalf("crate_delight state not removed from horizon-mods.txt: %+v", enabledAfterRemove)
+	}
+	if val, ok := enabledAfterRemove["other"]; !ok || val {
+		t.Fatalf("unrelated entry in horizon-mods.txt corrupted: %+v", enabledAfterRemove)
+	}
+	if _, ok := readRecords(hDir)[hmodName]; ok {
+		t.Fatal("mods.json record not removed")
+	}
+
+	if err := s.RestoreMod(receipt); err != nil {
+		t.Fatalf("RestoreMod(.hmod): %v", err)
+	}
+	if _, err := os.Stat(hmodPath); err != nil {
+		t.Fatalf(".hmod not restored: %v", err)
+	}
+	enabledAfterRestore, err := readHorizonEnabledMods(t.Context(), hDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !enabledAfterRestore["crate_delight"] {
+		t.Fatalf("crate_delight enabled state not restored: %+v", enabledAfterRestore)
+	}
+	if rec, ok := readRecords(hDir)[hmodName]; !ok || rec.ProjectID != "crate_delight" {
+		t.Fatalf("mods.json record not restored: %+v", readRecords(hDir))
+	}
+
+	// 2. Unpacked Horizon mod directory with horizon-mod.toml.
+	dirMod := filepath.Join(hDir, "horizon-mods", "unpacked_mod")
+	writeTestFile(t, filepath.Join(dirMod, "horizon-mod.toml"), []byte("id = \"unpacked_mod\"\nname = \"Unpacked\"\n"))
+	dirReceipt, err := s.RemoveModUndo(r.ID, hVer, "unpacked_mod")
+	if err != nil {
+		t.Fatalf("RemoveModUndo(dir mod): %v", err)
+	}
+	if _, err := os.Stat(dirMod); !os.IsNotExist(err) {
+		t.Fatal("unpacked mod dir not removed")
+	}
+	if err := s.RestoreMod(dirReceipt); err != nil {
+		t.Fatalf("RestoreMod(dir mod): %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dirMod, "horizon-mod.toml")); err != nil {
+		t.Fatalf("unpacked mod dir not restored: %v", err)
+	}
+
+	// 3. Invalid mod names are still rejected for both Horizon and Java versions.
+	writeTestFile(t, filepath.Join(hDir, "horizon-mods", "notes.txt"), []byte("not a mod"))
+	if _, err := s.RemoveModUndo(r.ID, hVer, "notes.txt"); err == nil {
+		t.Fatal("accepted non-.hmod file in horizon-mods")
+	}
+	if _, err := s.RemoveModUndo(r.ID, "v1", hmodName); err == nil {
+		t.Fatal("accepted .hmod on non-Horizon Java version")
+	}
+
+	// 4. Uppercase .JAR Java mod removal and undo.
+	upperJar := filepath.Join(path, "versions", "v1", "mods", "UpperMod.JAR")
+	writeTestFile(t, upperJar, []byte("jar"))
+	upperReceipt, err := s.RemoveModUndo(r.ID, "v1", "UpperMod.JAR")
+	if err != nil {
+		t.Fatalf("RemoveModUndo(.JAR): %v", err)
+	}
+	if err := s.RestoreMod(upperReceipt); err != nil {
+		t.Fatalf("RestoreMod(.JAR): %v", err)
+	}
+
+	// 5. Horizon .hshader file and folder packs (pack.mcmeta / horizon-shaders.toml).
+	hshader := filepath.Join(hDir, "shaderpacks", "aurora.hshader")
+	writeTestFile(t, hshader, zipBytes(t, map[string][]byte{"horizon-shaders.toml": []byte("description = \"Aurora\"\n")}))
+	shaderReceipt, err := s.RemoveAssetPackUndo(r.ID, hVer, "shader", "aurora.hshader")
+	if err != nil {
+		t.Fatalf("RemoveAssetPackUndo(.hshader): %v", err)
+	}
+	if _, err := os.Stat(hshader); !os.IsNotExist(err) {
+		t.Fatal(".hshader not removed")
+	}
+	if err := s.RestoreMod(shaderReceipt); err != nil {
+		t.Fatalf("RestoreMod(.hshader): %v", err)
+	}
+	if _, err := s.RemoveAssetPackUndo(r.ID, hVer, "resourcepack", "aurora.hshader"); err == nil {
+		t.Fatal("accepted .hshader as resourcepack")
+	}
+
+	folderRP := filepath.Join(hDir, "resourcepacks", "MyFolderPack")
+	writeTestFile(t, filepath.Join(folderRP, "pack.mcmeta"), []byte(`{"pack":{"description":"Folder"}}`))
+	rpReceipt, err := s.RemoveAssetPackUndo(r.ID, hVer, "resourcepack", "MyFolderPack")
+	if err != nil {
+		t.Fatalf("RemoveAssetPackUndo(folder resourcepack): %v", err)
+	}
+	if err := s.RestoreMod(rpReceipt); err != nil {
+		t.Fatalf("RestoreMod(folder resourcepack): %v", err)
+	}
+
+	folderShader := filepath.Join(hDir, "shaderpacks", "MyFolderShader")
+	writeTestFile(t, filepath.Join(folderShader, "horizon-shaders.toml"), []byte("description = \"Folder shader\"\n"))
+	fShaderReceipt, err := s.RemoveAssetPackUndo(r.ID, hVer, "shader", "MyFolderShader")
+	if err != nil {
+		t.Fatalf("RemoveAssetPackUndo(folder shader): %v", err)
+	}
+	if err := s.RestoreMod(fShaderReceipt); err != nil {
+		t.Fatalf("RestoreMod(folder shader): %v", err)
+	}
+}

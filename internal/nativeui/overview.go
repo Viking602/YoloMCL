@@ -80,6 +80,8 @@ func (a *App) instanceOverview(c *ui.Context, r launcher.Instance) {
 					a.ovRuntime(c, r, version, st)
 					if r.Pack != nil {
 						a.ovPackActions(c, r)
+					} else if version != nil && loaderKey(version.Loader) == "horizon" {
+						a.ovHorizonActions(c, r, *version)
 					}
 					ui.Spacer(c).Grow(1)
 					a.ovLastSession(c, r, st)

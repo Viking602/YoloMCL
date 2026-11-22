@@ -253,12 +253,7 @@ func (s *Service) launch(rootID, accountID string, again bool) (string, error) {
 			logs.mu.Unlock()
 			_ = os.RemoveAll(natives)
 			_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
-			s.mu.Lock()
-			if s.running[key] == rg {
-				delete(s.running, key)
-			}
-			s.mu.Unlock()
-			s.endSession(gs, e)
+			s.finishSession(key, rg, gs, e)
 		}()
 		p("游戏进程已启动", 1, 1)
 		return nil

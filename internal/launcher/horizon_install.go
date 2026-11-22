@@ -97,14 +97,66 @@ func (s *Service) lockHorizonPrep(preparedDir string) func() {
 	return m.Unlock
 }
 
+func mergeHorizonReleaseMeta(rel, fallback HorizonRelease) HorizonRelease {
+	if rel.BuildID == "" {
+		rel.BuildID = fallback.BuildID
+	}
+	if rel.ReleaseTag == "" {
+		rel.ReleaseTag = fallback.ReleaseTag
+	}
+	if rel.Name == "" {
+		rel.Name = fallback.Name
+	}
+	if rel.AssetName == "" {
+		rel.AssetName = fallback.AssetName
+	}
+	if rel.AssetURL == "" {
+		rel.AssetURL = fallback.AssetURL
+	}
+	if rel.AssetSize == 0 {
+		rel.AssetSize = fallback.AssetSize
+	}
+	if rel.PublishedAt == "" {
+		rel.PublishedAt = fallback.PublishedAt
+	}
+	if rel.Minecraft == "" {
+		rel.Minecraft = fallback.Minecraft
+	}
+	if !rel.Prerelease {
+		rel.Prerelease = fallback.Prerelease
+	}
+	return rel
+}
+
+func readHorizonBuildMeta(buildDir string) HorizonRelease {
+	b, err := os.ReadFile(filepath.Join(buildDir, horizonInstalledMarker))
+	if err != nil || len(bytes.TrimSpace(b)) == 0 {
+		return HorizonRelease{}
+	}
+	var rel HorizonRelease
+	if json.Unmarshal(b, &rel) != nil {
+		return HorizonRelease{}
+	}
+	return rel
+}
+
 func (s *Service) ensureHorizonBuild(ctx context.Context, buildID, releaseTag string, p progress) (HorizonRelease, string, error) {
 	if buildID != "" {
 		if dir, err := s.horizonBuildDir(buildID); err == nil {
 			unlock := s.lockHorizonPrep(dir)
 			installed := horizonBuildInstalled(dir)
+			var diskMeta HorizonRelease
+			if installed {
+				diskMeta = readHorizonBuildMeta(dir)
+			}
 			unlock()
 			if installed {
-				return HorizonRelease{BuildID: buildID, ReleaseTag: releaseTag}, dir, nil
+				rel := HorizonRelease{BuildID: buildID, ReleaseTag: releaseTag}
+				rel = mergeHorizonReleaseMeta(rel, diskMeta)
+				if cached, ok := s.cachedHorizonRelease(buildID); ok {
+					rel = mergeHorizonReleaseMeta(rel, cached)
+				}
+				return rel, dir, nil
 			}
 		}
 	}
@@ -204,7 +256,20 @@ func (s *Service) ensureHorizonBuild(ctx context.Context, buildID, releaseTag st
 		}
 	}
 
-	if err := os.WriteFile(filepath.Join(topDir, horizonInstalledMarker), nil, 0o644); err != nil {
+	metaBytes, err := json.Marshal(HorizonRelease{
+		BuildID:     rel.BuildID,
+		ReleaseTag:  rel.ReleaseTag,
+		Name:        rel.Name,
+		Prerelease:  rel.Prerelease,
+		PublishedAt: rel.PublishedAt,
+		Minecraft:   rel.Minecraft,
+		AssetName:   rel.AssetName,
+		AssetSize:   rel.AssetSize,
+	})
+	if err != nil {
+		return HorizonRelease{}, "", err
+	}
+	if err := os.WriteFile(filepath.Join(topDir, horizonInstalledMarker), metaBytes, 0o644); err != nil {
 		return HorizonRelease{}, "", err
 	}
 	if err := os.RemoveAll(targetDir); err != nil {
@@ -780,6 +845,34 @@ func (s *Service) prepareHorizonResources(ctx context.Context, r Root, buildDir 
 	return nil
 }
 
+// horizonInstallVersionID chooses a version directory ID for installing
+// buildID. It prefers "horizon-<buildID>", reusing it only when absent or
+// already pointing at buildID; if that folder belongs to another build (for
+// example after an in-place upgrade) or a non-Horizon instance, it picks a
+// suffixed ID ("horizon-<buildID>-2", ...) so the existing instance is not
+// overwritten.
+func horizonInstallVersionID(rootPath, buildID string) (string, error) {
+	base := "horizon-" + buildID
+	for n := 1; n <= 100; n++ {
+		id := base
+		if n > 1 {
+			id = fmt.Sprintf("%s-%d", base, n)
+		}
+		vDir, err := safeJoin(rootPath, "versions/"+id)
+		if err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(vDir); os.IsNotExist(err) {
+			return id, nil
+		}
+		_, existing, err := findVersionJSON(rootPath, id)
+		if err == nil && existing.Horizon != nil && existing.Horizon.BuildID == buildID {
+			return id, nil
+		}
+	}
+	return "", horizonErr("已有过多同名 Horizon 实例，请先清理旧实例", "Too many existing Horizon instances for this build")
+}
+
 func (s *Service) installHorizon(ctx context.Context, r Root, mc, requestedVersion string, p progress) (string, error) {
 	rel, buildDir, err := s.ensureHorizonBuild(ctx, requestedVersion, "", p)
 	if err != nil {
@@ -803,7 +896,10 @@ func (s *Service) installHorizon(ctx context.Context, r Root, mc, requestedVersi
 		return "", err
 	}
 
-	id := "horizon-" + rel.BuildID
+	id, err := horizonInstallVersionID(r.Path, rel.BuildID)
+	if err != nil {
+		return "", err
+	}
 	vDir, err := safeJoin(r.Path, "versions/"+id)
 	if err != nil {
 		return "", err

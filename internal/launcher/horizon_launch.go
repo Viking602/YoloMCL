@@ -192,12 +192,7 @@ func (s *Service) launchHorizon(ctx context.Context, r Root, a Account, v gameVe
 		}
 		logs.mu.Unlock()
 		_ = atomicJSON(filepath.Join(r.Path, ".mcl", "last-log.json"), logs.read())
-		s.mu.Lock()
-		if s.running[key] == rg {
-			delete(s.running, key)
-		}
-		s.mu.Unlock()
-		s.endSession(gs, waitErr)
+		s.finishSession(key, rg, gs, waitErr)
 	}()
 
 	p("游戏进程已启动", 1, 1)

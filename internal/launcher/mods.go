@@ -124,14 +124,22 @@ func readDirRetryContext(ctx context.Context, dir string) ([]os.DirEntry, error)
 func scanMods(root string) ([]Mod, error) { return scanModsStream(root, nil) }
 
 func (s *Service) mutateRoot(id string, fn func(Root) error) error {
+	return s.mutateRootMode(id, false, fn)
+}
+
+func (s *Service) mutateRootAllowRunning(id string, fn func(Root) error) error {
+	return s.mutateRootMode(id, true, fn)
+}
+
+func (s *Service) mutateRootMode(id string, allowRunning bool, fn func(Root) error) error {
 	r, e := s.getRoot(id)
 	if e != nil {
 		return e
 	}
 	s.mu.Lock()
-	if s.rootLocks[id] || s.rootRunningLocked(id) {
+	if err := s.checkRootJobBusyLocked(id, "", allowRunning); err != nil {
 		s.mu.Unlock()
-		return errors.New("请先结束此目录的任务或游戏")
+		return err
 	}
 	s.rootLocks[id] = true
 	s.mu.Unlock()
@@ -139,8 +147,16 @@ func (s *Service) mutateRoot(id string, fn func(Root) error) error {
 	return fn(r)
 }
 
+func isJavaModFile(name string) bool {
+	if name == "" || name == "." || name == ".." || filepath.Base(name) != name {
+		return false
+	}
+	low := strings.ToLower(name)
+	return strings.HasSuffix(low, ".jar") || strings.HasSuffix(low, ".jar.disabled")
+}
+
 func (s *Service) ToggleMod(rootID, name string) error {
-	return s.mutateRoot(rootID, func(r Root) error { return s.toggleModIn(r, name) })
+	return s.mutateRootAllowRunning(rootID, func(r Root) error { return s.toggleModIn(r, name) })
 }
 
 func (s *Service) toggleModIn(r Root, name string) error {
@@ -148,12 +164,12 @@ func (s *Service) toggleModIn(r Root, name string) error {
 		return s.toggleHorizonModIn(r, name)
 	}
 	{
-		if filepath.Base(name) != name || (!strings.HasSuffix(name, ".jar") && !strings.HasSuffix(name, ".jar.disabled")) {
+		if !isJavaModFile(name) {
 			return errors.New("无效的模组文件名")
 		}
 		target := name + ".disabled"
-		if strings.HasSuffix(name, ".disabled") {
-			target = strings.TrimSuffix(name, ".disabled")
+		if strings.HasSuffix(strings.ToLower(name), ".disabled") {
+			target = name[:len(name)-len(".disabled")]
 		}
 		vDir := r.VersionDir()
 		src, e := safeJoin(vDir, "mods/"+name)
@@ -172,31 +188,20 @@ func (s *Service) toggleModIn(r Root, name string) error {
 }
 
 func (s *Service) RemoveMod(rootID, name string) error {
-	return s.mutateRoot(rootID, func(r Root) error {
+	return s.mutateRootAllowRunning(rootID, func(r Root) error {
 		if isHorizonRootVersion(r) {
 			return s.removeHorizonModIn(r, name)
 		}
-		if filepath.Base(name) != name || (!strings.HasSuffix(name, ".jar") && !strings.HasSuffix(name, ".jar.disabled")) {
+		if !isJavaModFile(name) {
 			return errors.New("无效的模组文件名")
 		}
-		vDir := r.VersionDir()
-		src, e := safeJoin(vDir, "mods/"+name)
-		if e != nil {
-			return e
-		}
-		dst, e := safeJoin(r.Path, ".mcl/backups/"+time.Now().Format("20060102-150405")+"-"+newID()[:6]+"/"+name)
-		if e != nil {
-			return e
-		}
-		if e = os.MkdirAll(filepath.Dir(dst), 0755); e != nil {
-			return e
-		}
-		return os.Rename(src, dst)
+		_, e := moveAddonToBackup(r, "mods", name)
+		return e
 	})
 }
 
 func (s *Service) AddLocalMods(rootID string, paths []string) error {
-	return s.mutateRoot(rootID, func(r Root) error {
+	return s.mutateRootAllowRunning(rootID, func(r Root) error {
 		if isHorizonRootVersion(r) {
 			return s.addLocalHorizonModsIn(r, paths)
 		}

@@ -34,7 +34,7 @@ YoloMCL 是一个用 Go 编写的 Minecraft: Java 版启动器，使用 [MyGo](h
 - **账号与外观**：支持离线账号、Microsoft 正版登录与 Yggdrasil / authlib-injector 外置登录；Windows 用 DPAPI、macOS 用系统钥匙串保护令牌，Linux 用当前用户专属的密钥文件加密令牌，无需 Secret Service。Linux 方案依赖用户目录的文件权限，完整复制启动器数据的人也能取得密钥；支持皮肤预览、上传与披风切换。
 - **签名更新**：通过 GitHub Releases 检查稳定版更新，支持签名最低版本策略；安装包经 Ed25519 验签，下载与重启均需确认。配置方式见[发布说明](releases.md#require-a-security-update)。
 
-本次更新内容见 [1.4.0 发布说明](release-notes/v1.4.0.md)。
+本次更新内容见 [1.4.1 发布说明](release-notes/v1.4.1.md)。
 
 在实例的「设置 → 导出整合包」中可导出 Modrinth `.mrpack` 或 CurseForge `.zip`。默认勾选模组、配置与脚本，存档、截图、服务器列表和个人选项按需勾选；不包含账号、运行环境、游戏依赖、日志与缓存。平台已识别文件写入下载引用，本地或修改过的文件放入 `overrides/`，禁用模组保留禁用后缀；保存位置需在游戏目录之外。
 
