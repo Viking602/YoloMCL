@@ -35,7 +35,7 @@ A native Minecraft: Java Edition launcher written in Go with [MyGo](https://gith
 - **Rendering**: New Windows configurations enable interface hardware acceleration, with automatic software fallback if GPU rendering is unavailable. Settings can disable it (restart required); existing preferences are preserved.
 - **Verified updates**: Check for launcher updates through GitHub Releases, with confirmation before downloading and signed policies for mandatory security updates. Downloads are verified with an embedded Ed25519 public key before installation; restarting remains an explicit action.
 
-See the [1.4.0 release notes](docs/release-notes/v1.4.0.md) for the changes in this update.
+See the [1.4.1 release notes](docs/release-notes/v1.4.1.md) for the changes in this update.
 
 ### Export a modpack
 

@@ -89,6 +89,8 @@ func (a *App) instanceHero(c *ui.Context, r launcher.Instance) {
 						}
 						if isPackVersion(r, *v) {
 							a.heroPackStatus(c, r)
+						} else if loaderKey(v.Loader) == "horizon" {
+							a.heroHorizonStatus(c, r, *v)
 						}
 					})
 					if !historyBesideTitle {

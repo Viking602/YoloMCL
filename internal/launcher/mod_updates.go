@@ -29,7 +29,7 @@ func (s *Service) CheckMods(rootID string) (string, error) {
 	if e != nil {
 		return "", e
 	}
-	return s.startJob("检测模组版本", rootID, func(ctx context.Context, p progress) error {
+	return s.startJobAllowRunning("检测模组版本", rootID, func(ctx context.Context, p progress) error {
 		return s.checkModsIn(ctx, r, r.VersionDir(), p, nil)
 	})
 }

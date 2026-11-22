@@ -317,7 +317,7 @@ func scanModsIdentified(ctx context.Context, root string, emit func([]Mod), shar
 			return nil, e
 		}
 		name := entry.Name()
-		if !entry.Type().IsRegular() || (!strings.HasSuffix(name, ".jar") && !strings.HasSuffix(name, ".jar.disabled")) {
+		if !entry.Type().IsRegular() || !isJavaModFile(name) {
 			continue
 		}
 		path, e := safeJoin(root, "mods/"+name)
@@ -328,7 +328,15 @@ func scanModsIdentified(ctx context.Context, root string, emit func([]Mod), shar
 		if e != nil {
 			return nil, e
 		}
-		m := Mod{File: name, Name: strings.TrimSuffix(strings.TrimSuffix(name, ".disabled"), ".jar"), Enabled: !strings.HasSuffix(name, ".disabled"), Size: st.Size(), Status: "unchecked"}
+		disabled := strings.HasSuffix(strings.ToLower(name), ".disabled")
+		base := name
+		if disabled {
+			base = name[:len(name)-len(".disabled")]
+		}
+		if strings.HasSuffix(strings.ToLower(base), ".jar") {
+			base = base[:len(base)-len(".jar")]
+		}
+		m := Mod{File: name, Name: base, Enabled: !disabled, Size: st.Size(), Status: "unchecked"}
 		if c, ok := cache[name]; ok && c.Size == st.Size() && c.MTime == st.ModTime().UnixNano() && c.SHA1 != "" {
 			applyMeta(&m, c.Meta)
 			m.SHA1, m.Fingerprint = c.SHA1, c.FP

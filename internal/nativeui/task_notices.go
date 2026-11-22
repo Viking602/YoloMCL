@@ -1,6 +1,10 @@
 package nativeui
 
-import "github.com/Viking602/YoloMCL/internal/launcher"
+import (
+	"fmt"
+
+	"github.com/Viking602/YoloMCL/internal/launcher"
+)
 
 // applyJobNotice replaces the "任务已启动" notice once tasks finish: 导入完成
 // for a successful import, the failure reason otherwise.
@@ -18,6 +22,19 @@ func (a *App) applyJobNotice(old, cur []launcher.Job) {
 			continue
 		}
 		switch {
+		case j.State == "completed" && (j.TitleKey == "horizon.upgrade" || j.TitleKey == "horizon.upgradeLatest"):
+			if j.TargetRootID != "" && j.TargetVersion != "" && a.horizonUpdates != nil {
+				delete(a.horizonUpdates, horizonUpdateKey(j.TargetRootID, j.TargetVersion))
+			}
+			signalWorker(a.inventoryWake)
+			a.wakeSnapshots()
+			if j.TitleKey == "horizon.upgrade" && j.TitleArg != "" {
+				a.message, a.errorMessage = fmt.Sprintf(a.L("horizon.upgrade_done"), j.TitleArg), false
+			} else {
+				a.message, a.errorMessage = a.L("horizon.upgrade_done_generic"), false
+			}
+		case j.State == "failed" && (j.TitleKey == "horizon.upgrade" || j.TitleKey == "horizon.upgradeLatest"):
+			a.message, a.errorMessage = classifyError(a.isEN(), j.Message, nil).Text(), true
 		case j.State == "completed" && j.TitleKey == "pack.export":
 			a.message, a.errorMessage = a.L("task_notices.modpack_exported_show_the_file_from_tasks"), false
 		case j.State == "completed" && j.TitleKey == "pack.update":

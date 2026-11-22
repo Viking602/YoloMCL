@@ -35,6 +35,7 @@ type command struct {
 	Model         string   `json:"model"`
 	Data          string   `json:"data"`
 	CapeID        string   `json:"capeId"`
+	Force         bool     `json:"force"`
 }
 
 // Dispatch connects native UI actions to the launcher service. It never returns account tokens.
@@ -178,6 +179,10 @@ func (s *Service) Dispatch(ctx context.Context, method, payload string) (string,
 		value, err = s.LoaderVersions(ctx, c.Loader, c.Minecraft)
 	case "installGame":
 		value, err = s.InstallGame(c.RootID, c.Parent, c.Name, c.Minecraft, c.Loader, c.LoaderVersion)
+	case "checkHorizonUpdate":
+		value, err = s.CheckHorizonUpdate(ctx, c.RootID, c.Version, c.Force)
+	case "upgradeHorizon":
+		value, err = s.UpgradeHorizon(c.RootID, c.Version, c.LoaderVersion)
 	case "javaList":
 		value = s.JavaList(ctx)
 	case "checkSeedMapMods":

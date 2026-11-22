@@ -321,37 +321,66 @@ func (s *Service) toggleHorizonModIn(r Root, name string) error {
 }
 
 func (s *Service) removeHorizonModIn(r Root, name string) error {
+	_, err := s.removeHorizonModReceipt(r, name)
+	return err
+}
+
+func (s *Service) removeHorizonModReceipt(r Root, name string) (ModRemoval, error) {
 	if filepath.Base(name) != name || name == "" || name == "." || name == ".." {
-		return errors.New("无效的模组文件名")
+		return ModRemoval{}, errors.New("无效的模组文件名")
 	}
 	vDir := r.VersionDir()
 	src, err := safeJoin(vDir, "horizon-mods/"+name)
 	if err != nil {
-		return err
+		return ModRemoval{}, err
 	}
 	info, err := os.Stat(src)
 	if err != nil {
-		return err
+		return ModRemoval{}, err
+	}
+	if info.IsDir() {
+		if _, serr := os.Stat(filepath.Join(src, horizonModManifestName)); serr != nil {
+			return ModRemoval{}, errors.New("无效的模组文件名")
+		}
+	} else if !strings.HasSuffix(strings.ToLower(name), horizonModFileSuffix) {
+		return ModRemoval{}, errors.New("无效的模组文件名")
 	}
 	meta := readHorizonModMeta(context.Background(), src, name, info.IsDir())
+	enabledMap, _ := readHorizonEnabledMods(context.Background(), vDir)
+	wasEnabled, hadState := enabledMap[meta.ID]
+	records := readRecords(vDir)
+	var savedRec *modRecord
+	if rec, ok := records[name]; ok {
+		cp := rec
+		savedRec = &cp
+	}
 	dst, err := safeJoin(r.Path, ".mcl/backups/"+time.Now().Format("20060102-150405")+"-"+newID()[:6]+"/"+name)
 	if err != nil {
-		return err
+		return ModRemoval{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
+		return ModRemoval{}, err
 	}
 	if err := os.Rename(src, dst); err != nil {
-		return err
+		return ModRemoval{}, err
 	}
 	_ = writeHorizonModState(vDir, meta.ID, false, true)
-	records := readRecords(vDir)
-	if _, ok := records[name]; ok {
+	if savedRec != nil {
 		delete(records, name)
 		_ = atomicJSON(filepath.Join(vDir, ".mcl", "mods.json"), records)
 	}
 	s.invalidateStatus(vDir)
-	return nil
+	return ModRemoval{
+		rootID:          r.ID,
+		source:          src,
+		backup:          dst,
+		horizon:         true,
+		modID:           meta.ID,
+		hadHorizonState: hadState,
+		horizonEnabled:  wasEnabled,
+		recordName:      name,
+		record:          savedRec,
+	}, nil
 }
 
 func (s *Service) addLocalHorizonModsIn(r Root, paths []string) error {

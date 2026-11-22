@@ -180,13 +180,15 @@ type jobState struct {
 	speed             float64
 	// created are paths this task made (never ones that existed before);
 	// undo runs on cancel or removal, newest first.
-	created   []string
-	undo      []func()
-	cleaned   bool
-	dropOnEnd bool
-	fn        func(context.Context, progress) error // kept for in-place retry
-	rootID    string
-	holdDone  int
+	created       []string
+	undo          []func()
+	cleaned       bool
+	dropOnEnd     bool
+	fn            func(context.Context, progress) error // kept for in-place retry
+	rootID        string
+	launchVersion string
+	allowRunning  bool
+	holdDone      int
 }
 type Service struct {
 	keyBindingLabels bindingLabelCache

@@ -596,3 +596,70 @@ func TestHorizonDiscoverAndProjectDialogVisualQA(t *testing.T) {
 		t.Fatalf("expected in-place Horizon mod toggle without renaming, got %+v", a.mods[0])
 	}
 }
+
+func TestHorizonInPlaceUpgradeUIAndJobTitles(t *testing.T) {
+	a, tt := acctTester(t, "zh-CN", 1440, 900)
+	a.closeDialog()
+	verID := "horizon-nightly-2026-11-20-0a875da"
+	oldBuild := "nightly-2026-11-20-0a875da"
+	newBuild := "nightly-2026-11-21-9b4c2de"
+	a.snapshot.ActiveAccount = "ms-1"
+	a.snapshot.Instances = []launcher.Instance{{
+		Root: launcher.Root{ID: "r1", Name: "Horizon", Path: `D:\MC\.minecraft`, SelectedVersion: verID},
+		Versions: []launcher.VersionSummary{
+			{ID: verID, Minecraft: "26.3", Loader: "horizon", LoaderVersion: oldBuild, JavaVersion: 25},
+		},
+	}}
+	a.snapshot.ActiveRoot = "r1"
+	a.instStatusKey = "r1|" + verID
+	a.instStatus = launcher.InstanceStatus{Dir: `D:\MC\.minecraft\versions\` + verID}
+	a.storeHorizonUpdate("r1", verID, launcher.HorizonUpdateInfo{
+		CurrentBuild: oldBuild,
+		Latest:       &launcher.HorizonRelease{BuildID: newBuild, ReleaseTag: "nightly", Minecraft: "26.3"},
+		HasUpdate:    true,
+		Releases: []launcher.HorizonRelease{
+			{BuildID: newBuild, ReleaseTag: "nightly", Minecraft: "26.3"},
+			{BuildID: oldBuild, ReleaseTag: "nightly-2026-11-20", Minecraft: "26.3"},
+		},
+		LocalBuilds: []string{oldBuild, "nightly-2026-11-15-1111111"},
+	})
+
+	// 1. Hero update chip & Overview runtime action buttons appear.
+	a.page, a.instTab = "home", "overview"
+	tt.Frame()
+	tt.Advance(400 * time.Millisecond)
+	for _, want := range []string{a.L("horizon.update_to") + newBuild, a.L("horizon.upgrade_latest"), a.L("horizon.check_update"), a.L("horizon.switch_build")} {
+		if !tt.HasText(want) {
+			t.Errorf("overview/hero missing %q; visible texts: %v", want, tt.Texts())
+		}
+	}
+
+	// 2. Settings tab shows the in-place build upgrade card and selector.
+	a.instTab = "settings"
+	a.loadVersionConfigForm(verID)
+	tt.Frame()
+	tt.Advance(400 * time.Millisecond)
+	for _, want := range []string{a.L("horizon.build_section"), a.L("horizon.upgrade_latest"), a.L("horizon.upgrade_keep_data")} {
+		if !tt.HasText(want) {
+			t.Errorf("settings missing %q; visible texts: %v", want, tt.Texts())
+		}
+	}
+
+	// 3. Job title keys translate cleanly in both zh-CN and en-US.
+	j := launcher.Job{Title: "更新 Horizon " + newBuild, State: "running"}
+	j.TitleKey, j.TitleArg, _ = launcher.JobTitleKey(j.Title)
+	a.settings.Language = LangZH
+	if got := a.jobTitle(j); got != "更新 Horizon "+newBuild {
+		t.Fatalf("zh upgrade job title = %q", got)
+	}
+	a.settings.Language = LangEN
+	if got := a.jobTitle(j); got != "Update Horizon "+newBuild {
+		t.Fatalf("en upgrade job title = %q", got)
+	}
+
+	jLatest := launcher.Job{Title: "更新 Horizon", State: "running"}
+	jLatest.TitleKey, jLatest.TitleArg, _ = launcher.JobTitleKey(jLatest.Title)
+	if got := a.jobTitle(jLatest); got != "Update Horizon" {
+		t.Fatalf("en latest upgrade job title = %q", got)
+	}
+}

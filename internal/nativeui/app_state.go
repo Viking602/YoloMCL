@@ -205,6 +205,7 @@ type App struct {
 	loaderError               string
 	loaderRevision            int
 	horizonTargetMC           string
+	horizonUpdates            map[string]*horizonUpdateState
 	packChecked               map[string]bool
 	packErr                   string
 	packPlan                  *launcher.PackUpdatePlan

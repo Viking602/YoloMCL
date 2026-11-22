@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 )
 
 func isPackArchive(kind, low string) bool {
@@ -17,6 +16,30 @@ func isPackArchive(kind, low string) bool {
 		return true
 	}
 	return kind == "shader" && (strings.HasSuffix(low, ".hshader") || strings.HasSuffix(low, ".hshader.disabled"))
+}
+
+func isPackDir(kind, full string) bool {
+	switch kind {
+	case "resourcepack":
+		_, err := os.Stat(filepath.Join(full, "pack.mcmeta"))
+		return err == nil
+	case "shader":
+		_, err := os.Stat(filepath.Join(full, "horizon-shaders.toml"))
+		return err == nil
+	default:
+		return false
+	}
+}
+
+func isValidPackRemovalTarget(kind, name, src string) bool {
+	if name == "" || name == "." || name == ".." || filepath.Base(name) != name {
+		return false
+	}
+	if isPackArchive(kind, strings.ToLower(name)) {
+		return true
+	}
+	info, err := os.Stat(src)
+	return err == nil && info.IsDir() && isPackDir(kind, src)
 }
 
 func packFolder(kind string) (string, error) {
@@ -218,7 +241,7 @@ func (s *Service) ToggleAssetPack(rootID, kind, name string) error {
 	if e != nil {
 		return e
 	}
-	return s.mutateRoot(rootID, func(r Root) error {
+	return s.mutateRootAllowRunning(rootID, func(r Root) error {
 		low := strings.ToLower(name)
 		if filepath.Base(name) != name || !isPackArchive(kind, low) {
 			return errors.New("无效的资源包文件名")
@@ -248,9 +271,8 @@ func (s *Service) RemoveAssetPack(rootID, kind, name string) error {
 	if e != nil {
 		return e
 	}
-	return s.mutateRoot(rootID, func(r Root) error {
-		low := strings.ToLower(name)
-		if filepath.Base(name) != name || !isPackArchive(kind, low) {
+	return s.mutateRootAllowRunning(rootID, func(r Root) error {
+		if name == "" || name == "." || name == ".." || filepath.Base(name) != name {
 			return errors.New("无效的资源包文件名")
 		}
 		vDir := r.VersionDir()
@@ -258,14 +280,11 @@ func (s *Service) RemoveAssetPack(rootID, kind, name string) error {
 		if e != nil {
 			return e
 		}
-		dst, e := safeJoin(r.Path, ".mcl/backups/"+time.Now().Format("20060102-150405")+"-"+newID()[:6]+"/"+name)
-		if e != nil {
-			return e
+		if !isValidPackRemovalTarget(kind, name, src) {
+			return errors.New("无效的资源包文件名")
 		}
-		if e = os.MkdirAll(filepath.Dir(dst), 0755); e != nil {
-			return e
-		}
-		return os.Rename(src, dst)
+		_, e = moveAddonToBackup(r, folder, name)
+		return e
 	})
 }
 
@@ -274,7 +293,7 @@ func (s *Service) AddLocalAssetPacks(rootID, kind string, paths []string) error 
 	if e != nil {
 		return e
 	}
-	return s.mutateRoot(rootID, func(r Root) error {
+	return s.mutateRootAllowRunning(rootID, func(r Root) error {
 		vDir := r.VersionDir()
 		isHorizon := isHorizonRootVersion(r)
 		for _, src := range paths {
@@ -317,7 +336,7 @@ func (s *Service) InstallAssetPack(rootID, kind, source, project, id string) (st
 	if kind == "shader" {
 		title = "安装光影包"
 	}
-	return s.startJob(title, rootID, func(ctx context.Context, p progress) error {
+	return s.startJobAllowRunning(title, rootID, func(ctx context.Context, p progress) error {
 		if source == "horizon" {
 			_, proj, ver, err := s.horizonLookup(ctx, project, id)
 			if err != nil {

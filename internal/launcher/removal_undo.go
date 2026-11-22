@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -69,30 +68,17 @@ func (s *Service) RestoreRoot(receipt RootRemoval) error {
 
 type ModRemoval struct {
 	rootID, source, backup string
+	horizon                bool
+	modID                  string
+	hadHorizonState        bool
+	horizonEnabled         bool
+	recordName             string
+	record                 *modRecord
 }
 
 func (s *Service) RemoveModUndo(rootID, version, name string) (ModRemoval, error) {
-	if filepath.Base(name) != name || (!strings.HasSuffix(name, ".jar") && !strings.HasSuffix(name, ".jar.disabled")) {
-		return ModRemoval{}, errors.New("无效的模组文件名")
-	}
-	return s.removeAddonUndo(rootID, version, "mods", name)
-}
-
-func (s *Service) RemoveAssetPackUndo(rootID, version, kind, name string) (ModRemoval, error) {
-	folder, err := packFolder(kind)
-	if err != nil {
-		return ModRemoval{}, err
-	}
-	low := strings.ToLower(name)
-	if filepath.Base(name) != name || (!strings.HasSuffix(low, ".zip") && !strings.HasSuffix(low, ".zip.disabled")) {
-		return ModRemoval{}, errors.New("无效的资源包文件名")
-	}
-	return s.removeAddonUndo(rootID, version, folder, name)
-}
-
-func (s *Service) removeAddonUndo(rootID, version, folder, name string) (ModRemoval, error) {
 	var receipt ModRemoval
-	err := s.mutateRoot(rootID, func(r Root) error {
+	err := s.mutateRootAllowRunning(rootID, func(r Root) error {
 		if version != "" {
 			if filepath.Base(version) != version || version == "." || version == ".." {
 				return errors.New("无效的版本")
@@ -100,24 +86,67 @@ func (s *Service) removeAddonUndo(rootID, version, folder, name string) (ModRemo
 			r.SelectedVersion = version
 			s.cacheGameDir(&r)
 		}
+		if isHorizonRootVersion(r) {
+			var err error
+			receipt, err = s.removeHorizonModReceipt(r, name)
+			return err
+		}
+		if !isJavaModFile(name) {
+			return errors.New("无效的模组文件名")
+		}
+		var err error
+		receipt, err = moveAddonToBackup(r, "mods", name)
+		return err
+	})
+	return receipt, err
+}
+
+func (s *Service) RemoveAssetPackUndo(rootID, version, kind, name string) (ModRemoval, error) {
+	folder, err := packFolder(kind)
+	if err != nil {
+		return ModRemoval{}, err
+	}
+	var receipt ModRemoval
+	err = s.mutateRootAllowRunning(rootID, func(r Root) error {
+		if version != "" {
+			if filepath.Base(version) != version || version == "." || version == ".." {
+				return errors.New("无效的版本")
+			}
+			r.SelectedVersion = version
+			s.cacheGameDir(&r)
+		}
+		if name == "" || name == "." || name == ".." || filepath.Base(name) != name {
+			return errors.New("无效的资源包文件名")
+		}
 		src, err := safeJoin(r.VersionDir(), folder+"/"+name)
 		if err != nil {
 			return err
 		}
-		dst, err := safeJoin(r.Path, ".mcl/backups/"+time.Now().Format("20060102-150405")+"-"+newID()[:6]+"/"+name)
-		if err != nil {
-			return err
+		if !isValidPackRemovalTarget(kind, name, src) {
+			return errors.New("无效的资源包文件名")
 		}
-		if err = os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-			return err
-		}
-		if err = os.Rename(src, dst); err != nil {
-			return err
-		}
-		receipt = ModRemoval{rootID, src, dst}
-		return nil
+		receipt, err = moveAddonToBackup(r, folder, name)
+		return err
 	})
 	return receipt, err
+}
+
+func moveAddonToBackup(r Root, folder, name string) (ModRemoval, error) {
+	src, err := safeJoin(r.VersionDir(), folder+"/"+name)
+	if err != nil {
+		return ModRemoval{}, err
+	}
+	dst, err := safeJoin(r.Path, ".mcl/backups/"+time.Now().Format("20060102-150405")+"-"+newID()[:6]+"/"+name)
+	if err != nil {
+		return ModRemoval{}, err
+	}
+	if err = os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return ModRemoval{}, err
+	}
+	if err = os.Rename(src, dst); err != nil {
+		return ModRemoval{}, err
+	}
+	return ModRemoval{rootID: r.ID, source: src, backup: dst}, nil
 }
 
 func (s *Service) RestoreAuthServer(server AuthServer) error {
@@ -142,7 +171,7 @@ func (s *Service) RestoreAuthServer(server AuthServer) error {
 }
 
 func (s *Service) RestoreMod(receipt ModRemoval) error {
-	return s.mutateRoot(receipt.rootID, func(r Root) error {
+	return s.mutateRootAllowRunning(receipt.rootID, func(r Root) error {
 		// Both locations came from safeJoin at removal time. Recheck against
 		// the current root before writing, including the symlink boundary.
 		for _, path := range []string{receipt.source, receipt.backup} {
@@ -159,6 +188,21 @@ func (s *Service) RestoreMod(receipt ModRemoval) error {
 		} else if !os.IsNotExist(err) {
 			return err
 		}
-		return os.Rename(receipt.backup, receipt.source)
+		if err := os.Rename(receipt.backup, receipt.source); err != nil {
+			return err
+		}
+		if receipt.horizon {
+			vDir := filepath.Dir(filepath.Dir(receipt.source))
+			if receipt.hadHorizonState && receipt.modID != "" {
+				_ = writeHorizonModState(vDir, receipt.modID, receipt.horizonEnabled, false)
+			}
+			if receipt.record != nil && receipt.recordName != "" {
+				records := readRecords(vDir)
+				records[receipt.recordName] = *receipt.record
+				_ = atomicJSON(filepath.Join(vDir, ".mcl", "mods.json"), records)
+			}
+			s.invalidateStatus(vDir)
+		}
+		return nil
 	})
 }

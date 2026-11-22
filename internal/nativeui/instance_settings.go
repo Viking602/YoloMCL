@@ -135,7 +135,7 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 				})
 			})
 			if isHorizon {
-				a.horizonRuntimeSettingsCard(c)
+				a.horizonRuntimeSettingsCard(c, r, v)
 			} else {
 				a.memoryCard(c, v)
 			}
@@ -156,22 +156,26 @@ func (a *App) instanceSettingsView(c *ui.Context, r launcher.Instance) {
 	})
 }
 
-func (a *App) horizonRuntimeSettingsCard(c *ui.Context) {
+func (a *App) horizonRuntimeSettingsCard(c *ui.Context, r launcher.Instance, v launcher.VersionSummary) {
 	s := uiScale(c)
 	setCard(c, "set-horizon-runtime", "layers", a.L("instance_settings.native_runtime"), a.L("instance_settings.native_runtime_sub"), 380, func() {
 		lobeAlert(c, "info", a.L("instance_settings.horizon_no_jvm_note"))
 		ui.Column(c).FillWidth().Padding(10*s, 12*s).Gap(7*s).Radius(radiusControl*s).Background(raised).Border(1, line).Children(func() {
-			specRow := func(k, v string) {
+			specRow := func(k, val string) {
 				ui.Row(c).FillWidth().Gap(10 * s).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, k).FontSize(typeCaption * s).TextColor(muted).NoWrap().Shrink(0)
 					ui.Spacer(c).Grow(1)
-					ui.Text(c, v).FontSize(typeCaption * s).FontWeight(600).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+					ui.Text(c, val).FontSize(typeCaption * s).FontWeight(600).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
 				})
 			}
 			specRow(a.L("instance_settings.horizon_spec_engine"), a.L("instance_settings.horizon_spec_engine_val"))
+			if v.LoaderVersion != "" {
+				specRow(a.L("horizon.current_build"), v.LoaderVersion)
+			}
 			specRow(a.L("instance_settings.horizon_spec_memory"), a.L("overview_runtime.native_memory"))
 			specRow(a.L("instance_settings.horizon_spec_launch"), a.L("instance_settings.horizon_spec_launch_val"))
 		})
+		a.horizonBuildUpgradeSection(c, r, v)
 	})
 }
 
