@@ -432,8 +432,11 @@ func TestOfflineLaunchWithRealJVM(t *testing.T) {
 	}
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
+		s.mu.Lock()
+		stillRunning := s.running[runKey(r.ID, "fixture")] != nil
+		s.mu.Unlock()
 		lines, e := s.Logs(r.ID)
-		if e == nil && strings.Contains(strings.Join(lines, "\n"), "游戏已退出") {
+		if !stillRunning && e == nil && strings.Contains(strings.Join(lines, "\n"), "游戏已退出") {
 			joined := strings.Join(lines, "\n")
 			for _, expected := range []string{"ARG=MCL_Tester", "ARG=" + a.UUID, "ARG=0", "ARG=legacy", "ARG=" + gameDir, "DIR=" + gameDir, "OPTIONS=key_key.forward:key.keyboard.i"} {
 				if !strings.Contains(joined, expected) {

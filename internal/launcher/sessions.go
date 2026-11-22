@@ -77,7 +77,6 @@ func (s *Service) newSessionLocked(r Root, log *gameLog, g *runningGame) *gameSe
 // endSession records how a session ended and trims old exited ones.
 func (s *Service) endSession(gs *gameSession, err error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	gs.Ended = time.Now()
 	gs.game = nil
 	gs.State = "exited"
@@ -93,8 +92,7 @@ func (s *Service) endSession(gs *gameSession, err error) {
 			diagnoseSession(gs)
 		}
 	}
-	go recordPlay(gs.GameSession, gs.stopped)
-	go s.invalidateStatus(gs.GameDir)
+	snapshot, stopped, gameDir := gs.GameSession, gs.stopped, gs.GameDir
 	exited := 0
 	for i := len(s.sessions) - 1; i >= 0; i-- {
 		if s.sessions[i].State == "running" {
@@ -105,6 +103,9 @@ func (s *Service) endSession(gs *gameSession, err error) {
 			s.sessions = append(s.sessions[:i], s.sessions[i+1:]...)
 		}
 	}
+	s.mu.Unlock()
+	recordPlay(snapshot, stopped)
+	s.invalidateStatus(gameDir)
 }
 
 // Sessions lists sessions oldest first; rootID "" means all.

@@ -111,7 +111,7 @@ func (a *App) storeHorizonUpdate(rootID, versionID string, info launcher.Horizon
 	cp := info
 	st.info = &cp
 	st.checked = true
-	if st.selectedBuild == "" {
+	if st.selectedBuild == "" || (info.HasUpdate && info.Latest != nil && st.selectedBuild == info.CurrentBuild) {
 		if info.HasUpdate && info.Latest != nil {
 			st.selectedBuild = info.Latest.BuildID
 		} else {

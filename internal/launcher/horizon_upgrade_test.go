@@ -324,10 +324,45 @@ func TestHorizonInPlaceUpgradeAndSwitchPreservesInstanceData(t *testing.T) {
 		t.Fatalf("expected both builds cached locally, got %v", info.LocalBuilds)
 	}
 
-	// 4. Switching back to the locally cached older build succeeds even while completely offline.
+	// 4. Re-installing the old build after in-place upgrade must NOT clobber
+	// the upgraded horizon-<buildOld> instance; it must create a distinct folder.
+	reinstJobID, err := svc.InstallGame(root.ID, "", "", mcVersion, "horizon", buildOld)
+	if err != nil {
+		t.Fatalf("InstallGame(old after upgrade): %v", err)
+	}
+	if j := waitForJob(t, svc, reinstJobID, 20*time.Second); j.State != "completed" {
+		t.Fatalf("re-install of old build failed: state=%s msg=%q", j.State, j.Message)
+	}
+	_, upgradedMeta, err := findVersionJSON(root.Path, verID)
+	if err != nil || upgradedMeta.Horizon == nil || upgradedMeta.Horizon.BuildID != buildNew {
+		t.Fatalf("re-installing old build clobbered upgraded instance %s: meta=%+v err=%v", verID, upgradedMeta.Horizon, err)
+	}
+	altVerID := verID + "-2"
+	_, altMeta, err := findVersionJSON(root.Path, altVerID)
+	if err != nil || altMeta.Horizon == nil || altMeta.Horizon.BuildID != buildOld {
+		t.Fatalf("expected separate instance %s for build %s, got %+v err=%v", altVerID, buildOld, altMeta.Horizon, err)
+	}
+
+	// 5. After clearing the in-memory release cache and going completely offline:
+	// - quiet CheckHorizonUpdate (force=false) still lists locally cached builds;
+	// - switching back to the cached older build succeeds and preserves release metadata.
 	mu.Lock()
 	offline = true
 	mu.Unlock()
+	svc.horizonMu.Lock()
+	svc.horizonCache = nil
+	svc.horizonMu.Unlock()
+
+	offlineInfo, err := svc.CheckHorizonUpdate(context.Background(), root.ID, verID, false)
+	if err != nil {
+		t.Fatalf("CheckHorizonUpdate(offline quiet): %v", err)
+	}
+	if offlineInfo.CurrentBuild != buildNew || !slices.Contains(offlineInfo.LocalBuilds, buildOld) || !slices.Contains(offlineInfo.LocalBuilds, buildNew) {
+		t.Fatalf("offline check hid cached Horizon builds: %+v", offlineInfo)
+	}
+	if _, err := svc.CheckHorizonUpdate(context.Background(), root.ID, verID, true); err == nil {
+		t.Fatal("manual offline CheckHorizonUpdate(force=true) should still report network failure")
+	}
 
 	rollJobID, err := svc.UpgradeHorizon(root.ID, verID, buildOld)
 	if err != nil {
@@ -339,5 +374,8 @@ func TestHorizonInPlaceUpgradeAndSwitchPreservesInstanceData(t *testing.T) {
 	_, revertedMeta, err := findVersionJSON(root.Path, verID)
 	if err != nil || revertedMeta.Horizon == nil || revertedMeta.Horizon.BuildID != buildOld {
 		t.Fatalf("expected build reverted to %s, got %+v err=%v", buildOld, revertedMeta.Horizon, err)
+	}
+	if revertedMeta.Horizon.ReleaseTag == "" || revertedMeta.Horizon.ReleaseName != nameOld || revertedMeta.Horizon.Asset != primaryAsset {
+		t.Fatalf("cached upgrade wiped release metadata: %+v", revertedMeta.Horizon)
 	}
 }

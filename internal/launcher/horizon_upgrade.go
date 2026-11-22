@@ -78,16 +78,19 @@ func (s *Service) CheckHorizonUpdate(ctx context.Context, rootID, versionID stri
 	if cur.Horizon == nil || cur.Horizon.BuildID == "" {
 		return HorizonUpdateInfo{}, horizonErr("此版本不是 Horizon 实例", "This version is not a Horizon instance")
 	}
-	releases, err := s.horizonReleases(ctx, force)
-	if err != nil {
-		return HorizonUpdateInfo{}, err
-	}
 	info := HorizonUpdateInfo{
 		CurrentBuild: cur.Horizon.BuildID,
-		Releases:     releases,
 		LocalBuilds:  s.localHorizonBuilds(),
 		CheckedAt:    time.Now().UTC().Format(time.RFC3339),
 	}
+	releases, err := s.horizonReleases(ctx, force)
+	if err != nil {
+		if !force && len(info.LocalBuilds) > 0 {
+			return info, nil
+		}
+		return info, err
+	}
+	info.Releases = releases
 	if len(releases) > 0 {
 		latest := releases[0]
 		info.Latest = &latest
@@ -151,9 +154,9 @@ func (s *Service) UpgradeHorizon(rootID, versionID, targetBuild string) (string,
 		if err != nil {
 			return err
 		}
-		if rel.ReleaseTag == "" {
+		if rel.ReleaseTag == "" || rel.Name == "" || rel.AssetName == "" {
 			if cached, ok := s.cachedHorizonRelease(rel.BuildID); ok {
-				rel = cached
+				rel = mergeHorizonReleaseMeta(rel, cached)
 			}
 		}
 
@@ -184,7 +187,8 @@ func (s *Service) UpgradeHorizon(rootID, versionID, targetBuild string) (string,
 			meta.Type = "release"
 		}
 		meta.JavaVersion.MajorVersion = prepAPI.JavaMajor
-		meta.Horizon = &horizonVersionMeta{
+		prev := meta.Horizon
+		next := &horizonVersionMeta{
 			BuildID:     rel.BuildID,
 			ReleaseTag:  rel.ReleaseTag,
 			ReleaseName: rel.Name,
@@ -192,6 +196,18 @@ func (s *Service) UpgradeHorizon(rootID, versionID, targetBuild string) (string,
 			JavaMajor:   prepAPI.JavaMajor,
 			Asset:       rel.AssetName,
 		}
+		if prev != nil && prev.BuildID == rel.BuildID {
+			if next.ReleaseTag == "" {
+				next.ReleaseTag = prev.ReleaseTag
+			}
+			if next.ReleaseName == "" {
+				next.ReleaseName = prev.ReleaseName
+			}
+			if next.Asset == "" {
+				next.Asset = prev.Asset
+			}
+		}
+		meta.Horizon = next
 		if err := atomicJSON(jsonPath, meta); err != nil {
 			return err
 		}

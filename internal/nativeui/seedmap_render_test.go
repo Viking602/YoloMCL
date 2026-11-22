@@ -139,10 +139,13 @@ func TestSeedMapPaintAnimationsSettle(t *testing.T) {
 		}
 		loading = true
 		tt.Frame()
+		// A second frame settles first-text app-font uptake in an isolated
+		// Tester text system so rt.gen matches before measuring pure repaints.
+		tt.Frame()
 		start, builds = painted, built
 		tt.Advance(time.Second)
 		if painted-start > 13 || built != builds {
-			t.Fatal("loading indicator exceeded 12 fps or rebuilt the view")
+			t.Fatalf("loading indicator exceeded 12 fps or rebuilt the view: paints=%d builds=%d", painted-start, built-builds)
 		}
 		if lessMotion && painted != start {
 			t.Fatal("reduced-motion loading indicator kept repainting")
